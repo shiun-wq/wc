@@ -351,7 +351,7 @@ async function save(){ await DB.set('data',S); }
 async function load(){
   const d=await DB.get('data');
   if(d) S=Object.assign(S,d);
-  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
+  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ai',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
   if(!S.settings.presets.length){
     S.settings.presets=[{id:uid('p'),name:'New Preset',endpoint:'',key:'',model:'',models:[]}];
     S.settings.activeId=S.settings.presets[0].id;
@@ -461,8 +461,45 @@ function makeSticker(dataURL,w){
     im.src=dataURL;
   });
 }
+const STICKER_PROMPT='把圖中的娃娃衣服或配件單獨抽出來，去掉背景、手、娃娃本體和所有雜物，只留下這件單品本身。輸出一張圖片：單品置中且完整不裁切，背景填滿純白色 #FFFFFF，不要陰影、不要文字、不要邊框、不要浮水印，顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。';
+// 從各種格式的回應裡把圖片挖出來
+function extractImage(j){
+  const s=JSON.stringify(j);
+  let m=s.match(/data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+/);
+  if(m)return m[0].replace(/\\/g,'');
+  m=s.match(/"(?:b64_json|inlineData|inline_data|image_base64|b64)"\s*:\s*(?:{[^{}]*"data"\s*:\s*)?"([A-Za-z0-9+/=]{500,})"/);
+  if(m)return 'data:image/png;base64,'+m[1];
+  m=s.match(/"data"\s*:\s*"([A-Za-z0-9+/=]{500,})"/);
+  if(m)return 'data:image/png;base64,'+m[1];
+  return null;
+}
+async function aiSticker(dataURL){
+  const c=cfg();
+  if(!c.endpoint)throw new Error('尚未設定 API');
+  const model=(S.settings.stickerModel||'').trim()||c.model;
+  const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
+    method:'POST',headers:authHead(c.key),
+    body:JSON.stringify({model,max_tokens:4000,messages:[{role:'user',content:[
+      {type:'image_url',image_url:{url:dataURL}},
+      {type:'text',text:STICKER_PROMPT}
+    ]}]})
+  });
+  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,120))}
+  const img=extractImage(await r.json());
+  if(!img)throw new Error('這個模型沒有回傳圖片，請改用會出圖的模型');
+  return img;
+}
 async function cutout(dataURL){
-  const raw = S.settings.bgMode==='api' ? await remoteCutout(dataURL) : await localCutout(dataURL);
+  const m=S.settings.stickerMode||'ai';
+  let raw;
+  if(m==='ai'){
+    const white=await aiSticker(dataURL);
+    raw=await localCutout(white,30);
+  }else if(m==='api'){
+    raw=await remoteCutout(dataURL);
+  }else{
+    raw=await localCutout(dataURL);
+  }
   return makeSticker(raw);
 }
 
@@ -610,9 +647,9 @@ function openItem(id){
     <h3>${esc(i.name)}</h3>
     <div class="hero">${img(i)?`<img id="heroImg" src="${UI.detailImg==='photo'?(i.photo||i.cutout):img(i)}" alt="">`:''}</div>
     <div class="swap">
-      <button class="${UI.detailImg==='cutout'?'on':''}" onclick="UI.detailImg='cutout';openItem('${id}')">去背圖</button>
+      <button class="${UI.detailImg==='cutout'?'on':''}" onclick="UI.detailImg='cutout';openItem('${id}')">貼圖</button>
       <button class="${UI.detailImg==='photo'?'on':''}" onclick="UI.detailImg='photo';openItem('${id}')">原始照片</button>
-      <button onclick="recut('${id}')">重新去背</button>
+      <button onclick="recut('${id}')">重做貼圖</button>
     </div>
     <button class="btn ghost wide sm" style="margin:-6px 0 14px" onclick="dlSticker('${id}')">下載貼圖 PNG</button>
     <div class="tagline">
@@ -646,14 +683,14 @@ function openItem(id){
 }
 function dlSticker(id){
   const i=S.items.find(x=>x.id===id);
-  if(!i||!i.cutout){toast('這件還沒有貼圖，先按重新去背');return}
+  if(!i||!i.cutout){toast('這件還沒有貼圖，先按重做貼圖');return}
   const a=document.createElement('a');
   a.href=i.cutout;a.download=(i.name||'sticker').replace(/[\\/:*?"<>|]/g,'')+'.png';
   a.click();toast('已下載');
 }
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
-  toast('製作貼圖中…');
+  toast('製作貼圖中，AI 出圖要等幾秒…');
   try{ i.cutout=await cutout(i.photo); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
   catch(e){ toast(e.message) }
 }
@@ -732,7 +769,7 @@ function renderQueue(){
         ${q.isSet?`<div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.includes(p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           <div class="hint" style="margin-top:5px">勾選的單品會拆成「${esc(q.name||'套裝名')}－單品」各自建檔</div>`:''}
         <div class="row" style="margin-top:7px">
-          <button class="btn sm ghost" onclick="cutQ(${n})">去背</button>
+          <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
           <button class="btn sm ghost" onclick="UI.queue.splice(${n},1);renderQueue()">移除</button>
           <span class="grow"></span>
           <span class="hint">${(q.styles||[]).map(s=>s.name).join('・')}</span>
@@ -742,7 +779,7 @@ function renderQueue(){
   document.getElementById('queueActions').innerHTML=UI.queue.length?`
     <div class="row" style="margin-top:4px">
       <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析</button>
-      <button class="btn ghost" onclick="cutAll()">全部去背</button>
+      <button class="btn ghost" onclick="cutAll()">全部做貼圖</button>
       <span class="grow"></span>
       <button class="btn" onclick="commitQueue()">建檔 ${UI.queue.length} 筆</button>
     </div>`:'';
@@ -753,7 +790,7 @@ function togglePart(n,p){
   renderQueue();
 }
 async function cutQ(n){
-  const q=UI.queue[n];toast('製作貼圖中…');
+  const q=UI.queue[n];toast('製作貼圖中，AI 出圖要等幾秒…');
   try{q.cutout=await cutout(q.photo);renderQueue();toast('完成')}catch(e){toast(e.message)}
 }
 async function cutAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].cutout)await cutQ(i)}}
@@ -1135,22 +1172,31 @@ function openSettings(){
 
     <h2 class="sec">貼圖</h2>
     <div class="card">
+      <label class="f"><span>製作方式</span>
+        <select id="s_smode" onchange="toggleSticker(this.value)">
+          <option value="ai" ${(st.stickerMode||'ai')==='ai'?'selected':''}>AI 生成　用上面同一組 API，任何背景都行</option>
+          <option value="local" ${st.stickerMode==='local'?'selected':''}>本機處理　免費，但背景要單純</option>
+          <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
+        </select></label>
+
+      <div id="sk_ai" style="display:${(st.stickerMode||'ai')==='ai'?'block':'none'}">
+        <label class="f"><span>出圖模型</span>
+          <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
+        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看你的中轉站有哪些。</p>
+      </div>
+
+      <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
+        <label class="f"><span>服務網址</span><input type="text" id="s_bgurl" value="${esc(st.bgUrl||'')}" autocapitalize="off"></label>
+        <label class="f"><span>服務密鑰</span><input type="password" id="s_bgkey" value="${esc(st.bgKey||'')}" autocapitalize="off"></label>
+      </div>
+
       <label class="f" style="margin-bottom:4px"><span>白邊粗細　<b id="s_edgev">${st.stickerEdge??6}</b></span>
         <input type="range" id="s_edge" min="0" max="16" value="${st.stickerEdge??6}" oninput="document.getElementById('s_edgev').textContent=this.value"></label>
-      <p class="hint" style="margin:0 0 12px">像 LINE 貼圖那樣沿著娃衣外圍加一圈白框。設成 0 就是純去背沒有白邊。白邊也能蓋掉去背沒清乾淨的毛邊。</p>
-      <label class="f" style="margin-bottom:4px"><span>去背強度　<b id="s_tolv">${st.bgTol||42}</b></span>
+      <p class="hint" style="margin:0 0 12px">像 LINE 貼圖那樣加一圈白框。設 0 就沒有白邊。</p>
+
+      <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
-      <p class="hint" style="margin:0 0 10px">背景沒清乾淨就調高，娃衣被吃掉就調低。改完到單品頁按「重新去背」看效果。</p>
-      <label class="f" style="margin-bottom:0"><span>去背方式</span>
-        <select id="s_bgmode" onchange="document.getElementById('bgapi').style.display=this.value==='api'?'block':'none'">
-          <option value="local" ${st.bgMode==='local'?'selected':''}>本機處理　免費、不連網、適合單純背景</option>
-          <option value="api" ${st.bgMode==='api'?'selected':''}>去背服務　背景很雜時才需要</option>
-        </select></label>
-      <div id="bgapi" style="display:${st.bgMode==='api'?'block':'none'};margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-        <p class="hint" style="margin:0 0 8px">remove.bg、Photoroom 之類的專門服務，要各自註冊付費，不能用聊天模型那把密鑰。</p>
-        <label class="f"><span>服務網址</span><input type="text" id="s_bgurl" value="${esc(st.bgUrl||'')}" autocapitalize="off"></label>
-        <label class="f" style="margin-bottom:0"><span>服務密鑰</span><input type="password" id="s_bgkey" value="${esc(st.bgKey||'')}" autocapitalize="off"></label>
-      </div>
+      <p class="hint" style="margin:0">底色沒清乾淨就調高，娃衣被吃掉就調低。用本機處理時才比較需要動它。</p>
     </div>
 
     <h2 class="sec">備份</h2>
@@ -1167,6 +1213,10 @@ function openSettings(){
     <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>
   `);
 }
+function toggleSticker(v){
+  document.getElementById('sk_ai').style.display=v==='ai'?'block':'none';
+  document.getElementById('sk_api').style.display=v==='api'?'block':'none';
+}
 function pickModel(btn,m){
   document.getElementById('s_model').value=m;
   btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===btn));
@@ -1178,7 +1228,8 @@ function readForm(){
   c.endpoint=v('s_endpoint').trim();
   c.key=v('s_key').trim();
   c.model=v('s_model').trim();
-  S.settings.bgMode=v('s_bgmode');S.settings.bgTol=+v('s_bgtol')||42;S.settings.stickerEdge=+v('s_edge');
+  S.settings.stickerMode=v('s_smode');S.settings.stickerModel=v('s_smodel');
+  S.settings.bgTol=+v('s_bgtol')||42;S.settings.stickerEdge=+v('s_edge');
   S.settings.bgUrl=v('s_bgurl')||S.settings.bgUrl;S.settings.bgKey=v('s_bgkey')||S.settings.bgKey;
 }
 async function refreshModels(btn){
