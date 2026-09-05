@@ -154,6 +154,12 @@ dl.meta dd{margin:0}
 .parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .parts button{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
 .parts button.on{background:var(--berry);border-color:var(--berry);color:#fff}
+.partrow{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px}
+.pt{flex:0 0 auto;text-align:center;width:52px}
+.pt .ptimg{width:52px;height:52px;border-radius:8px;background:var(--berry-soft);display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;border:1.5px dashed var(--line)}
+.pt.ok .ptimg{border-style:solid;border-color:var(--sage)}
+.pt .ptimg img{width:100%;height:100%;object-fit:contain;padding:3px}
+.pt span{display:block;font-size:10px;margin-top:3px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- studio ---------- */
 #canvas{position:relative;width:100%;aspect-ratio:3/4;background:
@@ -428,6 +434,29 @@ async function remoteCutout(dataURL){
   const out=await r.blob();
   return new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(out)});
 }
+// 依 AI 給的位置框裁出單一單品
+function cropBox(dataURL,box,pad){
+  pad=pad??0.05;
+  return new Promise(res=>{
+    if(!box||box.length!==4){res(dataURL);return}
+    const im=new Image();
+    im.onload=()=>{
+      let [y0,x0,y1,x1]=box.map(v=>Math.max(0,Math.min(1000,+v))/1000);
+      if(x1<=x0||y1<=y0){res(dataURL);return}
+      const pw=(x1-x0)*pad,ph=(y1-y0)*pad;
+      x0=Math.max(0,x0-pw);y0=Math.max(0,y0-ph);
+      x1=Math.min(1,x1+pw);y1=Math.min(1,y1+ph);
+      const sx=x0*im.width,sy=y0*im.height,sw=(x1-x0)*im.width,sh=(y1-y0)*im.height;
+      if(sw<20||sh<20){res(dataURL);return}
+      const c=document.createElement('canvas');
+      c.width=Math.round(sw);c.height=Math.round(sh);
+      c.getContext('2d').drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg',0.9));
+    };
+    im.onerror=()=>res(dataURL);
+    im.src=dataURL;
+  });
+}
 // 貼圖化：沿著輪廓往外長一圈白邊，順便蓋掉去背的毛邊
 function makeSticker(dataURL,w){
   w=w??(S.settings.stickerEdge??6);
@@ -611,8 +640,15 @@ function parseJSON(txt){
   return JSON.parse(m.slice(st,en+1));
 }
 const TAG_PROMPT=`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
-{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${CATS.map(c=>c[0]).join('、')}","parts":["若 isSet 為 true，列出這套包含的單品類型"],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
-風格請從：甜系、Lolita、學院風、復古、哥德、日常、休閒、森系、動物系、睡衣風、萌系、華麗、中式、韓系、日系 之中挑1到3個。`;
+{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${CATS.map(c=>c[0]).join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
+
+parts 規則很重要：
+如果照片裡有多件可以分開穿的單品（例如整套娃衣攤開拍），isSet 設 true，並在 parts 裡逐一列出每一件。
+box 是那件單品在照片中的位置框，格式 [ymin,xmin,ymax,xmax]，數值是 0 到 1000 的相對座標，左上角為 0,0。
+框要剛好包住那一件，寧可稍微寬鬆也不要切到。每件單品各自一個框，不要把好幾件框在一起。
+如果照片裡只有一件單品，isSet 設 false，parts 給空陣列。
+
+風格請從：甜系、Lolita、學院風、復古、哥德、日常、休閒、森系、動物系、睡衣風、萌系、華麗、中式、韓系、日系 之中挑1到3個。`
 
 /* ============================================================
    5. 導覽
@@ -813,8 +849,16 @@ function renderQueue(){
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
-        ${q.isSet?`<div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.includes(p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
-          <div class="hint" style="margin-top:5px">勾選的單品會拆成「${esc(q.name||'套裝名')}－單品」各自建檔</div>`:''}
+        ${q.isSet?`
+          <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
+          ${q.parts.length?`<div class="partrow">${q.parts.map(pt=>`
+            <div class="pt ${pt.img?'ok':''}">
+              <div class="ptimg">${pt.img?`<img src="${pt.img}" alt="">`:(pt.box?'框':'？')}</div>
+              <span>${esc(pt.name)}</span>
+            </div>`).join('')}</div>
+          <button class="btn sm quiet" style="margin-top:7px" onclick="makePartStickers(${n})" ${q.working?'disabled':''}>
+            ${q.working?'<span class="spin"></span>處理中':'逐件做貼圖'}</button>`:''}
+          <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
           <button class="btn sm ghost" onclick="UI.queue.splice(${n},1);renderQueue()">移除</button>
@@ -833,8 +877,25 @@ function renderQueue(){
 }
 function togglePart(n,p){
   const q=UI.queue[n];
-  q.parts=q.parts.includes(p)?q.parts.filter(x=>x!==p):[...q.parts,p];
+  q.parts=q.parts.some(x=>x.name===p)?q.parts.filter(x=>x.name!==p):[...q.parts,{name:p,box:null,img:null,crop:null}];
   renderQueue();
+}
+// 逐件裁切 + 各自去背，每件單品拿到自己的貼圖
+async function makePartStickers(n){
+  const q=UI.queue[n];
+  if(!q.parts.length){toast('這張還沒有可拆的單品');return}
+  q.working=true;renderQueue();
+  for(let k=0;k<q.parts.length;k++){
+    const pt=q.parts[k];
+    prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
+    try{
+      pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
+      pt.img=await cutout(pt.crop);
+    }catch(e){ q.working=false;renderQueue();toast('失敗：'+e.message);return }
+    renderQueue();
+  }
+  q.working=false;renderQueue();
+  toast(`${q.parts.length} 件單品各自的貼圖完成`);
 }
 async function cutQ(n){
   const q=UI.queue[n];toast('製作貼圖中，AI 出圖要等幾秒…');
@@ -850,7 +911,8 @@ async function analyze(n){
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
     q.isSet=!!r.isSet;
-    q.parts=(r.parts||[]).filter(p=>COMMON_PARTS.includes(p));
+    q.parts=(r.parts||[]).map(x=>typeof x==='string'?{name:x,box:null}:{name:x.name,box:x.box||null})
+      .filter(x=>x.name).map(x=>({name:x.name,box:x.box,img:null,crop:null}));
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
     q.season=r.season||'';q.material=r.material||'';
   }catch(e){toast('分析失敗：'+e.message)}
@@ -859,6 +921,8 @@ async function analyze(n){
 async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length)await analyze(i)}}
 
 async function commitQueue(){
+  const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
+  if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   let n=0;
   for(const q of UI.queue){
     const base={photo:q.photo,cutout:q.cutout,colors:q.colors,styles:q.styles,motifs:q.motifs,
@@ -869,10 +933,13 @@ async function commitQueue(){
       S.sets.push({id:sid,name:nm,createdAt:Date.now()});
       S.items.push(Object.assign({id:uid('i'),setId:sid,name:nm,category:'套裝'},base));n++;
       const seen={};
-      for(const p of q.parts){
-        seen[p]=(seen[p]||0)+1;
-        const sfx=seen[p]>1?' '+String.fromCharCode(64+seen[p]):'';
-        S.items.push(Object.assign({id:uid('i'),setId:sid,name:`${nm}－${p}${sfx}`,category:p},base,{cutout:q.cutout}));n++;
+      for(const pt of q.parts){
+        seen[pt.name]=(seen[pt.name]||0)+1;
+        const sfx=seen[pt.name]>1?' '+String.fromCharCode(64+seen[pt.name]):'';
+        S.items.push(Object.assign({},base,{
+          id:uid('i'),setId:sid,name:`${nm}－${pt.name}${sfx}`,category:pt.name,
+          photo:pt.crop||q.photo, cutout:pt.img||null
+        }));n++;
       }
     }else{
       S.items.push(Object.assign({id:uid('i'),setId:null,name:q.name||'未命名',category:q.category},base));n++;
