@@ -351,7 +351,7 @@ async function save(){ await DB.set('data',S); }
 async function load(){
   const d=await DB.get('data');
   if(d) S=Object.assign(S,d);
-  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ai',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
+  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ml',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
   if(!S.settings.presets.length){
     S.settings.presets=[{id:uid('p'),name:'New Preset',endpoint:'',key:'',model:'',models:[]}];
     S.settings.activeId=S.settings.presets[0].id;
@@ -461,6 +461,50 @@ function makeSticker(dataURL,w){
     im.src=dataURL;
   });
 }
+/* ---- 瀏覽器內建 AI 去背（RMBG-1.4，第一次用會下載約 40MB，之後有快取） ---- */
+let RM=null,RMloading=null;
+function prog(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._)}
+async function loadRMBG(){
+  if(RM)return RM;
+  if(RMloading)return RMloading;
+  RMloading=(async()=>{
+    prog('第一次使用，下載去背模型中…');
+    const t=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5');
+    t.env.allowLocalModels=false;
+    const seen={};
+    const cb=d=>{
+      if(d.status==='progress'&&d.total){
+        seen[d.file]=d.progress;
+        const v=Object.values(seen);
+        prog('下載去背模型　'+Math.round(v.reduce((a,b)=>a+b,0)/v.length)+'%');
+      }
+    };
+    const model=await t.AutoModel.from_pretrained('briaai/RMBG-1.4',{config:{model_type:'custom'},progress_callback:cb});
+    const processor=await t.AutoProcessor.from_pretrained('briaai/RMBG-1.4',{config:{
+      do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,
+      image_mean:[0.5,0.5,0.5],image_std:[1,1,1],resample:2,size:{width:1024,height:1024}
+    }});
+    RM={t,model,processor};
+    return RM;
+  })();
+  try{ return await RMloading }catch(e){ RMloading=null; throw e }
+}
+async function mlCutout(dataURL){
+  const {t,model,processor}=await loadRMBG();
+  prog('去背處理中…');
+  const image=await t.RawImage.fromURL(dataURL);
+  const {pixel_values}=await processor(image);
+  const {output}=await model({input:pixel_values});
+  const mask=await t.RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width,image.height);
+  const c=document.createElement('canvas');
+  c.width=image.width;c.height=image.height;
+  const x=c.getContext('2d');
+  x.drawImage(image.toCanvas(),0,0);
+  const d=x.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<mask.data.length;i++)d.data[4*i+3]=mask.data[i];
+  x.putImageData(d,0,0);
+  return c.toDataURL('image/png');
+}
 const STICKER_PROMPT='把圖中的娃娃衣服或配件單獨抽出來，去掉背景、手、娃娃本體和所有雜物，只留下這件單品本身。輸出一張圖片：單品置中且完整不裁切，背景填滿純白色 #FFFFFF，不要陰影、不要文字、不要邊框、不要浮水印，顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。';
 // 從各種格式的回應裡把圖片挖出來
 function extractImage(j){
@@ -490,9 +534,12 @@ async function aiSticker(dataURL){
   return img;
 }
 async function cutout(dataURL){
-  const m=S.settings.stickerMode||'ai';
+  const m=S.settings.stickerMode||'ml';
   let raw;
-  if(m==='ai'){
+  if(m==='ml'){
+    try{ raw=await mlCutout(dataURL) }
+    catch(e){ throw new Error('去背模型載入失敗：'+e.message) }
+  }else if(m==='ai'){
     const white=await aiSticker(dataURL);
     raw=await localCutout(white,30);
   }else if(m==='api'){
@@ -1174,12 +1221,17 @@ function openSettings(){
     <div class="card">
       <label class="f"><span>製作方式</span>
         <select id="s_smode" onchange="toggleSticker(this.value)">
-          <option value="ai" ${(st.stickerMode||'ai')==='ai'?'selected':''}>AI 生成　用上面同一組 API，任何背景都行</option>
-          <option value="local" ${st.stickerMode==='local'?'selected':''}>本機處理　免費，但背景要單純</option>
+          <option value="ml" ${(st.stickerMode||'ml')==='ml'?'selected':''}>瀏覽器 AI 去背　推薦，免密鑰、任何背景</option>
+          <option value="local" ${st.stickerMode==='local'?'selected':''}>簡易去背　最快，但背景要純白</option>
+          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>API 出圖　需要會出圖的模型</option>
           <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
         </select></label>
 
-      <div id="sk_ai" style="display:${(st.stickerMode||'ai')==='ai'?'block':'none'}">
+      <div id="sk_ml" style="display:${(st.stickerMode||'ml')==='ml'?'block':'none'}">
+        <p class="hint" style="margin:-4px 0 12px">真正的去背模型，直接在你手機裡跑，不連任何 API。第一次使用會下載約 40MB 的模型檔，之後就有快取、離線也能用。單張大概 3 到 10 秒。</p>
+      </div>
+
+      <div id="sk_ai" style="display:${st.stickerMode==='ai'?'block':'none'}">
         <label class="f"><span>出圖模型</span>
           <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
         <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看你的中轉站有哪些。</p>
@@ -1196,7 +1248,7 @@ function openSettings(){
 
       <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
-      <p class="hint" style="margin:0">底色沒清乾淨就調高，娃衣被吃掉就調低。用本機處理時才比較需要動它。</p>
+      <p class="hint" style="margin:0">只有「簡易去背」會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。</p>
     </div>
 
     <h2 class="sec">備份</h2>
@@ -1214,6 +1266,7 @@ function openSettings(){
   `);
 }
 function toggleSticker(v){
+  document.getElementById('sk_ml').style.display=v==='ml'?'block':'none';
   document.getElementById('sk_ai').style.display=v==='ai'?'block':'none';
   document.getElementById('sk_api').style.display=v==='api'?'block':'none';
 }
