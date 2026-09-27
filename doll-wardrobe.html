@@ -518,6 +518,10 @@ nav.tabs button.plus.on{color:var(--berry)}
 .tip ul{margin:8px 0 10px;padding-left:20px;color:var(--ink-2)}
 .tip li{margin-bottom:3px}
 .tip b{color:var(--ink);font-weight:600}
+.scwrap{position:relative;display:grid;place-items:center;min-height:200px;border-radius:18px;background:var(--paper-2);padding:12px}
+.scwrap img{display:block;max-width:100%;max-height:56vh;border-radius:12px;box-shadow:var(--sh-2)}
+.scwrap img:not([src]){display:none}
+.scwrap .spin{position:absolute;width:22px;height:22px}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -653,6 +657,7 @@ nav.tabs button.plus.on{color:var(--berry)}
       <div class="row" style="margin-top:10px">
         <button class="btn quiet grow" onclick="openDrawer()">加入娃衣</button>
         <button class="btn ghost" onclick="clearCanvas()">清空</button>
+        <button class="btn ghost" onclick="openShare('canvas')" aria-label="分享"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
         <button class="btn" onclick="saveLook()">存成 Look</button>
       </div>
       <h2 class="sec">我的 Look</h2>
@@ -1223,7 +1228,7 @@ function renderHome(){
   ${recent.length?`<div class="blist">${recent.map(w=>`<div class="rowitem" onclick="go('wear')">
     <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
     <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b><span>${w.itemIds.map(i=>esc((S.items.find(x=>x.id===i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
-    <div class="rt">›</div></div>`).join('')}</div>
+    <div class="rt"><button class="btn sm quiet" onclick="event.stopPropagation();openShare('wear','${w.id}')">小卡</button></div></div>`).join('')}</div>
     <button class="btn ghost wide sm" style="margin-top:10px" onclick="go('wear')">全部紀錄</button>`
   :`<div class="empty"><strong>還沒有穿搭紀錄</strong>幫娃娃換好衣服後，按上面的「記錄穿搭」</div>`}
   `;
@@ -1851,7 +1856,7 @@ async function saveLook(){
   if(!UI.canvas.length){toast('畫布是空的');return}
   const nm=prompt('Look 名稱','Look '+String(S.looks.length+1).padStart(3,'0'));
   if(nm===null)return;
-  S.looks.push({id:uid('l'),name:nm||'未命名',itemIds:UI.canvas.map(p=>p.itemId),layout:JSON.parse(JSON.stringify(UI.canvas)),createdAt:Date.now()});
+  S.looks.push({id:uid('l'),name:nm||'未命名',itemIds:UI.canvas.map(p=>p.itemId),layout:JSON.parse(JSON.stringify(UI.canvas)),cw:document.getElementById('canvas').clientWidth||354,createdAt:Date.now()});
   await save();renderLooks();toast('已儲存');
 }
 function renderLooks(){
@@ -1865,6 +1870,7 @@ function renderLooks(){
       <div class="rt row">
         <button class="btn sm quiet" onclick="loadLook('${l.id}')">開啟</button>
         <button class="btn sm ghost" onclick="wearLook('${l.id}')">今天穿</button>
+        <button class="btn sm ghost" onclick="openShare('look','${l.id}')" aria-label="分享">${SHARE_ICO}</button>
       </div></div>`;
   }).join('');
 }
@@ -1875,7 +1881,8 @@ function loadLook(id){
 }
 async function wearLook(id){
   const l=S.looks.find(x=>x.id===id);
-  S.wears.push({id:uid('w'),date:today(),dollName:'',itemIds:l.itemIds.slice(),lookId:id,photo:null,note:''});
+  const d=mainDoll();
+  S.wears.push({id:uid('w'),date:today(),dollName:d?d.name:'',dollId:d?d.id:null,itemIds:l.itemIds.slice(),lookId:id,photo:null,note:''});
   await save();toast('已記錄今天穿了 '+l.name);renderLooks();
 }
 
@@ -1959,7 +1966,9 @@ function togglePick(id){
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
   S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:''});
-  await save();closeSheet();if(UI.tab==='home')renderHome();else renderWears();toast('已記錄');
+  const wid=S.wears[S.wears.length-1].id;
+  await save();if(UI.tab==='home')renderHome();else renderWears();
+  openShare('wear',wid);toast('已記錄！要不要做成小卡分享？');
 }
 function renderWears(){
   const el=document.getElementById('wearList');
@@ -1969,10 +1978,179 @@ function renderWears(){
       <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
         <span>${w.itemIds.map(i=>esc((S.items.find(x=>x.id===i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
-      <div class="rt"><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
+      <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
     </div>`).join('');
 }
 async function delWear(id){S.wears=S.wears.filter(w=>w.id!==id);await save();renderWears()}
+
+/* ============================================================
+   9b. 分享小卡
+   用 canvas 畫一張 PNG：穿搭照片或平鋪貼圖 + 日期 + 娃娃 + 娃衣名稱。
+   來源可以是一筆穿搭紀錄、一個 Look，或搭配工作台目前的畫布。
+   ============================================================ */
+const SHARE_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+const CARD_THEMES={
+  cream:{name:'奶油',bg:['#F7F2ED','#EFE6DE'],card:'#FFFDFB',ink:'#2F2529',sub:'#8C7F85',accent:'#A24D66',soft:'#F4E7E8',line:'#E6DCD4'},
+  rose:{name:'玫瑰',bg:['#F6E3E6','#EEDACB'],card:'#FFF9F8',ink:'#46242F',sub:'#9A7480',accent:'#8E3B55',soft:'#F7E2E6',line:'#EAD3D6'},
+  night:{name:'夜色',bg:['#221B1E','#171214'],card:'#2A2326',ink:'#F2EAE5',sub:'#A0939A',accent:'#E7A3B6',soft:'#3B2830',line:'#3E3438'}
+};
+const SC={};
+const WEEK=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+function openShare(kind,id){
+  let items=[],photo=null,layout=null,cw=354,date=today(),doll=null,title='今日穿搭';
+  if(kind==='wear'){
+    const w=S.wears.find(x=>x.id===id);if(!w)return;
+    items=w.itemIds;photo=w.photo;date=w.date;
+    doll=S.dolls.find(d=>d.id===w.dollId)||(w.dollName?{name:w.dollName}:null);
+    const l=w.lookId&&S.looks.find(x=>x.id===w.lookId);
+    if(!photo&&l&&l.layout){layout=l.layout;cw=l.cw||cw}
+    if(date!==today())title='那天的穿搭';
+  }else if(kind==='look'){
+    const l=S.looks.find(x=>x.id===id);if(!l)return;
+    items=l.itemIds;layout=l.layout;cw=l.cw||cw;title=l.name;doll=mainDoll();
+  }else{
+    if(!UI.canvas.length){toast('畫布是空的，先加幾件娃衣');return}
+    layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.map(p=>p.itemId);
+    cw=document.getElementById('canvas').clientWidth||cw;title='今天想這樣穿';doll=mainDoll();
+  }
+  Object.assign(SC,{items:items.map(i=>S.items.find(x=>x.id===i)).filter(Boolean),photo,layout,cw,date,doll,title,
+    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',cap:''});
+  openSheet(`<h3>分享小卡</h3>
+    <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
+    <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
+    <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
+    <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="今天是草莓甜點日 🍓" oninput="scCapChange(this.value)"></label>
+    <div class="row">
+      <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
+      ${navigator.share?`<button class="btn grow" onclick="scShare()">分享</button>`:''}
+    </div>`);
+  scRender();
+}
+function scSet(k,v){
+  SC[k]=v;
+  document.querySelectorAll(k==='theme'?'#scTheme button':'#scRatio button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
+  scRender();
+}
+let scTimer;
+function scCapChange(v){SC.cap=v;clearTimeout(scTimer);scTimer=setTimeout(scRender,250)}
+function rrect(x,X,Y,W,H,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath()}
+function fitText(x,t,maxW){if(x.measureText(t).width<=maxW)return t;while(t.length>1&&x.measureText(t+'…').width>maxW)t=t.slice(0,-1);return t+'…'}
+async function scDraw(){
+  const T=CARD_THEMES[SC.theme],W=1080,H=SC.ratio==='story'?1920:1350,P=72;
+  try{await document.fonts.ready}catch(e){}
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const serif='"Noto Serif TC","Songti TC",serif',num='"Cormorant Garamond","Noto Serif TC",serif',sans=getComputedStyle(document.body).fontFamily;
+  // 背景
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle=T.soft;x.globalAlpha=.55;x.beginPath();x.arc(W-60,120,220,0,7);x.fill();x.beginPath();x.arc(40,H-160,180,0,7);x.fill();x.globalAlpha=1;
+  // 標題列
+  const d=new Date(SC.date+'T00:00:00');
+  x.textBaseline='alphabetic';
+  x.fillStyle=T.accent;x.font=`600 30px ${num}`;
+  x.letterSpacing='6px';x.fillText(SC.photo?'DAILY LOOK':'OUTFIT NOTE',P,P+30);x.letterSpacing='0px';
+  x.fillStyle=T.ink;x.font=`700 76px ${serif}`;x.fillText(fitText(x,SC.title,W-P*2-260),P,P+124);
+  x.textAlign='right';x.font=`600 64px ${num}`;x.fillText(`${d.getMonth()+1}.${String(d.getDate()).padStart(2,'0')}`,W-P,P+110);
+  x.fillStyle=T.sub;x.font=`600 26px ${num}`;x.letterSpacing='4px';x.fillText(`${d.getFullYear()}  ${WEEK[d.getDay()]}`,W-P,P+30);x.letterSpacing='0px';
+  x.textAlign='left';
+  // 下方資訊區的高度
+  const showRow=!!SC.photo&&SC.items.length;
+  const infoH=(showRow?280:120)+(SC.cap?90:0)+70;
+  const AX=P,AY=P+170,AW=W-P*2,AH=H-AY-infoH-P;
+  // 主圖卡片
+  x.save();x.shadowColor='rgba(0,0,0,.12)';x.shadowBlur=40;x.shadowOffsetY=14;x.fillStyle=T.card;rrect(x,AX,AY,AW,AH,44);x.fill();x.restore();
+  x.save();rrect(x,AX,AY,AW,AH,44);x.clip();
+  if(SC.photo){
+    const im=await loadImg(SC.photo),s=Math.max(AW/im.width,AH/im.height);
+    x.drawImage(im,AX+(AW-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s);
+  }else{
+    // 點點底紋
+    x.fillStyle=T.line;for(let yy=AY+24;yy<AY+AH;yy+=36)for(let xx=AX+24;xx<AX+AW;xx+=36){x.beginPath();x.arc(xx,yy,2.2,0,7);x.fill()}
+    const ims=await Promise.all(SC.items.map(i=>loadImg(img(i)).catch(()=>null)));
+    x.shadowColor='rgba(0,0,0,.14)';x.shadowBlur=24;x.shadowOffsetY=10;
+    if(SC.layout&&SC.layout.length){
+      // 照搭配畫布的位置擺（畫布是 3:4）
+      let rw=AW,rh=AW*4/3;if(rh>AH){rh=AH;rw=AH*3/4}
+      const rx=AX+(AW-rw)/2,ry=AY+(AH-rh)/2,k=rw/SC.cw;
+      SC.layout.forEach(p=>{
+        const it=SC.items.findIndex(i=>i.id===p.itemId),im=ims[it];if(!im)return;
+        const w=p.scale*k,h=w*im.height/im.width;
+        x.save();x.translate(rx+p.x/100*rw,ry+p.y/100*rh);x.rotate(p.rot*Math.PI/180);x.drawImage(im,-w/2,-h/2,w,h);x.restore();
+      });
+    }else{
+      // 沒有排版就自動平鋪
+      const n=Math.min(ims.length,9),cols=n<=1?1:n<=4?2:3,rows=Math.ceil(n/cols),cwid=AW/cols,chei=AH/rows;
+      ims.slice(0,n).forEach((im,i)=>{if(!im)return;
+        const cx=AX+cwid*(i%cols+.5),cy=AY+chei*(Math.floor(i/cols)+.5),s=Math.min(cwid/im.width,chei/im.height)*.78;
+        x.save();x.translate(cx,cy);x.rotate(((i*37)%9-4)*Math.PI/180);x.drawImage(im,-im.width*s/2,-im.height*s/2,im.width*s,im.height*s);x.restore();
+      });
+    }
+  }
+  x.restore();
+  // 下方資訊
+  let y=AY+AH+48;
+  if(showRow){
+    const n=Math.min(SC.items.length,5),gap=20,sz=(AW-gap*4)/5;
+    const ims=await Promise.all(SC.items.slice(0,n).map(i=>loadImg(img(i)).catch(()=>null)));
+    ims.forEach((im,i)=>{
+      const bx=AX+i*(sz+gap);
+      x.fillStyle=T.card;rrect(x,bx,y,sz,sz,28);x.fill();
+      if(im){const s=Math.min(sz/im.width,sz/im.height)*.8;x.drawImage(im,bx+(sz-im.width*s)/2,y+(sz-im.height*s)/2,im.width*s,im.height*s)}
+      x.fillStyle=T.ink;x.font=`500 24px ${sans}`;x.textAlign='center';
+      x.fillText(fitText(x,SC.items[i].name,sz),bx+sz/2,y+sz+36);x.textAlign='left';
+    });
+    y+=sz+120;
+  }else{
+    // 娃衣名稱做成小標籤
+    x.font=`500 28px ${sans}`;let lx=AX,ly=y,line=0;
+    for(const it of SC.items){
+      const t=fitText(x,it.name,AW-60),w=x.measureText(t).width+44;
+      if(lx+w>AX+AW){lx=AX;ly+=62;if(++line>1)break}
+      x.fillStyle=T.card;rrect(x,lx,ly,w,50,25);x.fill();x.strokeStyle=T.line;x.lineWidth=2;x.stroke();
+      x.fillStyle=T.ink;x.fillText(t,lx+22,ly+35);lx+=w+12;
+    }
+    y=ly+90;
+  }
+  if(SC.cap){
+    x.fillStyle=T.ink;x.font=`500 38px ${serif}`;
+    x.fillText(fitText(x,'「'+SC.cap+'」',AW),AX,y);y+=70;
+  }
+  // 頁尾：娃娃 + 品牌
+  const fy=H-P;
+  if(SC.doll){
+    let tx=AX;
+    if(SC.doll.photo){
+      const im=await loadImg(SC.doll.photo).catch(()=>null);
+      if(im){x.save();x.beginPath();x.arc(AX+30,fy-12,30,0,7);x.fillStyle=T.soft;x.fill();x.clip();
+        const s=Math.max(60/im.width,60/im.height);x.drawImage(im,AX+30-im.width*s/2,fy-42,im.width*s,im.height*s);x.restore();tx=AX+76}
+    }
+    x.fillStyle=T.ink;x.font=`700 30px ${serif}`;x.fillText(SC.doll.name,tx,fy-2);
+    if(SC.doll.size){const w=x.measureText(SC.doll.name).width;x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(SC.doll.size,tx+w+14,fy-2)}
+  }
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,fy-2);
+  x.fillStyle=T.accent;x.beginPath();x.arc(W-P-x.measureText('娃衣衣櫃').width-20,fy-11,7,0,7);x.fill();
+  x.textAlign='left';
+  return c;
+}
+async function scRender(){
+  const spin=document.getElementById('scSpin');if(spin)spin.style.display='';
+  const c=await scDraw();SC.canvas=c;
+  const im=document.getElementById('scImg');if(im)im.src=c.toDataURL('image/png');
+  if(spin)spin.style.display='none';
+}
+function scBlob(){return new Promise(r=>SC.canvas.toBlob(r,'image/png'))}
+async function scDownload(){
+  if(!SC.canvas)return;
+  const a=document.createElement('a');a.href=URL.createObjectURL(await scBlob());
+  a.download=`娃衣小卡-${SC.date}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('圖片已下載');
+}
+async function scShare(){
+  if(!SC.canvas)return;
+  const f=new File([await scBlob()],`娃衣小卡-${SC.date}.png`,{type:'image/png'});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:SC.title});
+    else scDownload();
+  }catch(e){if(e.name!=='AbortError')scDownload()}
+}
 
 /* ============================================================
    10. 衣櫃洞察
