@@ -521,8 +521,10 @@ nav.tabs button.plus.on{color:var(--berry)}
 .tip{margin-top:14px;padding:12px 16px;border-radius:var(--r);background:var(--gold-soft);border:1px solid rgba(179,144,96,.25);font-size:13px;line-height:1.7}
 .tip summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px}
 .tip summary::-webkit-details-marker{display:none}
+.tipx{margin-left:auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:18px;line-height:1;color:var(--muted);background:rgba(255,255,255,.5)}
+:root[data-theme="dark"] .tipx{background:rgba(0,0,0,.2)}
 .tip summary::before{content:"";width:18px;height:18px;flex:0 0 18px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B39060' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z'/%3E%3C/svg%3E") center/contain no-repeat}
-.tip summary::after{content:"›";margin-left:auto;color:var(--muted);font-size:18px;transition:transform .2s}
+.tip summary::after{content:"›";margin-left:8px;color:var(--muted);font-size:18px;transition:transform .2s}
 .tip[open] summary::after{transform:rotate(90deg)}
 .tip ul{margin:8px 0 10px;padding-left:20px;color:var(--ink-2)}
 .tip li{margin-bottom:3px}
@@ -634,8 +636,8 @@ nav.tabs button.plus.on{color:var(--berry)}
 .cutopt b{display:block;font-size:15px}
 .cutopt span{font-size:12px;color:var(--muted)}
 .cutopt em{font-style:normal;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--berry-soft);color:var(--berry-deep);white-space:nowrap}
-.cutopt:first-of-type em{background:#E8EFE7;color:#4F6B52}
-:root[data-theme="dark"] .cutopt:first-of-type em{background:var(--sage-soft);color:var(--sage)}
+.cutopt:nth-of-type(-n+2) em{background:#E8EFE7;color:#4F6B52}
+:root[data-theme="dark"] .cutopt:nth-of-type(-n+2) em{background:var(--sage-soft);color:var(--sage)}
 .cutopt[disabled]{opacity:.45}
 .remember{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--ink-2)}
 .remember input{width:18px;height:18px;accent-color:var(--berry)}
@@ -665,6 +667,12 @@ nav.tabs button.plus.on{color:var(--berry)}
 .idea>b{font-family:var(--serif);font-size:16px}
 .idea p{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--ink-2)}
 .idea .tipline{padding:8px 10px;border-radius:10px;background:var(--gold-soft);color:var(--ink)}
+.tapwrap{position:relative;display:flex;justify-content:center;border-radius:18px;overflow:hidden;background:var(--paper-2)}
+#tapc{display:block;height:auto;max-width:100%;cursor:crosshair;touch-action:manipulation}
+.tapload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(245,240,235,.82);text-align:center}
+:root[data-theme="dark"] .tapload{background:rgba(28,23,25,.82)}
+.tapload b{font-size:14px}.tapload small{font-size:12px;color:var(--muted)}
+.tapload .spin{width:22px;height:22px}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -1163,7 +1171,7 @@ async function aiSticker(dataURL){
   const model=(S.settings.stickerModel||'').trim()||c.model;
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model,max_tokens:4000,messages:[{role:'user',content:[
+    body:JSON.stringify({model,max_tokens:8192,messages:[{role:'user',content:[
       {type:'image_url',image_url:{url:dataURL}},
       {type:'text',text:STICKER_PROMPT}
     ]}]})
@@ -1173,10 +1181,97 @@ async function aiSticker(dataURL){
   if(!img)throw new Error('這個模型沒有回傳圖片，請改用會出圖的模型');
   return img;
 }
+/* ---- 點選去背（免費）----
+   Google MediaPipe 的 Magic Touch 模型（Apache 2.0，可商用），在手機上跑、不用 API。
+   第一次使用下載約 6MB，之後瀏覽器會快取。使用者點一下衣服，模型就把那件圈出來。 */
+const MP_VER='1.0.1';
+const MP_LIB=`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
+const MP_MODEL='https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
+let MPSEG=null,MPLOAD=null;
+async function loadTapModel(){
+  if(MPSEG)return MPSEG;
+  if(MPLOAD)return MPLOAD;
+  MPLOAD=(async()=>{
+    const {FilesetResolver,InteractiveSegmenterLegacy}=await import(MP_LIB+'/vision_bundle.mjs');
+    const fsr=await FilesetResolver.forVisionTasks(MP_LIB+'/wasm');
+    const make=delegate=>InteractiveSegmenterLegacy.createFromOptions(fsr,{baseOptions:{modelAssetPath:MP_MODEL,delegate},outputConfidenceMasks:true,outputCategoryMask:false});
+    try{MPSEG=await make('GPU')}catch(e){MPSEG=await make('CPU')}
+    return MPSEG;
+  })();
+  try{return await MPLOAD}catch(e){MPLOAD=null;throw new Error('點選去背模型載入失敗，請檢查網路後再試一次')}
+}
+let TAP=null;
+// 回傳和 cutout() 一樣的 {sticker,src,mask}
+function tapCutout(dataURL){
+  return new Promise(async(res,rej)=>{
+    const im=await loadImg(dataURL);
+    const c=drawScaled(im,1000),W=c.width,H=c.height;
+    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:null,opened:!NAV.open,busy:false};
+    openSheet(`<h3>點一下要留下的衣服</h3>
+      <p class="hint" style="margin:-6px 0 10px">點衣服的中間；沒選到的部分，再點那一塊就會加進來。</p>
+      <div class="tapwrap"><canvas id="tapc" width="${W}" height="${H}" style="width:min(100%,${(56*W/H).toFixed(2)}vh)"></canvas><div class="tapload" id="tapload"><span class="spin dark"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" onclick="tapReset()">重來</button>
+        <span class="grow hint" id="taphint" style="text-align:center">還沒選</span>
+        <button class="btn" id="tapok" onclick="tapDone()" disabled>完成</button>
+      </div>`,()=>{if(TAP){const r=TAP.rej;TAP=null;r(new Error('已取消'))}});
+    tapDraw();
+    try{await loadTapModel();const l=document.getElementById('tapload');if(l)l.remove()}
+    catch(e){const r=TAP&&TAP.rej;if(TAP&&TAP.opened)closeSheet();TAP=null;if(r)r(e);return}
+    const cv=document.getElementById('tapc');
+    cv.onclick=e=>{const r=cv.getBoundingClientRect();tapAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)};
+  });
+}
+function tapAt(nx,ny){
+  if(!TAP||TAP.busy||!MPSEG)return;
+  TAP.pts.push({x:nx,y:ny});TAP.busy=true;
+  const one=TAP.pts.length===1;
+  MPSEG.segment(TAP.canvas,one?{keypoint:TAP.pts[0]}:{scribble:TAP.pts},r=>{
+    const m=r.confidenceMasks&&r.confidenceMasks[0];
+    if(m){
+      const f=m.getAsFloat32Array(),mw=m.width,mh=m.height,{W,H}=TAP,a=new Uint8ClampedArray(W*H);
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++)a[y*W+x]=f[Math.min(mh-1,y*mh/H|0)*mw+Math.min(mw-1,x*mw/W|0)]*255;
+      // 多點時跟前一次的結果合併，避免點了新的一塊，舊的反而不見
+      if(TAP.a&&!one)for(let i=0;i<a.length;i++)a[i]=Math.max(a[i],TAP.a[i]);
+      TAP.a=a;
+    }
+    TAP.busy=false;tapDraw();
+  });
+}
+function tapDraw(){
+  const cv=document.getElementById('tapc');if(!cv||!TAP)return;
+  const x=cv.getContext('2d'),{W,H,src,a}=TAP;
+  const v=new ImageData(W,H),s=src.data,d=v.data;
+  for(let i=0;i<W*H;i++){
+    const k=i*4,on=a&&a[i]>127;
+    if(!a||on){d[k]=s[k];d[k+1]=s[k+1];d[k+2]=s[k+2]}
+    else{d[k]=s[k]*.35+30;d[k+1]=s[k+1]*.35+24;d[k+2]=s[k+2]*.35+28}
+    d[k+3]=255;
+  }
+  x.putImageData(v,0,0);
+  x.fillStyle='#fff';x.strokeStyle='#A24D66';x.lineWidth=Math.max(3,W/200);
+  TAP.pts.forEach(p=>{x.beginPath();x.arc(p.x*W,p.y*H,Math.max(8,W/60),0,7);x.fill();x.stroke()});
+  const ok=document.getElementById('tapok'),h=document.getElementById('taphint');
+  if(ok)ok.disabled=!a;
+  if(h)h.textContent=a?`已選 ${TAP.pts.length} 點・亮的部分會留下`:'還沒選';
+}
+function tapReset(){if(!TAP)return;TAP.pts=[];TAP.a=null;tapDraw()}
+async function tapDone(){
+  if(!TAP||!TAP.a)return;
+  const t=TAP;TAP=null;
+  cleanMask(t.a,t.W,t.H);
+  try{
+    const r={sticker:await composeSticker(t.src,t.a,t.W,t.H),src:encSrc(t.src),mask:encMask(t.a,t.W,t.H)};
+    if(t.opened)closeSheet();
+    t.res(r);
+  }catch(e){if(t.opened)closeSheet();t.rej(e)}
+}
+
 // 回傳 {sticker, src, mask}：sticker 是成品，src / mask 留給修補筆刷用
 async function cutout(dataURL,mode){
   let m=mode||S.settings.stickerMode||'ask';
-  if(m==='ask')m='local';
+  if(m==='ask')m='tap';
+  if(m==='tap')return tapCutout(dataURL);
   if(m==='ai'&&!aiReady())m='local';
   if(m==='ai'&&!canPay('img')){m='local';toast('AI 出圖的額度和點數都不夠，這張先用簡易去背')}
   let W,H,src,a;
@@ -1192,7 +1287,14 @@ async function cutout(dataURL,mode){
     const im=await loadImg(m==='ai'?await aiSticker(dataURL):dataURL);
     if(m==='ai')spendQuota('img');
     const c=drawScaled(im,1000);W=c.width;H=c.height;
-    const r=bgMask(c.getContext('2d'),W,H,m==='ai'?24:(S.settings.bgTol||42));
+    let tol=m==='ai'?24:(S.settings.bgTol||42),r;
+    // 衣服跟背景顏色太像時，整件會被當成背景刪掉；自動降低強度再試
+    for(let k=0;k<3;k++){
+      r=bgMask(c.getContext('2d'),W,H,tol);
+      let fg=0;for(let i=0;i<r.a.length;i++)if(r.a[i]>127)fg++;
+      if(fg/r.a.length>=.04)break;
+      tol*=.55;c.getContext('2d').drawImage(im,0,0,W,H);
+    }
     src=r.data;a=r.a;
   }
   cleanMask(a,W,H);
@@ -1328,16 +1430,16 @@ function pickCut(count){
   count=count||1;
   return new Promise(res=>{
     const m=S.settings.stickerMode||'ask';
-    if(!aiReady())return res('local');
-    if(m!=='ask')return res(m);
+    if(m!=='ask'&&!(m==='ai'&&!aiReady()))return res(m);
     const left=quotaLeft('img'),pts=wallet().points,need=POINT_COST.img*Math.max(0,count-left);
-    const ok=left>=count||pts>=need;
+    const ok=aiReady()&&(left>=count||pts>=need);
     PICK={res,opened:!NAV.open};
     openSheet(`<h3>要怎麼去背？</h3>
-      <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>背景要是素色；沒去乾淨可以用修補筆刷擦</span></div><em>免費</em></button>
+      <button class="cutopt" onclick="pickDone('tap')"><div><b>點選去背</b><span>點一下衣服就圈出來，什麼背景都可以</span></div><em>免費・推薦</em></button>
+      <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>全自動，但背景要是素色</span></div><em>免費</em></button>
       <button class="cutopt" onclick="pickDone('ai')" ${ok?'':'disabled'}><div><b>AI 出圖去背</b><span>什麼背景都可以，手和雜物也會一起清掉</span></div>
-        <em>${left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
-      ${ok?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
+        <em>${!aiReady()?'需要設定 API':left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
+      ${ok||!aiReady()?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
       ${count>1?`<p class="hint">這次共 ${count} 張。</p>`:''}
       <label class="remember"><input type="checkbox" id="pk_rem"> 記住我的選擇（之後可以在設定改）</label>`);
   });
@@ -1395,19 +1497,39 @@ async function callAI(prompt,imageDataURL){
   if(imageDataURL)content.unshift({type:'image_url',image_url:{url:imageDataURL}});
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:2000,messages:[{role:'user',content}]})
+    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   const j=await r.json();
   const m=j.choices?.[0]?.message;
   return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||'';
 }
+// 會思考的模型有時把回應寫到一半就被截斷，這裡盡量把 JSON 補完整再讀
+function repairJSON(t){
+  let out='',stack=[],inStr=false,esc=false;
+  for(const ch of t){
+    out+=ch;
+    if(inStr){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch==='"')inStr=false;continue}
+    if(ch==='"')inStr=true;
+    else if(ch==='{')stack.push('}');else if(ch==='[')stack.push(']');
+    else if(ch==='}'||ch===']')stack.pop();
+  }
+  if(esc)out=out.slice(0,-1);
+  if(inStr)out+='"';
+  out=out.replace(/[,\s]+$/,'').replace(/,\s*"[^"]*"\s*$/,'').replace(/:\s*$/,':null').replace(/,\s*"[^"]*"\s*:\s*null$/,'');
+  while(stack.length)out+=stack.pop();
+  return out.replace(/,\s*([}\]])/g,'$1');
+}
 function parseJSON(txt){
-  const m=txt.replace(/```json|```/g,'').trim();
+  const m=String(txt||'').replace(/```json|```/g,'').trim();
   const s=m.indexOf('{'),a=m.indexOf('[');
   const st=(a>-1&&(a<s||s===-1))?a:s;
+  if(st<0)throw new Error('AI 沒有回傳資料，請再試一次');
   const en=Math.max(m.lastIndexOf('}'),m.lastIndexOf(']'));
-  return JSON.parse(m.slice(st,en+1));
+  try{return JSON.parse(m.slice(st,en+1))}catch(e){}
+  try{return JSON.parse(m.slice(st,en+1).replace(/,\s*([}\]])/g,'$1'))}catch(e){}
+  try{return JSON.parse(repairJSON(m.slice(st)))}
+  catch(e){throw new Error('AI 回傳的內容不完整，請再試一次')}
 }
 const tagPrompt=()=>`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
 {"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
@@ -1467,8 +1589,10 @@ function navBack(){if(history.state&&history.state.view)history.back();else go(U
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2200)}
 /* 底部抽屜：開啟時記一筆瀏覽紀錄，所以手機的「上一頁」、Esc、右上 ×、往下拖都能關掉 */
 const NAV={open:false,ignore:0,pendingPush:null};
-function openSheet(html){
+function openSheet(html,onClose){
   const sh=document.getElementById('sheet');
+  // 換內容時，先通知上一個畫面它被關掉了（例如點選去背還在等結果）
+  const prev=NAV.onClose;NAV.onClose=onClose||null;if(prev&&prev!==onClose)prev();
   document.getElementById('sheetBody').innerHTML=html;
   if(!NAV.open){
     NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;
@@ -1480,6 +1604,7 @@ function hideSheet(){
   const wasSettings=!!document.getElementById('s_endpoint');
   if(wasSettings){readForm();save()}
   NAV.open=false;document.getElementById('sheet').classList.remove('on');
+  const cb=NAV.onClose;NAV.onClose=null;if(cb)cb();
   // 設定改了類別、尺寸等，關掉後讓目前的頁面重畫
   if(wasSettings){const k=UI.tab;if(k==='closet')renderCloset();else if(k==='intake')renderQueue();else if(k==='home')renderHome()}
 }
@@ -2009,7 +2134,7 @@ async function onFiles(ev){
   toast('照片已就緒');
 }
 function renderQueue(){
-  document.getElementById('cutTip').innerHTML=freeCut()?cutTip():'';
+  document.getElementById('cutTip').innerHTML=freeCut()&&!S.settings.tipHidden?cutTip():'';
   const el=document.getElementById('queue');
   el.innerHTML=UI.queue.map((q,n)=>`
     <div class="qcard">
@@ -2050,10 +2175,11 @@ function renderQueue(){
     </div>`:'';
 }
 // 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
-function freeCut(){const m=S.settings.stickerMode||'ask';return m==='local'||m==='ask'||(m==='ai'&&(!aiReady()||!canPay('img')))}
+function freeCut(){const m=S.settings.stickerMode||'ask';return m==='local'||(m==='ai'&&(!aiReady()||!canPay('img')))}
+function hideTip(){S.settings.tipHidden=true;save();renderQueue();toast('之後可以在設定的「貼圖」重新打開')}
 function cutTip(){
   return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
-    <summary>免費去背的拍照小撇步</summary>
+    <summary>免費去背的拍照小撇步<button class="tipx" onclick="event.preventDefault();hideTip()" aria-label="不再顯示">×</button></summary>
     <ul>
       <li><b>鋪一張素色的底</b>：白紙、素色桌布、床單都可以，不要有花紋</li>
       <li><b>底色跟衣服差越多越好</b>：淺色衣服用深色底，深色衣服用淺色底</li>
@@ -2061,7 +2187,7 @@ function cutTip(){
       <li><b>衣服整件攤開</b>，不要超出照片邊緣，也不要跟其他東西疊在一起</li>
       <li>還是有沒去乾淨的地方？到單品頁按<b>「修補貼圖」</b>用手指擦掉就好</li>
     </ul>
-    ${S.settings.tipSeen?'':`<button class="btn sm quiet" onclick="event.preventDefault();S.settings.tipSeen=true;save();renderQueue()">知道了</button>`}
+    <button class="btn sm quiet" onclick="event.preventDefault();hideTip()">知道了，不再顯示</button>
   </details>`;
 }
 // 新照片預設沿用上一次選的尺寸；沒選過就用首頁主娃的尺寸
@@ -3067,7 +3193,7 @@ async function callAIImgs(prompt,imgs){
   const content=[...imgs.map(u=>({type:'image_url',image_url:{url:u}})),{type:'text',text:prompt}];
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:1500,messages:[{role:'user',content}]})
+    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   const m=(await r.json()).choices?.[0]?.message;
@@ -3375,6 +3501,7 @@ function openSettings(){
       <label class="f"><span>製作方式</span>
         <select id="s_smode" onchange="toggleSticker(this.value)">
           <option value="ask" ${(st.stickerMode||'ask')==='ask'?'selected':''}>每次詢問　做貼圖時自己選</option>
+          <option value="tap" ${st.stickerMode==='tap'?'selected':''}>一律點選去背　免費，點一下衣服</option>
           <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
           <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
           <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
@@ -3398,6 +3525,7 @@ function openSettings(){
       <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
       <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。簡易去背不花錢，但照片要拍在素色背景上，建檔頁有拍照小撇步。</p>
+      ${st.tipHidden?`<button class="btn sm ghost" style="margin-top:10px" onclick="S.settings.tipHidden=false;S.settings.tipSeen=false;save();toast('建檔頁會再顯示拍照小撇步')">重新顯示拍照小撇步</button>`:''}
     </div>
 
     <h2 class="sec">備份</h2>
