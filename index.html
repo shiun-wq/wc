@@ -54,6 +54,7 @@ try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&mat
   --glass:rgba(255,253,251,.88);
   --glass-nav:rgba(255,253,251,.86);
   --glass-top:rgba(245,240,235,.82);
+  --wood1:#E6D3BD;--wood2:#CDB293;--wood-bg1:#F4ECE3;--wood-bg2:#EFE4D8;
 
   /* 陰影 */
   --sh-1:0 1px 2px rgba(47,37,41,.04),0 2px 8px rgba(47,37,41,.04);
@@ -530,6 +531,24 @@ nav.tabs button.plus.on{color:var(--berry)}
 .scwrap img{display:block;max-width:100%;max-height:56vh;border-radius:12px;box-shadow:var(--sh-2)}
 .scwrap img:not([src]){display:none}
 .scwrap .spin{position:absolute;width:22px;height:22px}
+.cabinet{margin-top:6px;padding:18px 12px 6px;border-radius:24px;background:linear-gradient(180deg,var(--wood-bg1),var(--wood-bg2));box-shadow:inset 0 2px 10px rgba(0,0,0,.08)}
+.shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;padding-bottom:14px;margin-bottom:18px}
+.shelf::before{content:"";position:absolute;left:-6px;right:-6px;top:calc(min(30vw,150px) - 2px);height:12px;border-radius:4px;
+  background:linear-gradient(180deg,var(--wood1),var(--wood2));box-shadow:0 6px 10px -4px rgba(0,0,0,.25)}
+.dcell{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;z-index:1;min-width:0;transition:transform .18s var(--ease)}
+.dcell:active{transform:scale(.96)}
+.dstand{position:relative;height:min(30vw,150px);width:100%;display:flex;align-items:flex-end;justify-content:center}
+.dstand img{max-width:92%;max-height:94%;object-fit:contain;filter:drop-shadow(0 6px 6px rgba(0,0,0,.18))}
+.dstand .ph svg{height:80px;width:auto}
+.dcell.add .dstand span{width:56px;height:56px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;border:1.5px dashed var(--line-2);color:var(--muted);font-size:26px;font-weight:300}
+.dcell b{margin-top:18px;font-size:13.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcell span{font-size:11px;color:var(--muted)}
+.dcell em{font-style:normal;font-size:10.5px;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--berry-soft);color:var(--berry-deep);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcell em.src{background:var(--gold-soft);color:var(--ink-2)}
+.rank{position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--num);font-weight:700;font-size:15px;color:#fff;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.35);box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.rank.r1{background:linear-gradient(135deg,#E2C07A,#B8914A)}
+.rank.r2{background:linear-gradient(135deg,#CFCFD6,#9A9AA6)}
+.rank.r3{background:linear-gradient(135deg,#D9A07A,#A8704A)}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -564,6 +583,7 @@ nav.tabs button.plus.on{color:var(--berry)}
   --glass:rgba(37,32,34,.86);
   --glass-nav:rgba(37,32,34,.88);
   --glass-top:rgba(28,23,25,.84);
+  --wood1:#5A4637;--wood2:#43342A;--wood-bg1:#2A2225;--wood-bg2:#231C1F;
   --sh-1:0 1px 2px rgba(0,0,0,.25),0 2px 8px rgba(0,0,0,.18);
   --sh-2:0 2px 6px rgba(0,0,0,.28),0 10px 28px rgba(0,0,0,.32);
   --sh-3:0 -6px 30px rgba(0,0,0,.5);
@@ -1130,7 +1150,7 @@ const TABS=[
  ['insight','洞察','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
 ];
 // 不在底部分頁裡的子頁面：從首頁進入，左上角有返回
-const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'我的娃娃'};
+const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'娃娃櫃'};
 function buildTabs(){
   const cur=UI.tab in TITLES?'home':UI.tab;
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,p])=>
@@ -1233,7 +1253,7 @@ function renderHome(){
     <button onclick="openWear()"><i class="i1"></i>記錄穿搭</button>
     <button onclick="go('studio')"><i class="i2"></i>開始搭配</button>
     <button onclick="openBuyCheck()"><i class="i3"></i>買前檢查</button>
-    <button onclick="go('dolls')"><i class="i4"></i>我的娃娃</button>
+    <button onclick="go('dolls')"><i class="i4"></i>娃娃櫃</button>
   </div>
 
   <button class="hstat" onclick="go('insight')">
@@ -1271,23 +1291,48 @@ async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
    0b. 我的娃娃
    ============================================================ */
 let DD={};
+const DOLL_SRC=['跟團購買','私生','官方','二手','交換／贈送','其他'];
+const DOLL_SORT=[['out','常帶出門'],['wear','常換裝'],['new','最新到家'],['price','金額']];
+const outCount=d=>(d.outs||[]).length;
 function renderDolls(){
   const el=document.getElementById('dollList');
-  el.innerHTML=`<div class="grid">${S.dolls.map(d=>{
-    const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0;
-    return `<button class="piece" onclick="openDoll('${d.id}')">
-      <div class="sw">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}
-        ${d.id===(mainDoll()||{}).id?'<span class="keep">★</span>':''}
-        ${d.size?`<span class="tag">${esc(d.size)}</span>`:''}</div>
-      <div class="nm">${esc(d.name)}</div>
-      <div class="mt">穿搭 ${dollWears(d).length} 次${d.size?`・合身娃衣 ${fit} 件`:''}</div>
-    </button>`}).join('')}
-    <button class="piece" onclick="openDoll()"><div class="sw addcard"><span>＋</span></div><div class="nm">新增娃娃</div></button>
-  </div>`;
+  const srt=UI.dollSort||'out';
+  const key={out:outCount,wear:d=>dollWears(d).length,new:d=>d.home||String(d.createdAt||''),price:d=>+d.price||0}[srt];
+  const list=S.dolls.slice().sort((a,b)=>{const x=key(a),y=key(b);return x<y?1:x>y?-1:0});
+  const total=S.dolls.reduce((a,d)=>a+(+d.price||0),0);
+  const cnt=f=>S.dolls.filter(f).length;
+  // 依照「常帶出門」排出前三名
+  const rank=S.dolls.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
+  const rows=[];for(let i=0;i<list.length+1;i+=3)rows.push(list.slice(i,i+3));
+  el.innerHTML=`
+    <div class="stat">
+      <div><b>${S.dolls.length}</b><span>隻娃娃${S.dolls.length?`・有屬性 ${cnt(d=>d.attr==='has')}`:''}</span></div>
+      <div><b>${total?'$'+total.toLocaleString():'—'}</b><span>娃娃總花費</span></div>
+    </div>
+    ${S.dolls.length>1?`<div class="chips">${DOLL_SORT.map(([k,l])=>`<button class="chip ${srt===k?'on':''}" onclick="UI.dollSort='${k}';renderDolls()">${l}</button>`).join('')}</div>`:''}
+    <div class="cabinet">
+      ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
+        const n=rank.indexOf(d.id);
+        return `<button class="dcell" onclick="openDoll('${d.id}')">
+          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}
+            ${n>=0&&srt==='out'?`<span class="rank r${n+1}">${n+1}</span>`:''}</div>
+          <b>${esc(d.name)}</b>
+          <span>${srt==='wear'?`換裝 ${dollWears(d).length} 次`:srt==='price'&&d.price?`$${(+d.price).toLocaleString()}`:`出門 ${outCount(d)} 次`}</span>
+          ${d.attr==='has'&&d.work?`<em>${esc(d.work)}</em>`:d.src?`<em class="src">${esc(d.src)}</em>`:''}
+        </button>`}).join('')}${ri===rows.length-1?`<button class="dcell add" onclick="openDoll()"><div class="dstand"><span>＋</span></div><b>新增娃娃</b></button>`:''}</div>`).join('')}
+    </div>`;
+}
+async function dollOut(){
+  const d=S.dolls.find(x=>x.id===DD.id);if(!d)return;
+  d.outs=d.outs||[];const t=today();
+  if(d.outs.includes(t)){d.outs=d.outs.filter(x=>x!==t);toast('已取消今天的出門紀錄')}
+  else{d.outs.push(t);toast(`${d.name} 今天出門了！`)}
+  DD.outs=d.outs.slice();await save();drawDoll();
+  if(UI.tab==='dolls')renderDolls();
 }
 function openDoll(id){
   const d=id?S.dolls.find(x=>x.id===id):null;
-  DD=d?{...d}:{id:null,name:'',size:(mainDoll()||{}).size||'',photo:null,raw:null,home:'',note:''};
+  DD=d?{...d}:{id:null,name:'',size:(mainDoll()||{}).size||'',photo:null,raw:null,home:'',note:'',src:'',attr:'none',work:'',chara:'',price:'',from:''};
   DD.isMain=d?d.id===(mainDoll()||{}).id:!S.dolls.length;
   drawDoll();
 }
@@ -1304,15 +1349,29 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
-    ${saved?`<div class="stat" style="margin-bottom:14px">
+    ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
+      <div><b>${outCount(saved)}</b><span>出門次數</span></div>
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
-      <div><b>${fit}</b><span>合身的娃衣</span></div></div>`:''}
+      <div><b>${fit}</b><span>合身娃衣</span></div></div>
+      <button class="btn ${(saved.outs||[]).includes(today())?'ghost':'quiet'} wide" style="margin-bottom:16px" onclick="dollOut()">${(saved.outs||[]).includes(today())?'今天已經帶出門了 ✓':`今天帶 ${esc(saved.name)} 出門`}</button>`:''}
     <label class="f"><span>名字</span><input type="text" id="d_name" value="${esc(d.name)}" placeholder="小白" oninput="DD.name=this.value"></label>
     <div class="split">
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
       <label class="f"><span>到家日</span><input type="date" id="d_home" value="${esc(d.home||'')}" onchange="DD.home=this.value"></label>
     </div>
-    <label class="f"><span>備註</span><textarea id="d_note" placeholder="品牌、作者、個性小設定…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
+    <div class="split">
+      <label class="f"><span>來源</span><select onchange="DD.src=this.value"><option value="">未設定</option>${DOLL_SRC.map(x=>`<option ${x===d.src?'selected':''}>${x}</option>`).join('')}</select></label>
+      <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price||'')}" placeholder="例如 450" oninput="DD.price=this.value"></label>
+    </div>
+    <label class="f"><span>團主／作者／店家（選填）</span><input type="text" value="${esc(d.from||'')}" placeholder="例如 ○○團、作者名" oninput="DD.from=this.value"></label>
+    <label class="f"><span>屬性</span><div class="parts" style="margin-top:0">
+      <button type="button" class="${d.attr!=='has'?'on':''}" onclick="DD.attr='none';drawDoll()">無屬性</button>
+      <button type="button" class="${d.attr==='has'?'on':''}" onclick="DD.attr='has';drawDoll()">有屬性</button></div></label>
+    ${d.attr==='has'?`<div class="split">
+      <label class="f"><span>作品</span><input type="text" value="${esc(d.work||'')}" placeholder="例如 排球少年" oninput="DD.work=this.value"></label>
+      <label class="f"><span>角色</span><input type="text" value="${esc(d.chara||'')}" placeholder="例如 日向翔陽" oninput="DD.chara=this.value"></label>
+    </div>`:''}
+    <label class="f"><span>備註</span><textarea id="d_note" placeholder="個性小設定、愛吃的東西…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
     <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button></div></label>
     <button class="btn wide" onclick="saveDoll()">儲存</button>
     ${saved?`<button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delDoll('${saved.id}')">刪除這隻娃娃</button>`:''}`);
@@ -1331,6 +1390,7 @@ async function saveDoll(){
   const {isMain,...d}=DD;d.name=d.name.trim();
   if(d.id){const i=S.dolls.findIndex(x=>x.id===d.id);S.dolls[i]=Object.assign(S.dolls[i],d)}
   else{d.id=uid('d');d.createdAt=Date.now();S.dolls.push(d)}
+  if(d.attr!=='has'){d.work='';d.chara=''}
   if(isMain)S.settings.mainDoll=d.id;
   else if(S.settings.mainDoll===d.id)S.settings.mainDoll='';
   await save();closeSheet();
