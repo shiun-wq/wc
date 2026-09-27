@@ -332,6 +332,7 @@ dl.meta dd{margin:0}
 .partrow{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}
 .partrow::-webkit-scrollbar{display:none}
 .pt{flex:0 0 auto;text-align:center;width:54px}
+.pt{cursor:pointer}
 .pt .ptimg{width:54px;height:54px;border-radius:12px;background:var(--swatch);display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;border:1.5px dashed var(--line-2)}
 .pt.ok .ptimg{border-style:solid;border-color:var(--sage)}
 .pt .ptimg img{width:100%;height:100%;object-fit:contain;padding:3px}
@@ -1655,7 +1656,13 @@ async function aiChat(task,content){
       r=await fetch(backendURL()+'/ai',{method:'POST',headers:{'content-type':'application/json','x-device':deviceId()},
         body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
-    if(!r.ok){let m='';try{m=(await r.json()).error||''}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    // 任務式出圖時後台直接回圖片本身，這裡轉成和對話格式一樣的樣子
+    if((r.headers.get('content-type')||'').startsWith('image/')){
+      const blob=await r.blob();
+      const url=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(blob)});
+      return {choices:[{message:{content:url}}]};
+    }
     return r.json();
   }
   const c=cfg();
@@ -2401,13 +2408,14 @@ function renderQueue(){
         <div class="parts" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
-          ${q.parts.length?`<div class="partrow">${q.parts.map(pt=>`
-            <div class="pt ${pt.img?'ok':''}">
+          ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
+            <div class="pt ${pt.img?'ok':''}" onclick="editPart(${n},${k})" role="button" title="點一下手動修">
               <div class="ptimg">${pt.img?`<img src="${pt.img}" alt="">`:(pt.box?'框':'？')}</div>
               <span>${esc(pt.name)}</span>
             </div>`).join('')}</div>
           <button class="btn sm quiet" style="margin-top:7px" onclick="makePartStickers(${n})" ${q.working?'disabled':''}>
             ${q.working?'<span class="spin"></span>處理中':'逐件做貼圖'}</button>`:''}
+          ${q.parts.length?`<div class="hint" style="margin-top:5px">點上面任一件可以手動去背或修補</div>`:''}
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
@@ -2473,6 +2481,16 @@ async function makePartStickers(n){
   }
   q.working=false;renderQueue();
   toast(`${q.parts.length} 件單品各自的貼圖完成`);
+}
+// 單件手動去背／修補：有貼圖就從遮罩接著改，沒有就從框出來的那一塊開始選
+async function editPart(n,k){
+  const q=UI.queue[n],pt=q&&q.parts[k];if(!pt||q.working)return;
+  try{
+    const has=pt.img&&pt.cutSrc&&pt.cutMask;
+    if(!has)pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
+    const r=await tapCutout(has?pt.cutSrc:pt.crop,has?{mask:pt.cutMask,title:'修補　'+pt.name,brush:true}:{title:'去背　'+pt.name});
+    setCut(pt,r,'img');renderQueue();toast(pt.name+' 的貼圖好了');
+  }catch(e){if(e.message!=='已取消')toast(e.message)}
 }
 async function cutQ(n,mode){
   const q=UI.queue[n];
