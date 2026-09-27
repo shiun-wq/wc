@@ -1635,7 +1635,7 @@ function pickDone(m){
    4. AI：可接任意 API
    ============================================================ */
 // 正式的 AI 後台（Cloudflare Worker）網址。部署好之後填這裡，所有人都會走後台，密鑰不會出現在網頁上。
-const BACKEND='';
+const BACKEND='https://doll-ai.zeshiun.workers.dev';
 const cfg=()=>S.settings.presets.find(p=>p.id===S.settings.activeId)||{};
 const devMode=()=>!!S.settings.devMode;
 const backendURL=()=>((devMode()&&S.settings.backendUrl)||BACKEND).trim().replace(/\/+$/,'');
