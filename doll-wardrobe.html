@@ -437,6 +437,12 @@ dl.meta dd{margin:0}
 .bstat span{font-size:13.5px}
 .bstat b{font-family:var(--num);font-size:24px;font-weight:600;line-height:1;grid-row:span 2;align-self:center}
 .bstat em{font-style:normal;font-size:11.5px;color:var(--muted)}
+.bthumbs{grid-column:1/-1;display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}
+.bthumbs::-webkit-scrollbar{display:none}
+.bthumbs button{flex:0 0 58px;text-align:center}
+.bthumbs img{width:58px;height:58px;object-fit:contain;padding:3px;border-radius:12px;background:var(--swatch)}
+.bthumbs small{display:block;font-size:10px;color:var(--muted);white-space:nowrap}
+.bthumbs .more{flex:0 0 auto;align-self:center;font-size:12px;color:var(--muted);padding:0 4px}
 .blist{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 14px}
 .spin.dark{border-color:rgba(162,77,102,.25);border-top-color:var(--berry);vertical-align:-2px;margin-right:4px}
 /* ---------- 導覽：返回鍵、中間的建檔鍵、抽屜關閉鍵 ---------- */
@@ -673,6 +679,10 @@ nav.tabs button.plus.on{color:var(--berry)}
 :root[data-theme="dark"] .tapload{background:rgba(28,23,25,.82)}
 .tapload b{font-size:14px}.tapload small{font-size:12px;color:var(--muted)}
 .tapload .spin{width:22px;height:22px}
+.pc.doll img{filter:drop-shadow(0 8px 12px rgba(47,37,41,.18))}
+.drawer.dolls button{position:relative}
+.drawer.dolls button.on{border-color:var(--berry)}
+.drawer .dn{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:10px;background:var(--glass);padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -813,7 +823,7 @@ nav.tabs button.plus.on{color:var(--berry)}
           <button class="btn sm ghost" onclick="layerPiece(-1)">下移</button>
           <button class="btn sm ghost" onclick="removePiece()">移除</button>
         </div>
-        <label class="f"><span>大小</span><input type="range" id="pcScale" min="40" max="300" oninput="applyCtrl()"></label>
+        <label class="f"><span>大小</span><input type="range" id="pcScale" min="40" max="480" oninput="applyCtrl()"></label>
         <label class="f" style="margin:0"><span>旋轉</span><input type="range" id="pcRot" min="-180" max="180" oninput="applyCtrl()"></label>
       </div>
       <div class="row" style="margin-top:10px">
@@ -1206,11 +1216,14 @@ function tapCutout(dataURL){
   return new Promise(async(res,rej)=>{
     const im=await loadImg(dataURL);
     const c=drawScaled(im,1000),W=c.width,H=c.height;
-    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:null,opened:!NAV.open,busy:false};
+    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:null,hist:[],mode:'add',opened:!NAV.open,busy:false};
     openSheet(`<h3>點一下要留下的衣服</h3>
-      <p class="hint" style="margin:-6px 0 10px">點衣服的中間；沒選到的部分，再點那一塊就會加進來。</p>
+      <p class="hint" style="margin:-6px 0 10px">先點衣服的中間。沒選到的用「加入」再點；多選到的（娃娃、手、背景）切到「去掉」點一下。</p>
+      <div class="swap" id="tapmode" style="margin-bottom:10px">
+        <button class="on" onclick="tapMode('add')">＋ 加入</button><button onclick="tapMode('sub')">－ 去掉</button></div>
       <div class="tapwrap"><canvas id="tapc" width="${W}" height="${H}" style="width:min(100%,${(56*W/H).toFixed(2)}vh)"></canvas><div class="tapload" id="tapload"><span class="spin dark"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div></div>
       <div class="row" style="margin-top:12px">
+        <button class="btn ghost" onclick="tapUndo()">復原</button>
         <button class="btn ghost" onclick="tapReset()">重來</button>
         <span class="grow hint" id="taphint" style="text-align:center">還沒選</span>
         <button class="btn" id="tapok" onclick="tapDone()" disabled>完成</button>
@@ -1222,22 +1235,32 @@ function tapCutout(dataURL){
     cv.onclick=e=>{const r=cv.getBoundingClientRect();tapAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)};
   });
 }
+function tapMode(m){
+  if(!TAP)return;TAP.mode=m;
+  document.querySelectorAll('#tapmode button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(m==='add')));
+}
 function tapAt(nx,ny){
   if(!TAP||TAP.busy||!MPSEG)return;
-  TAP.pts.push({x:nx,y:ny});TAP.busy=true;
-  const one=TAP.pts.length===1;
-  MPSEG.segment(TAP.canvas,one?{keypoint:TAP.pts[0]}:{scribble:TAP.pts},r=>{
+  const sub=TAP.mode==='sub';
+  if(sub&&!TAP.a){toast('先點要留下的衣服');return}
+  TAP.busy=true;
+  MPSEG.segment(TAP.canvas,{keypoint:{x:nx,y:ny}},r=>{
     const m=r.confidenceMasks&&r.confidenceMasks[0];
     if(m){
-      const f=m.getAsFloat32Array(),mw=m.width,mh=m.height,{W,H}=TAP,a=new Uint8ClampedArray(W*H);
-      for(let y=0;y<H;y++)for(let x=0;x<W;x++)a[y*W+x]=f[Math.min(mh-1,y*mh/H|0)*mw+Math.min(mw-1,x*mw/W|0)]*255;
-      // 多點時跟前一次的結果合併，避免點了新的一塊，舊的反而不見
-      if(TAP.a&&!one)for(let i=0;i<a.length;i++)a[i]=Math.max(a[i],TAP.a[i]);
-      TAP.a=a;
+      const f=m.getAsFloat32Array(),mw=m.width,mh=m.height,{W,H}=TAP;
+      TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});
+      const a=TAP.a?TAP.a.slice():new Uint8ClampedArray(W*H);
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+        const v=f[Math.min(mh-1,y*mh/H|0)*mw+Math.min(mw-1,x*mw/W|0)],i=y*W+x;
+        // 加入：跟目前的結果聯集；去掉：把這一塊挖掉
+        if(sub){if(v>.5)a[i]=0}else a[i]=Math.max(a[i],v*255);
+      }
+      TAP.a=a;TAP.pts.push({x:nx,y:ny,sub});
     }
     TAP.busy=false;tapDraw();
   });
 }
+function tapUndo(){if(!TAP||!TAP.hist.length)return;const h=TAP.hist.pop();TAP.a=h.a;TAP.pts.length=h.n;tapDraw()}
 function tapDraw(){
   const cv=document.getElementById('tapc');if(!cv||!TAP)return;
   const x=cv.getContext('2d'),{W,H,src,a}=TAP;
@@ -1250,12 +1273,17 @@ function tapDraw(){
   }
   x.putImageData(v,0,0);
   x.fillStyle='#fff';x.strokeStyle='#A24D66';x.lineWidth=Math.max(3,W/200);
-  TAP.pts.forEach(p=>{x.beginPath();x.arc(p.x*W,p.y*H,Math.max(8,W/60),0,7);x.fill();x.stroke()});
+  const R=Math.max(8,W/60);
+  TAP.pts.forEach(p=>{
+    x.fillStyle=p.sub?'#2F2529':'#fff';x.strokeStyle=p.sub?'#fff':'#A24D66';
+    x.beginPath();x.arc(p.x*W,p.y*H,R,0,7);x.fill();x.stroke();
+    if(p.sub){x.beginPath();x.moveTo(p.x*W-R*.5,p.y*H);x.lineTo(p.x*W+R*.5,p.y*H);x.stroke()}
+  });
   const ok=document.getElementById('tapok'),h=document.getElementById('taphint');
   if(ok)ok.disabled=!a;
-  if(h)h.textContent=a?`已選 ${TAP.pts.length} 點・亮的部分會留下`:'還沒選';
+  if(h)h.textContent=a?'亮的部分會留下':'還沒選';
 }
-function tapReset(){if(!TAP)return;TAP.pts=[];TAP.a=null;tapDraw()}
+function tapReset(){if(!TAP)return;TAP.pts=[];TAP.a=null;TAP.hist=[];tapMode('add');tapDraw()}
 async function tapDone(){
   if(!TAP||!TAP.a)return;
   const t=TAP;TAP=null;
@@ -2383,19 +2411,29 @@ function addToCanvas(id){
   UI.canvas.push({itemId:id,x:38,y:30,scale:120,rot:0});
   renderCanvas();
 }
+// 畫布上的一塊可以是娃衣（itemId）或娃娃本人（dollId）
+function pieceSrc(p){if(p.dollId){const d=S.dolls.find(x=>x.id===p.dollId);return d&&d.photo}const it=S.items.find(x=>x.id===p.itemId);return it&&img(it)}
+function pieceName(p){if(p.dollId)return (S.dolls.find(x=>x.id===p.dollId)||{}).name||'娃娃';return (S.items.find(x=>x.id===p.itemId)||{}).name||''}
+const canvasItemIds=()=>UI.canvas.filter(p=>p.itemId).map(p=>p.itemId);
+const canvasDoll=()=>{const p=UI.canvas.find(p=>p.dollId);return p?p.dollId:null};
+function addDollToCanvas(id){
+  UI.canvas=UI.canvas.filter(p=>!p.dollId);
+  UI.canvas.unshift({dollId:id,x:50,y:56,scale:240,rot:0});
+  UI.selPc=null;renderCanvas();toast('娃娃放在最底層，把衣服拖到身上試穿看看');
+}
 function renderCanvas(){
   const c=document.getElementById('canvas');
   c.innerHTML=UI.canvas.map((p,n)=>{
-    const it=S.items.find(x=>x.id===p.itemId);if(!it)return '';
-    return `<div class="pc ${UI.selPc===n?'sel':''}" data-n="${n}" style="left:${p.x}%;top:${p.y}%;width:${p.scale}px;transform:translate(-50%,-50%) rotate(${p.rot}deg);z-index:${n+1}">
-      <img src="${img(it)}" alt=""></div>`;
+    const src=pieceSrc(p);if(!src)return '';
+    return `<div class="pc ${p.dollId?'doll':''} ${UI.selPc===n?'sel':''}" data-n="${n}" style="left:${p.x}%;top:${p.y}%;width:${p.scale}px;transform:translate(-50%,-50%) rotate(${p.rot}deg);z-index:${n+1}">
+      <img src="${src}" alt=""></div>`;
   }).join('');
   bindDrag();
   const ct=document.getElementById('pcCtrl');
   if(UI.selPc!=null&&UI.canvas[UI.selPc]){
-    const p=UI.canvas[UI.selPc],it=S.items.find(x=>x.id===p.itemId);
+    const p=UI.canvas[UI.selPc];
     ct.style.display='block';
-    document.getElementById('pcName').textContent=it?it.name:'';
+    document.getElementById('pcName').textContent=pieceName(p);
     document.getElementById('pcScale').value=p.scale;
     document.getElementById('pcRot').value=p.rot;
   }else ct.style.display='none';
@@ -2440,6 +2478,9 @@ function openDrawer(){
   if(UI.pressFirst)list=list.slice().sort((a,b)=>isPressed(b)-isPressed(a));
   openSheet(`
     <h3>加入娃衣</h3>
+    ${S.dolls.some(d=>d.photo)?`<div class="hint" style="margin-bottom:6px">放上娃娃（會在最底層，衣服可以直接拖到身上）：</div>
+      <div class="drawer dolls" style="margin:0 0 12px">${S.dolls.filter(d=>d.photo).map(d=>`<button onclick="addDollToCanvas('${d.id}');closeSheet()" class="${canvasDoll()===d.id?'on':''}"><img src="${d.photo}" alt=""><i class="dn">${esc(d.name)}</i></button>`).join('')}</div>`
+      :`<p class="hint" style="margin:0 0 12px">到娃娃櫃幫娃娃放一張去背照片，就可以把娃娃放上畫布試穿。</p>`}
     <label class="remember" style="margin:0 0 10px"><input type="checkbox" ${UI.pressFirst?'checked':''} onchange="UI.pressFirst=this.checked;openDrawer()"> 壓箱底的娃衣排前面，給它們一點出場機會 📦</label>
     ${sets.length?`<div class="hint" style="margin-bottom:8px">整套加入：</div>
       <div class="chips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}')">${esc(s.name)}</button>`).join('')}</div>`:''}
@@ -2484,7 +2525,7 @@ let LK={};
 function lookSheet(id,presetName){
   const l=id?S.looks.find(x=>x.id===id):null;
   if(!l&&!UI.canvas.length){toast('畫布是空的');return}
-  LK={id:l?l.id:null,name:l?l.name:(presetName||'Look '+String(S.looks.length+1).padStart(3,'0')),dollId:l?(l.dollId||null):((mainDoll()||{}).id||null)};
+  LK={id:l?l.id:null,name:l?l.name:(presetName||'Look '+String(S.looks.length+1).padStart(3,'0')),dollId:l?(l.dollId||null):(canvasDoll()||(mainDoll()||{}).id||null)};
   openSheet(`<h3>${l?'編輯 Look':'存成 Look'}</h3>
     <label class="f"><span>名稱</span><input type="text" id="lk_name" value="${esc(LK.name)}" oninput="LK.name=this.value"></label>
     ${S.dolls.length?`<label class="f"><span>搭給哪隻娃娃</span><div class="parts" id="lk_doll" style="margin-top:0">
@@ -2496,7 +2537,7 @@ function lookSheet(id,presetName){
 async function saveLookSheet(){
   const name=(LK.name||'').trim()||'未命名';
   if(LK.id){const l=S.looks.find(x=>x.id===LK.id);l.name=name;l.dollId=LK.dollId}
-  else S.looks.push({id:uid('l'),name,dollId:LK.dollId,itemIds:UI.canvas.map(p=>p.itemId),layout:JSON.parse(JSON.stringify(UI.canvas)),cw:document.getElementById('canvas').clientWidth||354,createdAt:Date.now()});
+  else S.looks.push({id:uid('l'),name,dollId:LK.dollId,itemIds:canvasItemIds(),layout:JSON.parse(JSON.stringify(UI.canvas)),cw:document.getElementById('canvas').clientWidth||354,createdAt:Date.now()});
   await save();closeSheet();renderLooks();toast('已儲存');
 }
 async function delLook(id){
@@ -2562,7 +2603,7 @@ function renderMatch(){
   el.innerHTML=h;
 }
 function comboToCanvas(a,b){
-  UI.canvas=[{itemId:a,x:50,y:32,scale:130,rot:0},{itemId:b,x:50,y:68,scale:130,rot:0}];UI.selPc=null;
+  UI.canvas=[...UI.canvas.filter(p=>p.dollId),{itemId:a,x:50,y:32,scale:130,rot:0},{itemId:b,x:50,y:68,scale:130,rot:0}];UI.selPc=null;
   renderCanvas();window.scrollTo({top:0,behavior:'smooth'});toast('已放到畫布上，調整好再存成 Look');
 }
 function openMember(){
@@ -2701,11 +2742,12 @@ ${list}
 const SLOT_POS={head:[50,14,90],outer:[50,40,150],top:[50,38,130],dress:[50,48,160],bottom:[50,64,130],socks:[50,80,80],shoes:[50,90,90],bag:[80,58,80],acc:[22,42,70]};
 function ideaToCanvas(){
   const ids=IDEA.res.ids;const used={};
-  UI.canvas=ids.map(id=>{
+  const keep=UI.canvas.filter(p=>p.dollId);
+  UI.canvas=[...keep,...ids.map(id=>{
     const it=S.items.find(x=>x.id===id),sl=slotOf(it&&it.category)||'acc',p=SLOT_POS[sl]||[50,50,110];
     const n=used[sl]=(used[sl]||0)+1;
     return {itemId:id,x:p[0]+(n-1)*14,y:p[1]+(n-1)*6,scale:p[2],rot:0};
-  });
+  })];
   UI.selPc=null;
   if(UI.tab!=='studio'){closeSheet();go('studio')}else{renderCanvas();window.scrollTo({top:0,behavior:'smooth'})}
 }
@@ -2836,18 +2878,20 @@ function openShare(kind,id){
     items=l.itemIds;layout=l.layout;cw=l.cw||cw;title=l.name;doll=lookDoll(l)||mainDoll();
   }else{
     if(!UI.canvas.length){toast('畫布是空的，先加幾件娃衣');return}
-    layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.map(p=>p.itemId);
+    layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.filter(p=>p.itemId).map(p=>p.itemId);
     cw=document.getElementById('canvas').clientWidth||cw;title='今天想這樣穿';doll=mainDoll();
   }
   Object.assign(SC,{items:items.map(i=>S.items.find(x=>x.id===i)).filter(Boolean),photo,layout,cw,date,doll,title,
     theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:''});
-  SC.withDoll=!photo&&!!(SC.doll&&SC.doll.photo);
+  SC.hasDollPiece=!!(layout&&layout.some(p=>p.dollId));
+  if(SC.hasDollPiece){const d=S.dolls.find(x=>x.id===layout.find(p=>p.dollId).dollId);if(d)SC.doll=d}
+  SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
   openSheet(`<h3>分享小卡</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
     <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
     <div class="swap" id="scLay">${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
-    ${!SC.photo&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
+    ${!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
     <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="今天是草莓甜點日 🍓" oninput="scCapChange(this.value)"></label>
     <div class="row">
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
@@ -2889,8 +2933,10 @@ async function scArt(x,T,AX,AY,AW,AH,R,noShadow){
     if(SC.layout&&SC.layout.length){
       let rw=IW,rh=IW*4/3;if(rh>AH){rh=AH;rw=AH*3/4}
       const rx=IX+(IW-rw)/2,ry=AY+(AH-rh)/2,k=rw/SC.cw;
+      const dollIms={};
+      for(const p of SC.layout)if(p.dollId&&!dollIms[p.dollId]){const d=S.dolls.find(x=>x.id===p.dollId);dollIms[p.dollId]=d&&d.photo?await loadImg(d.photo).catch(()=>null):null}
       SC.layout.forEach(p=>{
-        const it=SC.items.findIndex(i=>i.id===p.itemId),im=ims[it];if(!im)return;
+        const im=p.dollId?dollIms[p.dollId]:ims[SC.items.findIndex(i=>i.id===p.itemId)];if(!im)return;
         const w=p.scale*k,h=w*im.height/im.width;
         x.save();x.translate(rx+p.x/100*rw,ry+p.y/100*rh);x.rotate(p.rot*Math.PI/180);x.drawImage(im,-w/2,-h/2,w,h);x.restore();
       });
@@ -3260,9 +3306,12 @@ function renderBuy(){
   const el=document.getElementById('buyOut');if(!el)return;
   const bi=document.getElementById('buyIn');if(bi)bi.style.display='none';
   const t=BUY.t,items=S.items.filter(i=>i.category!=='套裝');
+  // 每一行除了件數，也列出最常穿的幾件（點了可以看）
   const tag=(label,list)=>{
     const n=list.length,cold=list.filter(idle).length;
-    return `<div class="bstat"><span>${label}</span><b>${n}</b><em>${n?(cold?`${cold} 件半年以上沒穿`:'都有在穿'):'還沒有'}</em></div>`;
+    const top=list.filter(i=>img(i)).map(i=>({i,w:wearCount(i.id)})).sort((a,b)=>b.w-a.w).slice(0,6);
+    return `<div class="bstat"><span>${label}</span><b>${n}</b><em>${n?(cold?`${cold} 件半年以上沒穿`:'都有在穿'):'還沒有'}</em>
+      ${top.length?`<div class="bthumbs">${top.map(x=>`<button onclick="openItem('${x.i.id}')" title="${esc(x.i.name)}"><img src="${img(x.i)}" alt=""><small>${x.w?`穿 ${x.w} 次`:'沒穿過'}</small></button>`).join('')}${n>top.length?`<span class="more">+${n-top.length}</span>`:''}</div>`:''}</div>`;
   };
   // 統計
   let st='';
