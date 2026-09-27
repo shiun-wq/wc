@@ -1,0 +1,17 @@
+{
+  "name": "娃衣衣櫃",
+  "short_name": "娃衣衣櫃",
+  "description": "棉花娃娃衣收納、搭配與穿搭紀錄",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F0EB",
+  "theme_color": "#F5F0EB",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

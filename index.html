@@ -13,6 +13,9 @@ try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&mat
 <meta name="apple-mobile-web-app-title" content="娃衣衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/favicon.png">
 <title>娃衣衣櫃</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -682,6 +685,29 @@ nav.tabs button.plus.on{color:var(--berry)}
 .drawer.dolls button{position:relative}
 .drawer.dolls button.on{border-color:var(--berry)}
 .drawer .dn{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:10px;background:var(--glass);padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guide{margin:0 0 14px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.gh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.gh b{font-family:var(--serif);font-size:15px;letter-spacing:.06em}
+.gh span{flex:1;font-size:12px;color:var(--muted)}
+.gh button{width:28px;height:28px;border-radius:50%;font-size:18px;color:var(--muted)}
+.gstep{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:9px 0;border-top:1px solid var(--paper-2)}
+.gstep i{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700;background:var(--berry-soft);color:var(--berry-deep)}
+.gstep.ok i{background:#E8EFE7;color:#4F6B52}
+:root[data-theme="dark"] .gstep.ok i{background:var(--sage-soft);color:var(--sage)}
+.gstep span{flex:1}.gstep b{display:block;font-size:14px}.gstep small{font-size:11.5px;color:var(--muted)}
+.gstep.ok b{text-decoration:line-through;color:var(--muted)}
+.gstep em{font-style:normal;color:var(--muted);font-size:18px}
+.notice{margin:0 0 14px;padding:14px 16px;border-radius:var(--r);background:var(--gold-soft);border:1px solid rgba(179,144,96,.25)}
+.notice.warn{background:var(--berry-soft);border-color:rgba(162,77,102,.18)}
+.notice>b{display:block;font-size:14.5px;margin-bottom:3px}
+.notice>span{display:block;font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-bottom:10px}
+.welcome{text-align:center}
+.welcome img{border-radius:18px;margin:4px auto 10px;box-shadow:var(--sh-2)}
+.welcome h3{margin:0 0 4px}
+.wrow{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px 0;border-bottom:1px solid var(--paper-2)}
+.wrow i{font-style:normal;font-size:22px;line-height:1.2}
+.wrow b{display:block;font-size:14.5px}
+.wrow span{font-size:12.5px;color:var(--ink-2);line-height:1.6}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -889,6 +915,11 @@ const DB={
     if(this.mode==='host'){ try{await window.storage.set(k,JSON.stringify(v))}catch(e){toast('儲存空間已滿，請匯出備份')} return }
     if(this.mode==='idb'){ return new Promise(res=>{const t=this.idb.transaction('kv','readwrite').objectStore('kv').put(v,k);t.onsuccess=()=>res();t.onerror=()=>res()}) }
     this.mem[k]=v;
+  },
+  async del(k){
+    if(this.mode==='host'){ try{window.storage.delete?await window.storage.delete(k):await window.storage.set(k,'null')}catch(e){} return }
+    if(this.mode==='idb'){ return new Promise(res=>{const t=this.idb.transaction('kv','readwrite').objectStore('kv').delete(k);t.onsuccess=()=>res();t.onerror=()=>res()}) }
+    delete this.mem[k];
   }
 };
 
@@ -944,10 +975,47 @@ const days=d=>d?Math.floor((Date.now()-new Date(d))/864e5):null;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const slotOf=c=>(CATS.find(x=>x[0]===c)||[])[1]||null;
 
-async function save(){ await DB.set('data',S); }
+/* ---- 存檔：照片分開存 ----
+   照片（base64）很大，每次都把整個衣櫃重寫一遍會越來越慢。
+   主資料只存文字，照片各自一個 key，只有新增或改過的照片才寫入，刪掉的也會一起清。 */
+const IMG_FIELDS={items:['photo','cutout','cutSrc','cutMask'],memory:['photo','cutout','cutSrc','cutMask'],dolls:['photo','raw'],wears:['photo'],wish:['photo']};
+const IMGSAVED=new Map();   // key -> 上次寫進資料庫的內容
+let SAVING=null,SAVE_AGAIN=false;
+async function save(){
+  // 同時有好幾個地方要存檔時合併成一次
+  if(SAVING){SAVE_AGAIN=true;return SAVING}
+  SAVING=(async()=>{do{SAVE_AGAIN=false;await saveNow()}while(SAVE_AGAIN)})();
+  try{await SAVING}finally{SAVING=null}
+}
+async function saveNow(){
+  const lean={},seen=new Set(),writes=[];
+  for(const k of Object.keys(S)){
+    const f=IMG_FIELDS[k];
+    if(!f||!Array.isArray(S[k])){lean[k]=S[k];continue}
+    lean[k]=S[k].map(o=>{
+      const c={...o};
+      for(const fld of f){
+        const v=o[fld];if(typeof v!=='string'||!v.startsWith('data:'))continue;
+        const key=`img:${k}:${o.id}:${fld}`;seen.add(key);c[fld]='@'+key;
+        if(IMGSAVED.get(key)!==v)writes.push([key,v]);
+      }
+      return c;
+    });
+  }
+  for(const [k,v] of writes){await DB.set(k,v);IMGSAVED.set(k,v)}
+  await DB.set('data',lean);
+  for(const key of [...IMGSAVED.keys()])if(!seen.has(key)){IMGSAVED.delete(key);await DB.del(key)}
+}
 async function load(){
   const d=await DB.get('data');
-  if(d) S=Object.assign(S,d);
+  if(d){
+    // 把照片從各自的 key 讀回來；舊版資料照片還在主資料裡，下次存檔會自動拆開
+    for(const k of Object.keys(IMG_FIELDS))for(const o of (d[k]||[]))for(const fld of IMG_FIELDS[k]){
+      const v=o[fld];
+      if(typeof v==='string'&&v.startsWith('@img:')){const key=v.slice(1),val=await DB.get(key);o[fld]=val||null;if(val)IMGSAVED.set(key,val)}
+    }
+    S=Object.assign(S,d);
+  }
   S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ask',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
   // 改版：預設改成每次詢問
@@ -1777,6 +1845,7 @@ function renderHome(){
     ${S.dolls.length>1?`<div class="dswitch">${S.dolls.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}">${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</button>`).join('')}</div>`:''}
   </section>
 
+  ${homeCards()}
   <div class="qa">
     <button onclick="openWear()"><i class="i1"></i>記錄穿搭</button>
     <button onclick="go('studio')"><i class="i2"></i>開始搭配</button>
@@ -1813,6 +1882,52 @@ function renderHome(){
     <button class="btn ghost wide sm" style="margin-top:10px" onclick="go('wear')">全部紀錄</button>`
   :`<div class="empty"><strong>還沒有穿搭紀錄</strong>幫娃娃換好衣服後，按上面的「記錄穿搭」</div>`}
   `;
+}
+/* ---- 首頁的提示卡：新手引導、加入主畫面、備份提醒 ---- */
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let INSTALL_EVT=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(UI.tab==='home')renderHome()});
+function homeCards(){
+  const st=S.settings,h=[];
+  // 1. 新手引導
+  const steps=[
+    [S.dolls.length>0,'放上你的娃娃','首頁中間會是娃娃的舞台',"openDoll()"],
+    [S.items.length>0,'建檔第一件娃衣','拍照、點一下衣服就能去背',"go('intake')"],
+    [S.wears.length>0,'記錄第一次穿搭','之後就能分析常穿和冷落的衣服',"openWear()"]
+  ];
+  const done=steps.filter(x=>x[0]).length;
+  if(done<3&&!st.guideHide)h.push(`<section class="guide">
+    <div class="gh"><b>開始使用</b><span>${done} / 3</span><button onclick="S.settings.guideHide=true;save();renderHome()" aria-label="隱藏">×</button></div>
+    ${steps.map(([ok,t,d,fn],i)=>`<button class="gstep ${ok?'ok':''}" ${ok?'disabled':`onclick="${fn}"`}><i>${ok?'✓':i+1}</i><span><b>${t}</b><small>${d}</small></span>${ok?'':'<em>›</em>'}</button>`).join('')}
+  </section>`);
+  // 2. 備份提醒（有資料、超過 14 天沒備份）
+  const has=S.items.length+S.dolls.length>0,last=st.lastBackup||0,ago=last?Math.floor((Date.now()-last)/864e5):null;
+  if(has&&(!last||ago>=14)&&(st.backupSnooze||0)<Date.now())h.push(`<section class="notice warn">
+    <b>${last?`已經 ${ago} 天沒備份了`:'還沒備份過'}</b>
+    <span>資料只存在這支手機的瀏覽器裡，換手機或被清除就會不見。下載一份備份檔比較安心。</span>
+    <div class="row"><button class="btn sm" onclick="exportBackup(true)">完整備份</button><button class="btn sm ghost" onclick="S.settings.backupSnooze=Date.now()+3*864e5;save();renderHome()">過幾天再說</button></div>
+  </section>`);
+  // 3. 加入主畫面（還沒安裝時）
+  if(!isStandalone()&&!st.installHide&&(INSTALL_EVT||isIOS())&&location.protocol.startsWith('http'))h.push(`<section class="notice">
+    <b>把娃衣衣櫃加到主畫面</b>
+    <span>${INSTALL_EVT?'像 App 一樣從桌面打開、全螢幕，沒網路也能用。':'用 Safari 按下方的 <b>分享</b> 按鈕 → 選<b>「加入主畫面」</b>。之後從桌面打開像 App 一樣，資料也比較不容易被清掉。'}</span>
+    <div class="row">${INSTALL_EVT?`<button class="btn sm" onclick="doInstall()">安裝</button>`:''}<button class="btn sm ghost" onclick="S.settings.installHide=true;save();renderHome()">不用了</button></div>
+  </section>`);
+  return h.join('');
+}
+async function doInstall(){if(!INSTALL_EVT)return;INSTALL_EVT.prompt();await INSTALL_EVT.userChoice.catch(()=>{});INSTALL_EVT=null;renderHome()}
+function openWelcome(){
+  openSheet(`<div class="welcome">
+    <img src="icons/icon-192.png" alt="" width="72" height="72">
+    <h3>歡迎來到娃衣衣櫃</h3>
+    <p class="hint">幫你的棉花娃整理衣櫃、搭配、記錄每天穿什麼</p>
+    <div class="wrow"><i>📸</i><span><b>拍照建檔</b>點一下衣服就能去背，做成像貼紙一樣的圖</span></div>
+    <div class="wrow"><i>👗</i><span><b>搭配和紀錄</b>把衣服拖到娃娃身上試穿，做成小卡分享</span></div>
+    <div class="wrow"><i>🛍️</i><span><b>買前檢查</b>想買新娃衣前，先看看衣櫃裡有沒有類似的</span></div>
+    <p class="hint" style="margin-top:14px">資料只存在這台裝置上，記得偶爾到設定「完整備份」。</p>
+    <button class="btn wide" onclick="S.settings.welcomed=true;save();closeSheet()">開始使用</button>
+  </div>`,()=>{S.settings.welcomed=true;save()});
 }
 async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
 
@@ -3526,6 +3641,7 @@ function mcap(el){
    ============================================================ */
 function openSettings(){
   const st=S.settings,c=cfg();
+  setTimeout(showUsage,50);
   const th=st.theme||'light';
   openSheet(`
     <h3>設定</h3>
@@ -3635,7 +3751,7 @@ function openSettings(){
 
     <h2 class="sec">備份</h2>
     <div class="card">
-      <p class="hint" style="margin:0 0 10px">資料全部存在這台裝置上。清掉瀏覽器資料就會消失，請定期匯出一份。</p>
+      <p class="hint" style="margin:0 0 10px">資料全部存在這台裝置上。清掉瀏覽器資料就會消失，請定期匯出一份。<br>上次完整備份：<b>${st.lastBackup?new Date(st.lastBackup).toLocaleDateString():'還沒有'}</b><span id="s_usage"></span></p>
       <div class="row">
         <button class="btn ghost grow" onclick="exportBackup(true)">完整備份（含照片）</button>
         <button class="btn ghost grow" onclick="exportBackup(false)">輕量備份（無照片）</button>
@@ -3695,6 +3811,10 @@ async function delSize(z){
   S.items.forEach(i=>{if(i.sizes)i.sizes=i.sizes.filter(x=>x!==z)});
   S.dolls.forEach(d=>{if(d.size===z)d.size=''});
   await save();openSettings();
+}
+async function showUsage(){
+  try{const e=await navigator.storage.estimate();const el=document.getElementById('s_usage');
+    if(el&&e.usage)el.innerHTML=`・已使用 ${(e.usage/1048576).toFixed(1)} MB`}catch(e){}
 }
 function toggleSticker(v){
   document.getElementById('sk_ai').style.display=v==='ai'||v==='ask'?'block':'none';
@@ -3808,6 +3928,7 @@ function exportBackup(withImages){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=`娃衣衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
+  if(withImages){S.settings.lastBackup=Date.now();save();if(UI.tab==='home')renderHome()}
   a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   toast('備份檔已下載');
 }
@@ -3855,7 +3976,7 @@ async function wipe(){
    再交給 IntersectionObserver 在進入畫面時淡入。
    ============================================================ */
 const Reveal=(()=>{
-  const SEL='.idea,.memcard,.wcardbig,.pack,.qrow,.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
+  const SEL='.guide,.notice,.idea,.memcard,.wcardbig,.pack,.qrow,.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last={el:null,t:0};
   const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{
@@ -3947,6 +4068,10 @@ document.addEventListener('wheel',e=>{
   await load();
   applyTheme();
   go('home');
+  // 請瀏覽器不要自動清掉這個網站的資料（有支援的瀏覽器才會生效）
+  try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))navigator.storage.persist()}catch(e){}
+  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if(!S.settings.welcomed&&!S.items.length&&!S.dolls.length)openWelcome();
 })();
 </script>
 </body>
