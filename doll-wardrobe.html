@@ -1621,11 +1621,13 @@ function redeem(){
 
 /* ---- 去背方式：每次讓使用者自己選（或記住選擇）---- */
 let PICK=null;
-function pickCut(count){
+function pickCut(count,isSet){
   count=count||1;
   return new Promise(res=>{
     const m=S.settings.stickerMode||'ask';
-    if(m!=='ask'&&!(m==='ai'&&!aiReady()))return res(m);
+    const setOpt=isSet&&count>1&&aiReady();
+    if(m!=='ask'&&!(m==='ai'&&!aiReady())&&!(setOpt&&m==='ai'))return res(m);
+    const ok1=quotaLeft('img')>=1||wallet().points>=POINT_COST.img;
     const left=quotaLeft('img'),pts=wallet().points,need=POINT_COST.img*Math.max(0,count-left);
     const ok=aiReady()&&(left>=count||pts>=need);
     PICK={res,opened:!NAV.open};
@@ -1634,13 +1636,15 @@ function pickCut(count){
       <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>全自動，但背景要是素色</span></div><em>免費</em></button>
       <button class="cutopt" onclick="pickDone('ai')" ${ok?'':'disabled'}><div><b>AI 出圖去背</b><span>什麼背景都可以，手和雜物也會一起清掉</span></div>
         <em>${!aiReady()?(devMode()?'需要設定 API':'暫停服務'):left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
+      ${setOpt?`<button class="cutopt" onclick="pickDone('aiset')" ${ok1?'':'disabled'}><div><b>AI 整套一張</b><span>${count} 件一起出一張圖再自動切開，只算 1 次。切不準的再點小方框修</span></div>
+        <em>${left>=1?'只扣 1 次':POINT_COST.img+' 點'}</em></button>`:''}
       ${ok||!aiReady()?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
       ${count>1?`<p class="hint">這次共 ${count} 張。</p>`:''}
       <label class="remember"><input type="checkbox" id="pk_rem"> 記住我的選擇（之後可以在設定改）</label>`);
   });
 }
 function pickDone(m){
-  if(document.getElementById('pk_rem').checked){S.settings.stickerMode=m;save()}
+  if(document.getElementById('pk_rem').checked){S.settings.stickerMode=m==='aiset'?'ai':m;save()}
   const p=PICK;PICK=null;if(!p)return;
   if(p.opened)closeSheet();
   p.res(m);
@@ -1667,9 +1671,14 @@ async function aiChat(task,content){
   let r;
   if(viaBackend()){
     try{
-      r=await fetch(backendURL()+'/ai',{method:'POST',headers:{'content-type':'application/json','x-device':deviceId()},
-        body:JSON.stringify({task,messages:[{role:'user',content}]})});
+      const h={'content-type':'application/json','x-device':deviceId()};
+      if(task==='img')h['x-async']='1';
+      r=await fetch(backendURL()+'/ai',{method:'POST',headers:h,body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
+    if(r.ok&&(r.headers.get('content-type')||'').includes('json')){
+      const j=await r.clone().json().catch(()=>null);
+      if(j&&j.job)r=await waitJob(j.job);
+    }
     if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
     // 任務式出圖時後台直接回圖片本身，這裡轉成和對話格式一樣的樣子
     const blob=await r.blob(),head=new Uint8Array(await blob.slice(0,4).arrayBuffer());
@@ -1689,6 +1698,21 @@ async function aiChat(task,content){
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   return r.json();
+}
+// 出圖任務在後台跑；網頁每 3 秒問一次。切到別的 App 時手機會暫停網頁，回來後會接著問，不會重做也不會重複扣次數
+async function waitJob(id){
+  // 用「問了幾次」算逾時，不用時間：手機在背景時計時器會停，回來後至少還會再問
+  let fails=0;
+  for(let k=0;k<120;k++){
+    await new Promise(ok=>setTimeout(ok,3000));
+    let r;
+    try{r=await fetch(backendURL()+'/job/'+encodeURIComponent(id))}catch(e){if(++fails>40)break;continue}
+    fails=0;
+    if(!r.ok)return r;
+    if((r.headers.get('content-type')||'').includes('json')){const j=await r.clone().json().catch(()=>({}));if(j.pending)continue}
+    return r;
+  }
+  throw new Error('出圖太久了，稍後再試');
 }
 const aiText=j=>{const m=j.choices?.[0]?.message;return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||''};
 // 填 base（.../v1）就好，路徑自動補
@@ -2491,7 +2515,8 @@ function togglePart(n,p){
 async function makePartStickers(n){
   const q=UI.queue[n];
   if(!q.parts.length){toast('這張還沒有可拆的單品');return}
-  const mode=await pickCut(q.parts.length);
+  const mode=await pickCut(q.parts.length,true);
+  if(mode==='aiset')return aiSetCut(n);
   q.working=true;renderQueue();
   for(let k=0;k<q.parts.length;k++){
     const pt=q.parts[k];
@@ -2504,6 +2529,66 @@ async function makePartStickers(n){
   }
   q.working=false;renderQueue();
   toast(`${q.parts.length} 件單品各自的貼圖完成`);
+}
+// AI 整套一張：請 AI 把套裝每件分開平鋪成一排，只出 1 張圖，再在手機上依位置切開、照順序對應到每一件
+const SET_PROMPT=names=>`把照片裡這套娃娃衣服的每一件單品分開，平鋪在純白色 #FFFFFF 背景上，由左到右排成一排，順序是：${names.map((n,i)=>(i+1)+'.'+n).join('　')}。每件之間留明顯的空白，不可以重疊或相碰，每件都完整不裁切。去掉背景、手、娃娃本體和雜物。不要陰影、文字、邊框、浮水印。顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。`;
+async function aiSetCut(n){
+  const q=UI.queue[n];if(!q||!needQuota('img'))return;
+  q.working=true;renderQueue();
+  prog(`AI 整套出圖中（${q.parts.length} 件），大約 10～60 秒，可以先去做別的事`);
+  try{
+    const out=extractImage(await aiChat('img',[{type:'image_url',image_url:{url:q.photo}},{type:'text',text:SET_PROMPT(q.parts.map(p=>p.name))}]));
+    if(!out)throw new Error('這次沒有拿到圖片，再試一次');
+    spendQuota('img');
+    const im=await loadImg(out),c=drawScaled(im,1400),W=c.width,H=c.height;
+    const {a,data}=bgMask(c.getContext('2d'),W,H,24);
+    const groups=splitGroups(a,W,H,q.parts.length);
+    groups.forEach((g,k)=>{
+      const pt=q.parts[k];if(!pt)return;
+      const pad=6,x0=Math.max(0,g.x0-pad),y0=Math.max(0,g.y0-pad),x1=Math.min(W-1,g.x1+pad),y1=Math.min(H-1,g.y1+pad);
+      const w=x1-x0+1,h=y1-y0+1,src=new ImageData(w,h),m=new Uint8ClampedArray(w*h);
+      for(let j=0;j<h;j++)for(let i=0;i<w;i++){
+        const id=(j+y0)*W+i+x0,o=j*w+i;
+        src.data.set(data.data.subarray(id*4,id*4+4),o*4);
+        m[o]=g.lab[id]?a[id]:0;
+      }
+      g.cut={src,m,w,h};
+    });
+    for(let k=0;k<groups.length&&k<q.parts.length;k++){
+      const {src,m,w,h}=groups[k].cut;cleanMask(m,w,h);
+      setCut(q.parts[k],{sticker:await composeSticker(src,m,w,h),src:encSrc(src),mask:encMask(m,w,h)},'img');
+    }
+    const miss=q.parts.length-Math.min(groups.length,q.parts.length);
+    toast(miss?`切出 ${groups.length} 件，還有 ${miss} 件沒分出來，點小方框手動補`:`${q.parts.length} 件都切好了，不準的點小方框修`);
+  }catch(e){toast('失敗：'+e.message)}
+  q.working=false;renderQueue();
+}
+// 把遮罩切成 n 塊：最大的 n 塊當主體，其他小碎片併到最近的主體；由左到右排序
+function splitGroups(a,W,H,n){
+  const N=W*H,lab=new Int32Array(N),q=new Int32Array(N),comps=[];
+  for(let s=0;s<N;s++){
+    if(a[s]<128||lab[s])continue;
+    const L=comps.length+1;let h=0,t=0,x0=W,y0=H,x1=0,y1=0,sx=0,sy=0;q[t++]=s;lab[s]=L;
+    while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;sx+=i;sy+=j;
+      if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const x=i+dx,y=j+dy;if(x<0||y<0||x>=W||y>=H)continue;
+        const m=y*W+x;if(!lab[m]&&a[m]>=128){lab[m]=L;q[t++]=m}}}
+    comps.push({L,size:t,x0,y0,x1,y1,cx:sx/t,cy:sy/t});
+  }
+  const real=comps.filter(c=>c.size>=N*.0008).sort((p,r)=>r.size-p.size);
+  const seeds=real.slice(0,n),rest=real.slice(n);
+  const groups=seeds.map(c=>({ls:new Set([c.L]),x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,cx:c.cx,cy:c.cy}));
+  const gap=(c,g)=>Math.hypot(Math.max(0,g.x0-c.x1,c.x0-g.x1),Math.max(0,g.y0-c.y1,c.y0-g.y1));
+  rest.forEach(c=>{
+    if(!groups.length)return;
+    const g=groups.reduce((b,x)=>gap(c,x)<gap(c,b)?x:b);
+    g.ls.add(c.L);g.x0=Math.min(g.x0,c.x0);g.y0=Math.min(g.y0,c.y0);g.x1=Math.max(g.x1,c.x1);g.y1=Math.max(g.y1,c.y1);
+  });
+  groups.forEach(g=>{const m=new Uint8Array(N);for(let i=0;i<N;i++)if(lab[i]&&g.ls.has(lab[i]))m[i]=1;g.lab=m});
+  // 排成一排時用 x 排；AI 排成兩排時，先依列再依 x
+  const hs=groups.map(g=>g.y1-g.y0).sort((p,r)=>p-r),mh=hs[hs.length>>1]||1;
+  return groups.sort((p,r)=>Math.abs(p.cy-r.cy)>mh*.8?p.cy-r.cy:p.cx-r.cx);
 }
 // 單件手動去背／修補：有貼圖就從遮罩接著改，沒有就從框出來的那一塊開始選
 async function editPart(n,k){

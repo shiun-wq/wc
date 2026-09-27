@@ -48,6 +48,13 @@ export default {
       }, 200, cors);
     }
 
+    // 查詢出圖進度（網頁切到背景再回來也能接著拿結果）
+    const jm = url.pathname.match(/^\/job\/([A-Za-z0-9_-]{4,100})$/);
+    if (jm && req.method === 'GET') {
+      if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
+      return jobStatus(jm[1], env, cors);
+    }
+
     if (url.pathname !== '/ai' || req.method !== 'POST') return json({ error: '找不到這個功能' }, 404, cors);
     if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
     if (!env.API_BASE || !env.API_KEY || !env.MODEL_TEXT) return json({ error: 'AI 服務還沒設定好' }, 503, cors);
@@ -90,7 +97,7 @@ export default {
     const isImg = task === 'img';
     const base = (isImg && env.IMAGE_API_BASE) || env.API_BASE;
     const key = (isImg && env.IMAGE_API_KEY) || env.API_KEY;
-    if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors);
+    if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
     let up;
     try {
       up = await fetch(apiURL(base, '/chat/completions'), {
@@ -121,7 +128,35 @@ function imageStyle(env) {
 }
 
 // 任務式出圖（ToAPIs 這類）：上傳照片拿網址 → 送出任務 → 每 2 秒查一次 → 把完成的圖直接轉給網頁
-async function taskImage(base, key, model, messages, env, cors) {
+function imageRoot(base) {
+  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
+  return root;
+}
+
+async function jobStatus(id, env, cors) {
+  const fail = (msg, detail, status = 502) =>
+    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
+  const base = env.IMAGE_API_BASE || env.API_BASE, key = env.IMAGE_API_KEY || env.API_KEY;
+  if (!base || !key) return fail('AI 服務還沒設定好', '', 503);
+  let j;
+  try {
+    const r = await fetch(imageRoot(base) + '/images/generations/' + encodeURIComponent(id), { headers: { authorization: 'Bearer ' + key } });
+    j = await r.json().catch(() => ({}));
+    if (r.status === 404) return fail('找不到這個出圖任務', JSON.stringify(j), 404);
+  } catch (e) { return json({ pending: true }, 200, cors); }
+  const st = j.status || (j.data && j.data.status);
+  if (st === 'failed') return fail('出圖失敗，換張照片或稍後再試', JSON.stringify(j.error || j.fail_reason || j));
+  if (st !== 'completed') return json({ pending: true, progress: j.progress || 0 }, 200, cors);
+  const outUrl = findUrl(j.result) || findUrl(j);
+  if (!outUrl) return fail('出圖完成但沒拿到圖片', JSON.stringify(j));
+  const r = await fetch(outUrl).catch(() => null);
+  if (!r || !r.ok) return fail('圖片下載失敗', outUrl);
+  const type = r.headers.get('content-type') || 'image/png';
+  return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': type.startsWith('image/') ? type : 'image/png' } });
+}
+
+async function taskImage(base, key, model, messages, env, cors, async) {
   const fail = (msg, detail, status = 502) =>
     json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
   const parts = messages[0].content;
@@ -129,8 +164,7 @@ async function taskImage(base, key, model, messages, env, cors) {
   const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n').slice(0, 1000);
   if (!img) return fail('沒有收到照片', '', 400);
   const auth = { authorization: 'Bearer ' + key };
-  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
+  const root = imageRoot(base);
 
   // 1. 上傳照片
   const m = img.image_url.url.match(/^data:(image\/[a-z+]+);base64,(.*)$/i);
@@ -167,6 +201,8 @@ async function taskImage(base, key, model, messages, env, cors) {
     } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
   }
   if (!taskId) return fail('AI 服務設定有誤（模型或格式）', last);
+  // 網頁要自己來查進度：直接回任務編號，這樣使用者切到別的 App 也不會斷
+  if (async) return json({ job: taskId }, 200, cors);
 
   // 3. 等結果，最多約 2 分鐘
   let outUrl;
@@ -212,7 +248,7 @@ function originAllowed(origin, env) {
 function corsHeaders(origin) {
   const h = {
     'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-device',
+    'access-control-allow-headers': 'content-type, x-device, x-async',
     'access-control-max-age': '86400',
     vary: 'origin'
   };
