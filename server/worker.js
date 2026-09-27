@@ -8,6 +8,8 @@
      API_KEY             API 密鑰                                          （Secret，一定要選 Secret）
      MODEL_TEXT          文字／看圖分析用的模型                               （Text）
      MODEL_IMAGE         AI 出圖（貼圖）用的模型，留空 = 不開放 AI 出圖          （Text）
+     IMAGE_API_BASE      出圖用的 API 地址，出圖在另一個地方才要填，留空 = 同上     （Text，選填）
+     IMAGE_API_KEY       出圖用的 API 密鑰，留空 = 同上                        （Secret，選填）
      ALLOWED_ORIGINS     允許使用的網址，逗號分隔                               （Text）
                          例：https://shiun-wq.github.io,capacitor://localhost,https://localhost
      DAILY_LIMIT         每台裝置每天最多幾次，預設 30（需要綁 KV 才會生效）      （Text，選填）
@@ -38,6 +40,7 @@ export default {
         ok: !!(env.API_BASE && env.API_KEY && env.MODEL_TEXT),
         api: !!env.API_BASE, key: !!env.API_KEY,
         text: !!env.MODEL_TEXT, image: !!env.MODEL_IMAGE,
+        imageApi: !!env.IMAGE_API_BASE, imageKey: !!env.IMAGE_API_KEY,
         limit: !!env.QUOTA, origins: !!(env.ALLOWED_ORIGINS || '').trim()
       }, 200, cors);
     }
@@ -80,11 +83,15 @@ export default {
       ]);
     }
 
+    // 出圖可以用另一組地址／密鑰
+    const isImg = task === 'img';
+    const base = (isImg && env.IMAGE_API_BASE) || env.API_BASE;
+    const key = (isImg && env.IMAGE_API_KEY) || env.API_KEY;
     let up;
     try {
-      up = await fetch(apiURL(env.API_BASE, '/chat/completions'), {
+      up = await fetch(apiURL(base, '/chat/completions'), {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.API_KEY },
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
         body: JSON.stringify({ model, max_tokens: task === 'test' ? 16 : MAX_TOKENS, stream: false, messages })
       });
     } catch (e) {

@@ -3930,7 +3930,7 @@ async function diagnose(btn){
     try{
       const r=await fetch(backendURL()+'/health');const j=await r.json();
       const miss=[['API 地址',j.api],['API 密鑰',j.key],['文字模型',j.text]].filter(x=>!x[1]).map(x=>x[0]);
-      h=(miss.length?'還沒填：'+miss.join('、'):'必填的都填好了')+'　出圖模型'+(j.image?'有':'沒')+'填・次數限制'+(j.limit?'有':'沒')+'開・網址白名單'+(j.origins?'有':'沒')+'設';
+      h=(miss.length?'還沒填：'+miss.join('、'):'必填的都填好了')+'　出圖模型'+(j.image?'有':'沒')+'填'+(j.imageApi?'（另一個中轉站'+(j.imageKey?'':'，但密鑰沒填')+'）':'')+'・次數限制'+(j.limit?'有':'沒')+'開・網址白名單'+(j.origins?'有':'沒')+'設';
     }catch(e){h='連不上後台　檢查網址有沒有打對、Worker 有沒有按 Deploy'}
     out.push(['後台設定',h]);
     let p;
