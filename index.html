@@ -572,6 +572,27 @@ nav.tabs button.plus.on{color:var(--berry)}
 .lk-cover span{font-size:12px;color:var(--ink-2);margin-bottom:6px}
 .mlist{margin:12px 0 0;padding-left:20px;font-size:13.5px;color:var(--ink-2);line-height:1.8}
 #v-studio > .row .btn{white-space:nowrap;padding:10px 13px}
+.btn small.left{font-size:10.5px;font-weight:500;opacity:.75;margin-left:4px}
+.qtable{display:grid;gap:6px}
+.qtable div{display:flex;justify-content:space-between;font-size:13px;padding:6px 10px;border-radius:10px;background:var(--paper-2)}
+.qtable b{font-variant-numeric:tabular-nums}
+.qcomp{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.qcomp div{display:grid;grid-template-columns:1fr 64px 64px;align-items:center;padding:9px 14px;font-size:13px;border-bottom:1px solid var(--paper-2)}
+.qcomp div:last-child{border:none}
+.qcomp b{text-align:center;font-variant-numeric:tabular-nums}
+.qcomp .qh{background:var(--paper-2);font-size:12px;color:var(--muted)}
+.qcomp div b:last-child{color:var(--berry-deep)}
+.mchart{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 10px;margin-bottom:6px}
+.mcap{font-size:12.5px;color:var(--ink-2);min-height:20px;margin-bottom:8px}
+.mcap b{color:var(--ink);font-variant-numeric:tabular-nums}
+.mbars{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;height:120px;align-items:end;border-bottom:1px solid var(--line)}
+.mcol{position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.mcol i{position:relative;display:block;width:min(70%,24px);border-radius:4px 4px 0 0;background:var(--berry);transition:opacity .15s}
+.mbars:hover .mcol i,.mbars:has(.on) .mcol i{opacity:.45}
+.mbars .mcol:hover i,.mbars .mcol.on i{opacity:1}
+.mcol em{position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);font-style:normal;font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.mlab{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:5px}
+.mlab span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -1072,6 +1093,7 @@ async function aiSticker(dataURL){
 async function cutout(dataURL){
   let m=S.settings.stickerMode||'ai';
   if(m==='ai'&&!aiReady())m='local';
+  if(m==='ai'&&quotaLeft('img')<=0){m='local';if(!UI.imgNoted){UI.imgNoted=1;toast(isMember()?'本月 AI 出圖次數用完，先用簡易去背':'AI 出圖是會員功能，先幫你用免費的簡易去背')}}
   let W,H,src,a;
   if(m==='api'){
     const [out,orig]=await Promise.all([loadImg(await remoteCutout(dataURL)),loadImg(dataURL)]);
@@ -1083,6 +1105,7 @@ async function cutout(dataURL){
     for(let i=0;i<W*H;i++){a[i]=od[i*4+3];if(a[i]){src.data[i*4]=od[i*4];src.data[i*4+1]=od[i*4+1];src.data[i*4+2]=od[i*4+2]}}
   }else{
     const im=await loadImg(m==='ai'?await aiSticker(dataURL):dataURL);
+    if(m==='ai')spendQuota('img');
     const c=drawScaled(im,1000);W=c.width;H=c.height;
     const r=bgMask(c.getContext('2d'),W,H,m==='ai'?24:(S.settings.bgTol||42));
     src=r.data;a=r.a;
@@ -1091,6 +1114,37 @@ async function cutout(dataURL){
   return {sticker:await composeSticker(src,a,W,H),src:encSrc(src),mask:encMask(a,W,H)};
 }
 function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.mask}
+
+/* ============================================================
+   4b. AI 次數額度
+   每次呼叫 AI 都有成本，所以免費版每月有固定次數，會員給比較多（合理使用上限）。
+   次數只在 AI 成功回應後才扣；每個月 1 號自動重置。上架時改這張表就好。
+   ============================================================ */
+const QUOTA={
+  tag:{name:'AI 建檔分析',free:10,member:300},
+  buy:{name:'買前檢查',free:3,member:60},
+  img:{name:'AI 出圖去背',free:0,member:100},
+  wearid:{name:'穿搭照辨識',free:3,member:100}
+};
+function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
+const quotaMax=k=>isMember()?QUOTA[k].member:QUOTA[k].free;
+const quotaLeft=k=>Math.max(0,quotaMax(k)-(usage()[k]||0));
+function spendQuota(k){const u=usage();u[k]=(u[k]||0)+1;save()}
+function needQuota(k){if(quotaLeft(k)>0)return true;quotaBlocked(k);return false}
+function quotaBlocked(k){
+  const q=QUOTA[k];
+  openSheet(`<h3>本月的「${q.name}」用完了</h3>
+    <div class="note">${q.free?`免費版每月可以用 ${q.free} 次，下個月 1 號會重置。`:`${q.name}是會員功能。`}會員每月可以用 ${q.member} 次。</div>
+    ${k==='img'?`<p class="hint" style="margin-top:10px">不用 AI 也可以：改用免費的簡易去背，再用「修補貼圖」擦乾淨。</p>`:''}
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost grow" onclick="closeSheet()">知道了</button>
+      <button class="btn grow" onclick="openMember()">了解會員</button>
+    </div>`);
+}
+function quotaTable(){
+  const u=usage();
+  return `<div class="qtable">${Object.entries(QUOTA).map(([k,q])=>`<div><span>${q.name}</span><b>${u[k]||0} / ${quotaMax(k)}</b></div>`).join('')}</div>`;
+}
 
 /* ============================================================
    4. AI：可接任意 API
@@ -1494,10 +1548,11 @@ function queueFromTags(photo,t,price){
 async function recheckWish(id){
   const w=S.wish.find(x=>x.id===id);if(!w)return;
   if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  if(!needQuota('buy'))return;
   openBuyCheck();
   BUY.photo=w.photo;BUY.t=w.t;BUY.wishId=id;
   BUY.busy=true;
-  try{await buyCompare()}catch(e){toast(e.message)}finally{BUY.busy=false}
+  try{await buyCompare();spendQuota('buy')}catch(e){toast(e.message)}finally{BUY.busy=false}
 }
 
 /* ============================================================
@@ -1705,14 +1760,14 @@ function renderQueue(){
     </div>`).join('');
   document.getElementById('queueActions').innerHTML=UI.queue.length?`
     <div class="row" style="margin-top:4px">
-      <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析</button>
+      <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析<small class="left">剩 ${quotaLeft('tag')}</small></button>
       <button class="btn ghost" onclick="cutAll()">全部做貼圖</button>
       <span class="grow"></span>
       <button class="btn" onclick="commitQueue()">建檔 ${UI.queue.length} 筆</button>
     </div>`:'';
 }
 // 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
-function freeCut(){const m=S.settings.stickerMode||'ai';return m==='local'||(m==='ai'&&!aiReady())}
+function freeCut(){const m=S.settings.stickerMode||'ai';return m==='local'||(m==='ai'&&(!aiReady()||quotaLeft('img')<=0))}
 function cutTip(){
   return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
     <summary>免費去背的拍照小撇步</summary>
@@ -1765,10 +1820,12 @@ async function cutQ(n){
 async function cutAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].cutout)await cutQ(i)}}
 async function analyze(n){
   const q=UI.queue[n];
-  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
+  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return false}
+  if(!needQuota('tag'))return false;
   q.analyzing=true;renderQueue();
   try{
     const r=parseJSON(await callAI(tagPrompt(),q.photo));
+    spendQuota('tag');
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
     q.isSet=!!r.isSet;
@@ -1777,9 +1834,9 @@ async function analyze(n){
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
     q.season=r.season||'';q.material=r.material||'';
   }catch(e){toast('分析失敗：'+e.message)}
-  q.analyzing=false;renderQueue();
+  q.analyzing=false;renderQueue();return true;
 }
-async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length)await analyze(i)}}
+async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length&&await analyze(i)===false)break}}
 
 async function commitQueue(){
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
@@ -2090,11 +2147,17 @@ function comboToCanvas(a,b){
 }
 function openMember(){
   openSheet(`<h3>會員功能</h3>
-    <div class="note">網頁版目前是測試階段，可以直接打開會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
-    <ul class="mlist"><li>搭配分析：萬用單品、常穿 Look、固定組合、娃娃最愛</li></ul>
-    <button class="btn wide" style="margin-top:14px" onclick="setMember(true)">開啟會員功能（測試）</button>`);
+    <div class="qcomp">
+      <div class="qh"><span></span><b>免費</b><b>會員</b></div>
+      ${Object.values(QUOTA).map(q=>`<div><span>${q.name}／月</span><b>${q.free||'—'}</b><b>${q.member}</b></div>`).join('')}
+      <div><span>搭配分析</span><b>—</b><b>✓</b></div>
+      <div><span>花費分析</span><b>—</b><b>✓</b></div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">衣櫃、建檔、簡易去背、修補筆刷、搭配、穿搭紀錄、娃娃櫃、考慮中、分享小卡、備份都一直免費。</p>
+    <div class="note" style="margin-top:12px">網頁版目前是測試階段，可以直接開啟會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
+    <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
 }
-async function setMember(v){S.settings.member=v;await save();closeSheet();renderMatch();toast(v?'已開啟會員功能':'已關閉會員功能')}
+async function setMember(v){S.settings.member=v;await save();closeSheet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
   const l=S.looks.find(x=>x.id===id);
   UI.canvas=JSON.parse(JSON.stringify(l.layout||l.itemIds.map((i,n)=>({itemId:i,x:30+n*8,y:30+n*8,scale:120,rot:0}))));
@@ -2128,7 +2191,7 @@ function drawWearSheet(){
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
-      ${WEAR.photo?`<button class="btn quiet" onclick="identify()">AI 辨識</button>`:''}
+      ${WEAR.photo?`<button class="btn quiet" onclick="identify()">AI 辨識<small class="left">剩 ${quotaLeft('wearid')}</small></button>`:''}
     </div>
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
@@ -2163,6 +2226,7 @@ async function onWearPhoto(ev){
 }
 async function identify(){
   if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
+  if(!needQuota('wearid'))return;
   toast('AI 辨識中…');
   const cat=S.items.filter(i=>i.category!=='套裝').map(i=>
     `${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.motifs||[]).join('/')}`).join('\n');
@@ -2174,6 +2238,7 @@ ${cat}
 規則：只列出你有把握的；同一個部位若不確定，可以列出2到3個候選；完全找不到對應就不要列；相似度低於50不要列。`;
   try{
     const r=parseJSON(await callAI(prompt,WEAR.photo));
+    spendQuota('wearid');
     WEAR.cands=(r||[]).filter(c=>S.items.some(i=>i.id===c.id)).sort((a,b)=>b.score-a.score).slice(0,8);
     WEAR.picked=WEAR.cands.filter(c=>c.score>=80).map(c=>c.id);
     drawWearSheet();
@@ -2380,7 +2445,7 @@ function renderInsight(){
   const el=document.getElementById('insight');
   const items=S.items.filter(i=>i.category!=='套裝');
   if(items.length<3){
-    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>';
+    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+spendSection();
     return;
   }
   const buyGroup={},wearGroup={};
@@ -2465,7 +2530,8 @@ function renderInsight(){
       <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
-  el.innerHTML=h;
+  el.innerHTML=h+spendSection();
+  const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 
 /* ============================================================
@@ -2486,7 +2552,7 @@ function openBuyCheck(){
   if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
   BUY.photo=null;BUY.wishId=null;
   openSheet(`<h3>買前檢查</h3>
-    <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。</p>
+    <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。本月還可以檢查 <b>${quotaLeft('buy')}</b> 次。</p>
     <div id="buyIn"><div class="drop" onclick="document.getElementById('buyFile').click()">
       <strong>選擇照片</strong><span class="hint">電腦上也可以直接按 Ctrl／⌘ + V 貼上</span>
     </div>
@@ -2550,7 +2616,9 @@ function buyScore(t,i){
   return s;
 }
 async function runBuy(file){
-  if(BUY.busy)return;BUY.busy=true;
+  if(BUY.busy)return;
+  if(!needQuota('buy'))return;
+  BUY.busy=true;
   try{
     BUY.photo=await compress(file);
     buyStep('分析這件娃衣…');
@@ -2559,6 +2627,7 @@ async function runBuy(file){
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
     await buyCompare();
+    spendQuota('buy');
   }catch(e){
     const el=document.getElementById('buyOut');
     if(el)el.innerHTML=`<div class="note" style="margin-top:14px">分析失敗：${esc(e.message)}</div>
@@ -2682,6 +2751,74 @@ function buyToIntake(){
 }
 
 /* ============================================================
+   10b. 花費分析（會員功能）
+   ============================================================ */
+const money=v=>+String(v??'').replace(/[^\d.]/g,'')||0;
+const fmt$=n=>'$'+Math.round(n).toLocaleString();
+function spendStats(){
+  const pi=S.items.filter(i=>money(i.price)>0);
+  const clothes=pi.reduce((a,i)=>a+money(i.price),0);
+  const dolls=S.dolls.reduce((a,d)=>a+money(d.price),0);
+  const saved=S.wish.filter(w=>w.status==='skip').reduce((a,w)=>a+money(w.price),0);
+  // 最近 12 個月，娃衣看購入日期（沒填就用建檔日），娃娃看到家日
+  const now=new Date(),months=[];
+  for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,m:d.getMonth()+1,v:0})}
+  const add=(date,v)=>{const b=months.find(x=>x.key===(date||'').slice(0,7));if(b)b.v+=v};
+  const ds=t=>t?new Date(t).toISOString().slice(0,10):'';
+  pi.forEach(i=>add(i.buyDate||ds(i.createdAt),money(i.price)));
+  S.dolls.forEach(d=>{if(money(d.price))add(d.home||ds(d.createdAt),money(d.price))});
+  // 平均每穿一次的成本（套裝本身不算，穿搭紀錄記的是單品）
+  const cpw=pi.filter(i=>i.category!=='套裝').map(i=>{const w=wearCount(i.id);return {it:i,p:money(i.price),w,c:money(i.price)/Math.max(w,1)}});
+  const worn=cpw.filter(x=>x.w>0),wornSum=worn.reduce((a,x)=>a+x.p,0),wornN=worn.reduce((a,x)=>a+x.w,0);
+  const byCat={};pi.filter(i=>i.category!=='套裝').forEach(i=>byCat[i.category]=(byCat[i.category]||0)+money(i.price));
+  return {clothes,dolls,saved,months,priced:pi.length,
+    avg:wornN?wornSum/wornN:0,
+    best:worn.sort((a,b)=>a.c-b.c).slice(0,3),
+    idle:cpw.filter(x=>x.w===0).sort((a,b)=>b.p-a.p).slice(0,3),
+    cats:Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5)};
+}
+function spendSection(){
+  const head=`<h2 class="sec">花費分析 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>娃衣花費 $12,480</b><span>平均每穿一次 $86</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>最划算：白色蕾絲襯衫</b><span>每穿一次 $24</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>買了還沒穿：小熊斗篷</b><span>$780</span></div></div>
+    </div>
+    <div class="lk-cover"><b>這件衣服，每穿一次花多少錢？</b>
+      <span>每月花費、平均每穿一次的成本、最划算和買了還沒穿的娃衣</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const s=spendStats(),max=Math.max(...s.months.map(m=>m.v),1),tot=s.months.reduce((a,m)=>a+m.v,0);
+  if(!s.priced&&!s.dolls)return head+`<div class="hint">在單品的「編輯」填上價格，或在娃娃資料填金額，這裡就會開始計算。</div>`;
+  const peak=s.months.reduce((a,m)=>m.v>a.v?m:a,s.months[0]);
+  let h=head+`<div class="stat">
+    <div><b>${fmt$(s.clothes)}</b><span>娃衣花費・${s.priced} 件有價格</span></div>
+    <div><b>${fmt$(s.dolls)}</b><span>娃娃花費</span></div>
+    <div><b>${s.avg?fmt$(s.avg):'—'}</b><span>平均每穿一次</span></div>
+    <div><b>${fmt$(s.saved)}</b><span>忍住沒買省下</span></div></div>
+  <div class="mchart">
+    <div class="mcap" id="mcap">最近 12 個月共 <b>${fmt$(tot)}</b></div>
+    <div class="mbars">${s.months.map(m=>`<button class="mcol" data-t="${m.m} 月：${fmt$(m.v)}" aria-label="${m.m} 月花費 ${fmt$(m.v)}"
+      onmouseenter="mcap(this)" onfocus="mcap(this)" onclick="mcap(this)" onmouseleave="mcap()">
+      <i style="height:${m.v?Math.max(3,m.v/max*88):0}%">${m===peak&&m.v?`<em>${fmt$(m.v)}</em>`:''}</i></button>`).join('')}</div>
+    <div class="mlab">${s.months.map((m,i)=>`<span>${i%2?'':m.m+'月'}</span>`).join('')}</div>
+  </div>`;
+  const th=it=>`<div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
+  if(s.best.length)h+=`<p class="mh">最划算的娃衣</p><div class="blist">${s.best.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
+    <div class="tx"><b>${esc(x.it.name)}</b><span>每穿一次 ${fmt$(x.c)}・穿了 ${x.w} 次・${fmt$(x.p)}</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+  if(s.idle.length)h+=`<p class="mh">買了還沒穿過</p><div class="blist">${s.idle.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
+    <div class="tx"><b>${esc(x.it.name)}</b><span>${fmt$(x.p)}・穿一次就回本一點</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+  if(s.cats.length){const cm=s.cats[0][1];h+=`<p class="mh">花最多的類型</p>${s.cats.map(([k,v])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${fmt$(v)}</em></div>
+    <div class="track"><i class="worn" style="width:${v/cm*100}%"></i></div></div>`).join('')}`}
+  return h;
+}
+function mcap(el){
+  const c=document.getElementById('mcap');if(!c)return;
+  if(el){c.innerHTML=`<b>${el.dataset.t}</b>`;document.querySelectorAll('.mcol').forEach(b=>b.classList.toggle('on',b===el))}
+  else{c.innerHTML=c.dataset.d||c.innerHTML;document.querySelectorAll('.mcol').forEach(b=>b.classList.remove('on'))}
+}
+
+/* ============================================================
    11. 設定 / 備份
    ============================================================ */
 function openSettings(){
@@ -2734,7 +2871,8 @@ function openSettings(){
     <div class="card">
       <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
         <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="readForm();setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 0">網頁版測試用。目前會員功能：搭配分析。</p>
+      <p class="hint" style="margin:8px 0 10px">網頁版測試用。本月 AI 使用次數：</p>
+      ${quotaTable()}
     </div>
 
     <h2 class="sec">衣櫃類別</h2>
