@@ -1703,7 +1703,7 @@ async function aiChat(task,content){
 async function waitJob(id){
   // 用「問了幾次」算逾時，不用時間：手機在背景時計時器會停，回來後至少還會再問
   let fails=0;
-  for(let k=0;k<120;k++){
+  for(let k=0;k<200;k++){
     await new Promise(ok=>setTimeout(ok,3000));
     let r;
     try{r=await fetch(backendURL()+'/job/'+encodeURIComponent(id))}catch(e){if(++fails>40)break;continue}
