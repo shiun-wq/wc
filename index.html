@@ -521,8 +521,10 @@ nav.tabs button.plus.on{color:var(--berry)}
 .tip{margin-top:14px;padding:12px 16px;border-radius:var(--r);background:var(--gold-soft);border:1px solid rgba(179,144,96,.25);font-size:13px;line-height:1.7}
 .tip summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px}
 .tip summary::-webkit-details-marker{display:none}
+.tipx{margin-left:auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:18px;line-height:1;color:var(--muted);background:rgba(255,255,255,.5)}
+:root[data-theme="dark"] .tipx{background:rgba(0,0,0,.2)}
 .tip summary::before{content:"";width:18px;height:18px;flex:0 0 18px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B39060' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z'/%3E%3C/svg%3E") center/contain no-repeat}
-.tip summary::after{content:"›";margin-left:auto;color:var(--muted);font-size:18px;transition:transform .2s}
+.tip summary::after{content:"›";margin-left:8px;color:var(--muted);font-size:18px;transition:transform .2s}
 .tip[open] summary::after{transform:rotate(90deg)}
 .tip ul{margin:8px 0 10px;padding-left:20px;color:var(--ink-2)}
 .tip li{margin-bottom:3px}
@@ -1163,7 +1165,7 @@ async function aiSticker(dataURL){
   const model=(S.settings.stickerModel||'').trim()||c.model;
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model,max_tokens:4000,messages:[{role:'user',content:[
+    body:JSON.stringify({model,max_tokens:8192,messages:[{role:'user',content:[
       {type:'image_url',image_url:{url:dataURL}},
       {type:'text',text:STICKER_PROMPT}
     ]}]})
@@ -1395,19 +1397,39 @@ async function callAI(prompt,imageDataURL){
   if(imageDataURL)content.unshift({type:'image_url',image_url:{url:imageDataURL}});
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:2000,messages:[{role:'user',content}]})
+    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   const j=await r.json();
   const m=j.choices?.[0]?.message;
   return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||'';
 }
+// 會思考的模型有時把回應寫到一半就被截斷，這裡盡量把 JSON 補完整再讀
+function repairJSON(t){
+  let out='',stack=[],inStr=false,esc=false;
+  for(const ch of t){
+    out+=ch;
+    if(inStr){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch==='"')inStr=false;continue}
+    if(ch==='"')inStr=true;
+    else if(ch==='{')stack.push('}');else if(ch==='[')stack.push(']');
+    else if(ch==='}'||ch===']')stack.pop();
+  }
+  if(esc)out=out.slice(0,-1);
+  if(inStr)out+='"';
+  out=out.replace(/[,\s]+$/,'').replace(/,\s*"[^"]*"\s*$/,'').replace(/:\s*$/,':null').replace(/,\s*"[^"]*"\s*:\s*null$/,'');
+  while(stack.length)out+=stack.pop();
+  return out.replace(/,\s*([}\]])/g,'$1');
+}
 function parseJSON(txt){
-  const m=txt.replace(/```json|```/g,'').trim();
+  const m=String(txt||'').replace(/```json|```/g,'').trim();
   const s=m.indexOf('{'),a=m.indexOf('[');
   const st=(a>-1&&(a<s||s===-1))?a:s;
+  if(st<0)throw new Error('AI 沒有回傳資料，請再試一次');
   const en=Math.max(m.lastIndexOf('}'),m.lastIndexOf(']'));
-  return JSON.parse(m.slice(st,en+1));
+  try{return JSON.parse(m.slice(st,en+1))}catch(e){}
+  try{return JSON.parse(m.slice(st,en+1).replace(/,\s*([}\]])/g,'$1'))}catch(e){}
+  try{return JSON.parse(repairJSON(m.slice(st)))}
+  catch(e){throw new Error('AI 回傳的內容不完整，請再試一次')}
 }
 const tagPrompt=()=>`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
 {"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
@@ -2009,7 +2031,7 @@ async function onFiles(ev){
   toast('照片已就緒');
 }
 function renderQueue(){
-  document.getElementById('cutTip').innerHTML=freeCut()?cutTip():'';
+  document.getElementById('cutTip').innerHTML=freeCut()&&!S.settings.tipHidden?cutTip():'';
   const el=document.getElementById('queue');
   el.innerHTML=UI.queue.map((q,n)=>`
     <div class="qcard">
@@ -2051,9 +2073,10 @@ function renderQueue(){
 }
 // 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
 function freeCut(){const m=S.settings.stickerMode||'ask';return m==='local'||m==='ask'||(m==='ai'&&(!aiReady()||!canPay('img')))}
+function hideTip(){S.settings.tipHidden=true;save();renderQueue();toast('之後可以在設定的「貼圖」重新打開')}
 function cutTip(){
   return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
-    <summary>免費去背的拍照小撇步</summary>
+    <summary>免費去背的拍照小撇步<button class="tipx" onclick="event.preventDefault();hideTip()" aria-label="不再顯示">×</button></summary>
     <ul>
       <li><b>鋪一張素色的底</b>：白紙、素色桌布、床單都可以，不要有花紋</li>
       <li><b>底色跟衣服差越多越好</b>：淺色衣服用深色底，深色衣服用淺色底</li>
@@ -2061,7 +2084,7 @@ function cutTip(){
       <li><b>衣服整件攤開</b>，不要超出照片邊緣，也不要跟其他東西疊在一起</li>
       <li>還是有沒去乾淨的地方？到單品頁按<b>「修補貼圖」</b>用手指擦掉就好</li>
     </ul>
-    ${S.settings.tipSeen?'':`<button class="btn sm quiet" onclick="event.preventDefault();S.settings.tipSeen=true;save();renderQueue()">知道了</button>`}
+    <button class="btn sm quiet" onclick="event.preventDefault();hideTip()">知道了，不再顯示</button>
   </details>`;
 }
 // 新照片預設沿用上一次選的尺寸；沒選過就用首頁主娃的尺寸
@@ -3067,7 +3090,7 @@ async function callAIImgs(prompt,imgs){
   const content=[...imgs.map(u=>({type:'image_url',image_url:{url:u}})),{type:'text',text:prompt}];
   const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:1500,messages:[{role:'user',content}]})
+    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   const m=(await r.json()).choices?.[0]?.message;
@@ -3398,6 +3421,7 @@ function openSettings(){
       <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
       <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。簡易去背不花錢，但照片要拍在素色背景上，建檔頁有拍照小撇步。</p>
+      ${st.tipHidden?`<button class="btn sm ghost" style="margin-top:10px" onclick="S.settings.tipHidden=false;S.settings.tipSeen=false;save();toast('建檔頁會再顯示拍照小撇步')">重新顯示拍照小撇步</button>`:''}
     </div>
 
     <h2 class="sec">備份</h2>
