@@ -753,8 +753,12 @@ const FGROUPS=[
  ['翅膀尾巴',['翅膀','尾巴']],
  ['道具',['道具','其他']]
 ];
-const FILTERS=['全部','套裝',...FGROUPS.map(g=>g[0])];
-const FMAP=Object.fromEntries(FGROUPS);
+// 使用者可以在設定裡隱藏預設類別，或新增自己的類別
+const customCats=()=>S.settings.customCats||[];
+const allCats=()=>{const b=CATS.map(c=>c[0]),i=b.indexOf('道具');return [...b.slice(0,i),...customCats().filter(c=>!b.includes(c)),...b.slice(i)]};
+const filterNames=()=>['套裝',...FGROUPS.map(g=>g[0]),...customCats()];
+const visibleFilters=()=>['全部',...filterNames().filter(f=>!(S.settings.hiddenCats||[]).includes(f))];
+const fmap=()=>Object.assign(Object.fromEntries(FGROUPS),Object.fromEntries(customCats().map(c=>[c,[c]])));
 const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','配件'];
 // 娃衣尺寸：預設四種，使用者可以在設定裡增減
 const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
@@ -1104,8 +1108,8 @@ function parseJSON(txt){
   const en=Math.max(m.lastIndexOf('}'),m.lastIndexOf(']'));
   return JSON.parse(m.slice(st,en+1));
 }
-const TAG_PROMPT=`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
-{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${CATS.map(c=>c[0]).join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
+const tagPrompt=()=>`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
+{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
 
 parts 規則很重要：
 如果照片裡有多件可以分開穿的單品（例如整套娃衣攤開拍），isSet 設 true，並在 parts 裡逐一列出每一件。
@@ -1168,8 +1172,11 @@ function openSheet(html){
 }
 function hideSheet(){
   // 設定畫面沒按「保存」就關掉時，也把填好的內容存起來
-  if(document.getElementById('s_endpoint')){readForm();save()}
+  const wasSettings=!!document.getElementById('s_endpoint');
+  if(wasSettings){readForm();save()}
   NAV.open=false;document.getElementById('sheet').classList.remove('on');
+  // 設定改了類別、尺寸等，關掉後讓目前的頁面重畫
+  if(wasSettings){const k=UI.tab;if(k==='closet')renderCloset();else if(k==='intake')renderQueue();else if(k==='home')renderHome()}
 }
 function closeSheet(){
   if(!NAV.open)return;
@@ -1415,7 +1422,9 @@ function img(it){return it.cutout||it.photo||''}
 
 function renderCloset(){
   const keep=['catchips','viewchips','sizechips'].map(k=>[k,document.getElementById(k).scrollLeft]);
-  document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat='${f}';renderCloset()">${f}</button>`).join('');
+  const FILTERS=visibleFilters(),FMAP=fmap();
+  if(!FILTERS.includes(UI.cat))UI.cat='全部';
+  document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
   const modes=['全部','從未穿過','超過180天','收藏紀念','最近新增'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';renderCloset()">${f}</button>`).join('');
   const sz=['全部尺寸',...sizes()];
@@ -1520,7 +1529,7 @@ function editItem(id){
     <h3>編輯</h3>
     <label class="f"><span>名稱</span><input type="text" id="e_name" value="${esc(i.name)}"></label>
     <div class="split">
-      <label class="f"><span>類型</span><select id="e_cat">${CATS.map(c=>`<option ${c[0]===i.category?'selected':''}>${c[0]}</option>`).join('')}</select></label>
+      <label class="f"><span>類型</span><select id="e_cat">${allCats().map(c=>`<option ${c===i.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
       <label class="f"><span>季節</span><select id="e_season"><option value=""></option>${['春','夏','秋','冬','四季'].map(s=>`<option ${s===i.season?'selected':''}>${s}</option>`).join('')}</select></label>
     </div>
     <div class="split">
@@ -1583,7 +1592,7 @@ function renderQueue(){
         <input type="text" placeholder="名稱（可留給 AI 填）" value="${esc(q.name)}" oninput="UI.queue[${n}].name=this.value">
         <div class="split" style="margin-top:6px">
           <select onchange="UI.queue[${n}].category=this.value;UI.queue[${n}].isSet=(this.value==='套裝');renderQueue()">
-            ${CATS.map(c=>`<option ${c[0]===q.category?'selected':''}>${c[0]}</option>`).join('')}
+            ${allCats().map(c=>`<option ${c===q.category?'selected':''}>${esc(c)}</option>`).join('')}
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
@@ -1671,7 +1680,7 @@ async function analyze(n){
   if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
   q.analyzing=true;renderQueue();
   try{
-    const r=parseJSON(await callAI(TAG_PROMPT,q.photo));
+    const r=parseJSON(await callAI(tagPrompt(),q.photo));
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
     q.isSet=!!r.isSet;
@@ -2360,7 +2369,7 @@ async function runBuy(file){
   try{
     BUY.photo=await compress(file);
     buyStep('分析這件娃衣…');
-    const r=parseJSON(await callAI(TAG_PROMPT,BUY.photo));
+    const r=parseJSON(await callAI(tagPrompt(),BUY.photo));
     const t={name:r.name||'',category:r.isSet?'套裝':(r.category||'其他'),isSet:!!r.isSet,
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
@@ -2536,6 +2545,19 @@ function openSettings(){
     <button class="btn ghost wide" style="margin-top:8px" onclick="diagnose(this)">連不上？跑一次診斷</button>
     <p class="warn" style="margin-top:8px">${window.self!==window.top?'注意：這個頁面目前嵌在別的視窗裡執行。如果是在 Claude 的預覽視窗，對外連線會被沙箱擋掉，必須把 HTML 下載後用瀏覽器開啟。':'密鑰只存在這台裝置。'}</p>
 
+    <h2 class="sec">衣櫃類別</h2>
+    <div class="card">
+      <p class="hint" style="margin:0 0 8px">點一下可以在衣櫃裡隱藏／顯示這個類別（深色的是顯示中）。</p>
+      <div class="parts" id="s_cats" style="margin-top:0">${filterNames().map(f=>`<button type="button" class="${(st.hiddenCats||[]).includes(f)?'':'on'}" onclick="toggleCat(this,decodeURIComponent('${encodeURIComponent(f)}'))">${esc(f)}</button>`).join('')}</div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="s_newcat" class="grow" placeholder="例如 和服、泳裝、內搭" maxlength="10" onkeydown="if(event.key==='Enter')addCat()">
+        <button class="btn sm quiet" onclick="addCat()">新增</button>
+      </div>
+      ${customCats().length?`<p class="hint" style="margin:12px 0 6px">自訂的類別（點一下刪除）</p>
+      <div class="parts" style="margin-top:0">${customCats().map(c=>`<button type="button" class="on sizetag" onclick="delCat(decodeURIComponent('${encodeURIComponent(c)}'))">${esc(c)}<i>×</i></button>`).join('')}</div>`:''}
+      <p class="hint" style="margin:10px 0 0">新增的類別也會出現在建檔的類型選單，AI 分析時也會用。</p>
+    </div>
+
     <h2 class="sec">娃衣尺寸</h2>
     <div class="card">
       <div class="parts" id="s_sizes" style="margin-top:0">${sizes().map(z=>`<button type="button" class="on sizetag" onclick="delSize(decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}<i>×</i></button>`).join('')}</div>
@@ -2601,6 +2623,27 @@ async function setTheme(t){
   S.settings.theme=t;applyTheme();
   document.querySelectorAll('#s_theme button').forEach((b,i)=>b.classList.toggle('on',['light','dark','auto'][i]===t));
   await save();
+}
+async function toggleCat(btn,f){
+  const h=S.settings.hiddenCats=S.settings.hiddenCats||[];
+  if(h.includes(f))h.splice(h.indexOf(f),1);else h.push(f);
+  btn.classList.toggle('on',!h.includes(f));
+  await save();
+}
+async function addCat(){
+  const el=document.getElementById('s_newcat'),c=el.value.trim();
+  if(!c)return;
+  if(allCats().includes(c)||filterNames().includes(c)){toast('已經有這個類別');return}
+  readForm();S.settings.customCats=[...customCats(),c];await save();openSettings();toast('已新增 '+c);
+}
+async function delCat(c){
+  const used=S.items.filter(i=>i.category===c).length;
+  if(!confirm(used?`有 ${used} 件娃衣是「${c}」，刪除後會改成「其他」。確定嗎？`:`刪除類別「${c}」？`))return;
+  readForm();
+  S.settings.customCats=customCats().filter(x=>x!==c);
+  S.settings.hiddenCats=(S.settings.hiddenCats||[]).filter(x=>x!==c);
+  S.items.forEach(i=>{if(i.category===c)i.category='其他'});
+  await save();openSettings();
 }
 async function addSize(){
   const el=document.getElementById('s_newsize'),z=el.value.trim();
@@ -2716,7 +2759,7 @@ async function diagnose(btn){
     <button class="btn wide" style="margin-top:12px" onclick="openSettings()">回設定</button>`);
 }
 function exportBackup(withImages){
-  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,sizes:S.settings.sizes}));
+  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,sizes:S.settings.sizes,customCats:customCats(),hiddenCats:S.settings.hiddenCats||[]}));
   if(!withImages){
     clone.items.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
     clone.wears.forEach(w=>w.photo=null);
@@ -2755,6 +2798,8 @@ async function importBackup(ev){
       S.wish=S.wish.concat((d.wish||[]).filter(i=>!hx.has(i.id)));
     }
     (d.sizes||[]).forEach(z=>{if(!S.settings.sizes.includes(z))S.settings.sizes.push(z)});
+    S.settings.customCats=[...new Set([...customCats(),...(d.customCats||[])])];
+    if(mode&&d.hiddenCats)S.settings.hiddenCats=d.hiddenCats;
     await save();closeSheet();go('home');
     toast(`已還原 ${S.items.length} 件`);
   }catch(e){toast('還原失敗：'+e.message)}
