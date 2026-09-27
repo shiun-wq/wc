@@ -640,6 +640,31 @@ nav.tabs button.plus.on{color:var(--berry)}
 .remember{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--ink-2)}
 .remember input{width:18px;height:18px;accent-color:var(--berry)}
 .hint a{color:var(--berry-deep);font-weight:600}
+.keep.press{background:var(--gold-soft)}
+.drawer button{position:relative}
+.pbadge{position:absolute;right:3px;top:2px;font-style:normal;font-size:12px}
+.memlink{margin-top:12px;gap:8px}
+.memlink span{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--ink);letter-spacing:.06em}
+.memlink b{font-family:var(--num);font-size:24px}
+.memlink small{flex:1;font-size:12px;color:var(--muted)}
+.memcard{display:flex;gap:12px;padding:12px;margin-bottom:10px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.memth{width:72px;height:72px;flex:0 0 72px;border-radius:14px;background:var(--swatch);overflow:hidden}
+.memth img{width:100%;height:100%;object-fit:contain;padding:4px;filter:sepia(.35) saturate(.8)}
+.memcard .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.memcard .bd>span{font-size:12px;color:var(--muted)}
+.memo{margin:4px 0 0;font-family:var(--serif);font-size:13px;color:var(--ink-2)}
+.idea-ico{background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z'/%3E%3Cpath d='M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z'/%3E%3C/svg%3E") center/20px no-repeat,
+  linear-gradient(135deg,#C9A36A,#9E7A43)!important}
+.idea{margin-top:16px;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.idea-st{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
+.idea-st div{position:relative;flex:0 0 76px;text-align:center}
+.idea-st img{width:76px;height:76px;object-fit:contain;padding:4px;border-radius:14px;background:var(--swatch)}
+.idea-st i{position:absolute;right:2px;top:2px;font-style:normal;font-size:12px}
+.idea-st span{display:block;font-size:10.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idea>b{font-family:var(--serif);font-size:16px}
+.idea p{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--ink-2)}
+.idea .tipline{padding:8px 10px;border-radius:10px;background:var(--gold-soft);color:var(--ink)}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -732,6 +757,9 @@ nav.tabs button.plus.on{color:var(--berry)}
     <!-- 考慮中 -->
     <section class="view" id="v-wish"><div id="wishList"></div></section>
 
+    <!-- 回憶箱 -->
+    <section class="view" id="v-memory"><div id="memoryView"></div></section>
+
     <!-- 錢包 -->
     <section class="view" id="v-wallet"><div id="walletView"></div></section>
 
@@ -766,6 +794,9 @@ nav.tabs button.plus.on{color:var(--berry)}
 
     <!-- 搭配 -->
     <section class="view" id="v-studio">
+      <button class="buybar" onclick="openIdea()" style="margin-bottom:12px">
+        <i class="idea-ico"></i><span><b>今天去哪裡拍？</b>選個地點，隨機或讓 AI 幫你搭一套</span><em>›</em>
+      </button>
       <div id="canvas"></div>
       <div class="ctrl" id="pcCtrl" style="display:none">
         <div class="row" style="margin-bottom:8px">
@@ -880,7 +911,7 @@ const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','�
 const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
 const sizes=()=>S.settings.sizes;
 
-let S={items:[],sets:[],looks:[],wears:[],dolls:[],wish:[],settings:{}};
+let S={items:[],sets:[],looks:[],wears:[],dolls:[],wish:[],memory:[],settings:{}};
 let UI={tab:'home',lastTab:'home',size:'全部尺寸',wishTab:'wait',cat:'全部',mode:'全部',queue:[],canvas:[],selPc:null,detailImg:'cutout'};
 
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
@@ -897,7 +928,7 @@ async function load(){
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
   // 改版：預設改成每次詢問
   if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
-  S.dolls=S.dolls||[];S.wish=S.wish||[];
+  S.dolls=S.dolls||[];S.wish=S.wish||[];S.memory=S.memory||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
     const old={'10cm 棉花娃':'10cm','15cm 棉花娃':'15cm','20cm 棉花娃':'20cm'};
@@ -1178,7 +1209,8 @@ const QUOTA={
   tag:{name:'AI 建檔分析',free:10,member:150},
   buy:{name:'買前檢查',free:3,member:30},
   img:{name:'AI 出圖去背',free:0,member:30},
-  wearid:{name:'穿搭照辨識',free:3,member:50}
+  wearid:{name:'穿搭照辨識',free:3,member:50},
+  idea:{name:'AI 搭配建議',free:3,member:50}
 };
 function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
 const quotaMax=k=>isMember()?QUOTA[k].member:QUOTA[k].free;
@@ -1212,7 +1244,7 @@ function quotaTable(){
 
 /* ---- 點數（非會員也能用 AI）----
    先用每月免費／會員額度，用完才扣點數。點數要花在哪、多少錢一包都在這裡調。 */
-const POINT_COST={tag:1,wearid:1,buy:3,img:5};
+const POINT_COST={tag:1,wearid:1,buy:3,img:5,idea:1};
 const PACKS=[{pts:30,price:30},{pts:100,price:90,tag:'熱門'},{pts:220,price:180,tag:'最划算'}];
 const TEST_CODES={DOLL2026:20,WELCOME:10};   // 網頁版測試用兌換碼，上架後改由伺服器驗證
 function wallet(){return S.wallet=S.wallet||{points:0,log:[],codes:[]}}
@@ -1399,7 +1431,7 @@ const TABS=[
  ['insight','洞察','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
 ];
 // 不在底部分頁裡的子頁面：從首頁進入，左上角有返回
-const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'娃娃櫃',wallet:'錢包'};
+const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'娃娃櫃',wallet:'錢包',memory:'回憶箱'};
 function buildTabs(){
   const cur=UI.tab in TITLES?'home':UI.tab;
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,p])=>
@@ -1418,6 +1450,7 @@ function go(k,fromPop){
   document.getElementById('title').textContent=sub?TITLES[k]:'娃衣衣櫃';
   document.querySelector('header.top').classList.toggle('subview',sub);
   window.scrollTo(0,0);
+  document.getElementById('topsub').textContent='';
   if(k==='home')renderHome();
   if(k==='closet')renderCloset();
   if(k==='intake')renderQueue();
@@ -1427,6 +1460,7 @@ function go(k,fromPop){
   if(k==='wish')renderWish();
   if(k==='dolls')renderDolls();
   if(k==='wallet')renderWallet();
+  if(k==='memory')renderMemory();
   updateWalletChip();
 }
 function navBack(){if(history.state&&history.state.view)history.back();else go(UI.lastTab||'home')}
@@ -1481,7 +1515,7 @@ function renderHome(){
   const used=items.length?Math.round(items.filter(i=>wearCount(i.id)>0).length/items.length*100):0;
   const wait=S.wish.filter(w=>w.status==='wait'),skip=S.wish.filter(w=>w.status==='skip');
   const saved=skip.reduce((a,w)=>a+(+w.price||0),0);
-  const cold=items.filter(i=>!i.keepsake&&idle(i)&&img(i))
+  const cold=items.filter(i=>isPressed(i)&&img(i))
     .sort((a,b)=>(lastWear(a.id)||'0').localeCompare(lastWear(b.id)||'0')).slice(0,8);
   const recent=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
   document.getElementById('topsub').textContent='';
@@ -1521,7 +1555,8 @@ function renderHome(){
     ${skip.length?`<p class="hsaved">已經忍住 <b>${skip.length}</b> 件${saved?`，省下 <b>$${saved.toLocaleString()}</b>`:''}</p>`:''}
   </section>
 
-  ${cold.length?`<h2 class="sec">好久沒穿的</h2>
+  ${S.memory.length?`<button class="hstat memlink" onclick="go('memory')"><span>回憶箱</span><b>${S.memory.length}</b><small>件娃衣的故事</small><em>›</em></button>`:''}
+  ${cold.length?`<h2 class="sec">壓箱底的娃衣</h2>
   <p class="hint" style="margin:-4px 0 10px">給它們一點出場機會吧</p>
   <div class="hscroll">${cold.map(i=>{const l=lastWear(i.id);return `<button class="piece" onclick="openItem('${i.id}')">
     <div class="sw"><img src="${img(i)}" alt=""><span class="tag">${l?days(l)+' 天':'沒穿過'}</span></div>
@@ -1530,7 +1565,7 @@ function renderHome(){
   <h2 class="sec">最近穿搭</h2>
   ${recent.length?`<div class="blist">${recent.map(w=>`<div class="rowitem" onclick="go('wear')">
     <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
-    <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b><span>${w.itemIds.map(i=>esc((S.items.find(x=>x.id===i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+    <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b><span>${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
     <div class="rt"><button class="btn sm quiet" onclick="event.stopPropagation();openShare('wear','${w.id}')">小卡</button></div></div>`).join('')}</div>
     <button class="btn ghost wide sm" style="margin-top:10px" onclick="go('wear')">全部紀錄</button>`
   :`<div class="empty"><strong>還沒有穿搭紀錄</strong>幫娃娃換好衣服後，按上面的「記錄穿搭」</div>`}
@@ -1730,6 +1765,76 @@ async function recheckWish(id){
 }
 
 /* ============================================================
+   0d. 壓箱底 + 回憶箱
+   壓箱底：自動判斷（建檔 60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
+   回憶箱：賣掉、送人、壞掉的娃衣移到 S.memory，衣櫃和分析都不再算它們
+   ============================================================ */
+function isPressed(i){
+  if(i.keepsake||i.category==='套裝')return false;
+  const l=lastWear(i.id);
+  if(l)return days(l)>=180;
+  return (Date.now()-(i.createdAt||Date.now()))/864e5>=60;
+}
+const MEM_REASONS=['賣掉了','送人了','交換了','壞掉了','遺失了','其他'];
+function anyItem(id){return S.items.find(x=>x.id===id)||S.memory.find(x=>x.id===id)}
+let MV={};
+function archiveItem(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  MV={id,reason:'賣掉了',date:today(),price:'',memo:''};
+  openSheet(`<h3>移到回憶箱</h3>
+    <div class="row" style="gap:12px;margin-bottom:14px"><div class="th memth"><img src="${img(i)}" alt=""></div>
+      <div><b>${esc(i.name)}</b><div class="hint">穿過 ${wearCount(id)} 次${i.price?`・買 ${fmt$(money(i.price))}`:''}</div></div></div>
+    <label class="f"><span>它去哪裡了</span><div class="parts" id="mv_r" style="margin-top:0">${MEM_REASONS.map(r=>`<button type="button" class="${r===MV.reason?'on':''}" onclick="MV.reason='${r}';document.querySelectorAll('#mv_r button').forEach(b=>b.classList.toggle('on',b.textContent==='${r}'));document.getElementById('mv_p').style.display='${r}'==='賣掉了'?'':'none'">${r}</button>`).join('')}</div></label>
+    <div class="split">
+      <label class="f"><span>日期</span><input type="date" value="${MV.date}" onchange="MV.date=this.value"></label>
+      <label class="f" id="mv_p"><span>賣出價格</span><input type="number" inputmode="decimal" placeholder="選填" oninput="MV.price=this.value"></label>
+    </div>
+    <label class="f"><span>留一句回憶（選填）</span><input type="text" maxlength="60" placeholder="第一次跟團買的洋裝，陪小白去了好多地方" oninput="MV.memo=this.value"></label>
+    <p class="hint" style="margin:-4px 0 12px">移到回憶箱後，衣櫃、搭配和分析都不會再算它，但穿搭紀錄會保留。之後也可以找回來。</p>
+    <button class="btn wide" onclick="saveArchive()">放進回憶箱</button>`);
+}
+async function saveArchive(){
+  const k=S.items.findIndex(x=>x.id===MV.id);if(k<0)return;
+  const i=S.items.splice(k,1)[0];
+  Object.assign(i,{archivedAt:MV.date||today(),reason:MV.reason,soldPrice:MV.reason==='賣掉了'?MV.price:'',memo:MV.memo});
+  S.memory.push(i);
+  UI.canvas=UI.canvas.filter(p=>p.itemId!==i.id);
+  await save();closeSheet();renderCloset();toast('已放進回憶箱');
+}
+function renderMemory(){
+  const el=document.getElementById('memoryView');
+  const list=S.memory.slice().sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||''));
+  const back=list.reduce((a,i)=>a+money(i.soldPrice),0);
+  if(!list.length){el.innerHTML=`<div class="empty"><strong>回憶箱是空的</strong>賣掉、送人或壞掉的娃衣，可以在單品頁按「移到回憶箱」，留下它們的故事</div>`;return}
+  el.innerHTML=`<div class="stat">
+      <div><b>${list.length}</b><span>件娃衣的回憶</span></div>
+      <div><b>${back?fmt$(back):'—'}</b><span>賣出回收</span></div></div>
+    ${list.map(i=>{
+      const ws=S.wears.filter(w=>w.itemIds.includes(i.id));
+      const dl={};ws.forEach(w=>{const n=(S.dolls.find(d=>d.id===w.dollId)||{}).name||w.dollName;if(n)dl[n]=(dl[n]||0)+1});
+      const fav=Object.entries(dl).sort((a,b)=>b[1]-a[1])[0];
+      const stay=i.createdAt?Math.max(1,Math.round((new Date(i.archivedAt)-i.createdAt)/864e5)):null;
+      return `<div class="memcard">
+        <div class="th memth"><img src="${img(i)}" alt=""></div>
+        <div class="bd"><b>${esc(i.name)}</b>
+          <div class="lmeta"><span class="dchip none">${esc(i.reason||'回憶')}</span><span>${esc(i.archivedAt||'')}</span></div>
+          <span>${stay?`陪伴了 ${stay} 天・`:''}穿過 ${ws.length} 次${fav?`・最常穿在 ${esc(fav[0])} 身上`:''}${i.soldPrice?`・賣了 ${fmt$(money(i.soldPrice))}`:''}</span>
+          ${i.memo?`<p class="memo">「${esc(i.memo)}」</p>`:''}
+          <div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="restoreItem('${i.id}')">找回來</button>
+            <button class="btn sm ghost" style="color:var(--muted)" onclick="delMemory('${i.id}')">刪除</button></div>
+        </div></div>`}).join('')}`;
+}
+async function restoreItem(id){
+  const k=S.memory.findIndex(x=>x.id===id);if(k<0)return;
+  const i=S.memory.splice(k,1)[0];delete i.archivedAt;delete i.reason;delete i.soldPrice;delete i.memo;
+  S.items.push(i);await save();renderMemory();toast('已放回衣櫃');
+}
+async function delMemory(id){
+  if(!confirm('永久刪除這件的回憶？'))return;
+  S.memory=S.memory.filter(x=>x.id!==id);await save();renderMemory();
+}
+
+/* ============================================================
    6. 衣櫃
    ============================================================ */
 function wearCount(id){return S.wears.filter(w=>w.itemIds.includes(id)).length}
@@ -1742,7 +1847,7 @@ function renderCloset(){
   const FILTERS=visibleFilters(),FMAP=fmap();
   if(!FILTERS.includes(UI.cat))UI.cat='全部';
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
-  const modes=['全部','從未穿過','超過180天','收藏紀念','最近新增'];
+  const modes=['全部','壓箱底','從未穿過','收藏紀念','最近新增'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';renderCloset()">${f}</button>`).join('');
   const sz=['全部尺寸',...sizes()];
   if(!sz.includes(UI.size))UI.size='全部尺寸';
@@ -1755,7 +1860,7 @@ function renderCloset(){
   else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(i.category));
   if(q)list=list.filter(i=>[i.name,i.brand,i.shop,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
   if(UI.mode==='從未穿過')list=list.filter(i=>wearCount(i.id)===0);
-  if(UI.mode==='超過180天')list=list.filter(i=>{const l=lastWear(i.id);return !l||days(l)>180});
+  if(UI.mode==='壓箱底')list=list.filter(isPressed);
   if(UI.mode==='收藏紀念')list=list.filter(i=>i.keepsake);
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
@@ -1773,7 +1878,7 @@ function renderCloset(){
     return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
       <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}
         <span class="tag">${c?`穿過 ${c} 次`:'未穿過'}</span>
-        ${i.keepsake?'<span class="keep">🎀</span>':''}
+        ${i.keepsake?'<span class="keep">🎀</span>':isPressed(i)?'<span class="keep press" title="壓箱底">📦</span>':''}
       </div>
       <div class="nm">${esc(i.name)}</div>
       <div class="mt">${esc(i.category)}${d!=null?`・${d} 天前`:''}</div>
@@ -1824,7 +1929,10 @@ function openItem(id){
       <button class="btn quiet grow" onclick="addToCanvas('${id}');closeSheet();go('studio')">加進搭配</button>
       <button class="btn ghost grow" onclick="editItem('${id}')">編輯</button>
     </div>
-    <button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delItem('${id}')">刪除這件</button>
+    <div class="row" style="margin-top:8px">
+      <button class="btn ghost grow" onclick="archiveItem('${id}')">移到回憶箱</button>
+      <button class="btn ghost grow" style="color:var(--muted)" onclick="delItem('${id}')">刪除這件</button>
+    </div>
   `);
 }
 function dlSticker(id){
@@ -2202,13 +2310,16 @@ function removePiece(){UI.canvas.splice(UI.selPc,1);UI.selPc=null;renderCanvas()
 function clearCanvas(){UI.canvas=[];UI.selPc=null;renderCanvas()}
 function openDrawer(){
   const sets=S.sets.filter(s=>S.items.some(i=>i.setId===s.id&&i.category!=='套裝'));
+  let list=S.items.filter(i=>i.category!=='套裝');
+  if(UI.pressFirst)list=list.slice().sort((a,b)=>isPressed(b)-isPressed(a));
   openSheet(`
     <h3>加入娃衣</h3>
+    <label class="remember" style="margin:0 0 10px"><input type="checkbox" ${UI.pressFirst?'checked':''} onchange="UI.pressFirst=this.checked;openDrawer()"> 壓箱底的娃衣排前面，給它們一點出場機會 📦</label>
     ${sets.length?`<div class="hint" style="margin-bottom:8px">整套加入：</div>
       <div class="chips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}')">${esc(s.name)}</button>`).join('')}</div>`:''}
     <div class="hint" style="margin:6px 0">單件加入（點一下就放上畫布）：</div>
-    <div class="drawer">${S.items.filter(i=>i.category!=='套裝').map(i=>
-      `<button onclick="addToCanvas('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt=""></button>`).join('')}</div>
+    <div class="drawer">${list.map(i=>
+      `<button onclick="addToCanvas('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="">${isPressed(i)?'<i class="pbadge">📦</i>':''}</button>`).join('')}</div>
     <button class="btn wide" style="margin-top:12px" onclick="closeSheet()">完成</button>
   `);
 }
@@ -2244,10 +2355,10 @@ function renderLooks(){
 }
 // 新增或編輯 Look：名稱 + 搭給哪隻娃娃
 let LK={};
-function lookSheet(id){
+function lookSheet(id,presetName){
   const l=id?S.looks.find(x=>x.id===id):null;
   if(!l&&!UI.canvas.length){toast('畫布是空的');return}
-  LK={id:l?l.id:null,name:l?l.name:'Look '+String(S.looks.length+1).padStart(3,'0'),dollId:l?(l.dollId||null):((mainDoll()||{}).id||null)};
+  LK={id:l?l.id:null,name:l?l.name:(presetName||'Look '+String(S.looks.length+1).padStart(3,'0')),dollId:l?(l.dollId||null):((mainDoll()||{}).id||null)};
   openSheet(`<h3>${l?'編輯 Look':'存成 Look'}</h3>
     <label class="f"><span>名稱</span><input type="text" id="lk_name" value="${esc(LK.name)}" oninput="LK.name=this.value"></label>
     ${S.dolls.length?`<label class="f"><span>搭給哪隻娃娃</span><div class="parts" id="lk_doll" style="margin-top:0">
@@ -2316,7 +2427,7 @@ function renderMatch(){
   if(m.versatile.length)h+=`<p class="mh">最萬搭的單品</p><div class="blist">${m.versatile.map((x,i)=>row(x.it,`${i===0?'👑 ':''}${esc(x.it.name)}`,`跟 ${x.n} 件不同單品搭過・穿了 ${x.w} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
   if(m.looks.length)h+=`<p class="mh">最常穿的 Look</p><div class="blist">${m.looks.map(x=>{const d=lookDoll(x.l);return row(S.items.find(i=>i.id===x.l.itemIds[0]),esc(x.l.name),`穿了 ${x.n} 次${d?`・${esc(d.name)}`:''}`,`loadLook('${x.l.id}')`)}).join('')}</div>`;
   if(m.combos.length)h+=`<p class="mh">總是一起出場</p><div class="blist">${m.combos.map(x=>{
-    const [a,b]=x.ids.map(i=>S.items.find(it=>it.id===i));
+    const [a,b]=x.ids.map(i=>S.items.find(it=>it.id===i));if(!a||!b)return '';
     const saved=S.looks.some(l=>x.ids.every(i=>l.itemIds.includes(i)));
     return `<div class="rowitem"><div class="th duo"><img src="${img(a)}" alt=""><img src="${img(b)}" alt=""></div>
       <div class="tx"><b>${esc(a.name)} × ${esc(b.name)}</b><span>一起穿了 ${x.n} 次</span></div>
@@ -2352,6 +2463,125 @@ async function wearLook(id){
   const d=lookDoll(l)||mainDoll();
   S.wears.push({id:uid('w'),date:today(),dollName:d?d.name:'',dollId:d?d.id:null,itemIds:l.itemIds.slice(),lookId:id,photo:null,note:''});
   await save();toast('已記錄今天穿了 '+l.name);renderLooks();
+}
+
+/* ============================================================
+   8c. 搭配靈感：選地點 → 隨機抽一套（免費）或 AI 建議（用額度／點數）
+   ============================================================ */
+const SCENES=['咖啡廳','外拍','公園野餐','看展','逛街','居家','節日派對','下雨天'];
+const SCENE_TIP={
+  '咖啡廳':'靠窗的位子光線最好，拿杯飲料或甜點當道具，娃娃坐在桌邊拍 45 度。',
+  '外拍':'陰天或傍晚的光最柔，找有層次的背景（花叢、樹影），把鏡頭放低到娃娃視線高度。',
+  '公園野餐':'鋪一塊格紋布，放小籃子和水果，從上往下拍平鋪構圖也很可愛。',
+  '看展':'找白牆或作品旁邊的留白，娃娃小小一隻站在畫面角落，很有故事感。',
+  '逛街':'櫥窗倒影、招牌、樓梯都是好背景，可以拍娃娃「逛到一半」的抓拍感。',
+  '居家':'用書桌、床邊、窗台布置小場景，暖黃燈光拍起來很溫馨。',
+  '節日派對':'加一點彩帶、氣球或小蛋糕，背景用散景燈串最有氣氛。',
+  '下雨天':'拍窗上的雨滴當前景，娃娃配小雨傘，色調偏冷一點更有味道。'
+};
+let IDEA={};
+function ideaPool(){
+  const d=S.dolls.find(x=>x.id===IDEA.dollId);
+  return S.items.filter(i=>i.category!=='套裝'&&img(i)&&(!d||!d.size||!(i.sizes||[]).length||i.sizes.includes(d.size)));
+}
+function openIdea(){
+  IDEA=Object.assign({scene:IDEA.scene||SCENES[0],custom:'',dollId:(mainDoll()||{}).id||null,press:IDEA.press??true},{res:null});
+  drawIdea();
+}
+function drawIdea(){
+  const r=IDEA.res,n=ideaPool().length;
+  openSheet(`<h3>今天去哪裡拍？</h3>
+    <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div>
+    <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&b.textContent===IDEA.scene))">
+    ${S.dolls.length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${S.dolls.map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
+    <label class="remember" style="margin-top:12px"><input type="checkbox" ${IDEA.press?'checked':''} onchange="IDEA.press=this.checked"> 優先用壓箱底的娃衣 📦</label>
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost grow" onclick="ideaRandom()">隨機抽一套<small class="left">免費</small></button>
+      <button class="btn grow" onclick="ideaAI(this)">AI 搭配建議<small class="left">${quotaLeft('idea')?`剩 ${quotaLeft('idea')}`:`${POINT_COST.idea} 點`}</small></button>
+    </div>
+    ${n<2?`<p class="hint" style="margin-top:10px">衣櫃裡合身的娃衣還太少，先多建檔幾件吧。</p>`:''}
+    <div id="id_out">${r?ideaResult(r):''}</div>`);
+}
+const sceneName=()=>IDEA.custom||IDEA.scene;
+function ideaResult(r){
+  const its=r.ids.map(i=>S.items.find(x=>x.id===i)).filter(Boolean);
+  return `<div class="idea">
+    <div class="idea-st">${its.map(i=>`<div><img src="${img(i)}" alt="">${isPressed(i)?'<i>📦</i>':''}<span>${esc(i.name)}</span></div>`).join('')}</div>
+    <b>${esc(r.title)}</b>
+    <p>${esc(r.reason)}</p>
+    ${r.tip?`<p class="tipline">📷 ${esc(r.tip)}</p>`:''}
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm ghost" onclick="${r.ai?'ideaAI(this)':'ideaRandom()'}">再換一套</button>
+      <button class="btn sm quiet grow" onclick="ideaToCanvas()">放到畫布</button>
+      <button class="btn sm grow" onclick="ideaToCanvas();lookSheet(null,IDEA.res.title)">存成 Look</button>
+    </div></div>`;
+}
+function showIdea(r){
+  IDEA.res=r;const el=document.getElementById('id_out');
+  if(el){el.innerHTML=ideaResult(r);el.scrollIntoView({behavior:'smooth',block:'nearest'})}
+}
+// 免費版：先挑一件主角，再挑同風格／同色系的其他部位；壓箱底加權
+function ideaRandom(){
+  const pool=ideaPool();if(pool.length<2){toast('合身的娃衣還太少');return}
+  const w=i=>1+(IDEA.press&&isPressed(i)?3:0);
+  const pick=(list,base)=>{
+    if(!list.length)return null;
+    const sc=list.map(i=>{let s=w(i);if(base){
+      const bs=new Set((base.styles||[]).map(x=>x.name)),bc=new Set((base.colors||[]).map(colorFam));
+      s+=(i.styles||[]).filter(x=>bs.has(x.name)).length*2+(i.colors||[]).filter(c=>bc.has(colorFam(c))).length}
+      return s});
+    let t=Math.random()*sc.reduce((a,b)=>a+b,0);
+    for(let k=0;k<list.length;k++){t-=sc[k];if(t<=0)return list[k]}
+    return list[list.length-1];
+  };
+  const by=slot=>pool.filter(i=>slotOf(i.category)===slot);
+  const dress=by('dress'),top=by('top'),bottom=by('bottom');
+  const useDress=dress.length&&(!top.length||!bottom.length||Math.random()<.4);
+  const base=useDress?pick(dress):pick(top.length?top:pool);
+  const out=[base];
+  const add=(slot,p)=>{if(Math.random()<p){const x=pick(by(slot).filter(i=>!out.includes(i)),base);if(x)out.push(x)}};
+  if(!useDress&&slotOf(base.category)==='top')add('bottom',1);
+  add('outer',.3);add('head',.6);add('socks',.3);add('shoes',.5);add('bag',.3);add('acc',.3);
+  const styles=[...new Set(out.flatMap(i=>(i.styles||[]).map(x=>x.name)))].slice(0,2);
+  const pressed=out.filter(isPressed);
+  showIdea({ai:false,ids:out.map(i=>i.id),title:`${sceneName()}的${styles[0]||'日常'}搭配`,
+    reason:`以「${base.name}」當主角${out.length>1?`，搭配${out.slice(1).map(i=>'「'+i.name+'」').join('、')}`:''}${styles.length?`，整體是${styles.join('、')}的感覺`:''}。${pressed.length?`其中 ${pressed.length} 件是壓箱底的，剛好讓它們出來透透氣。`:''}`,
+    tip:SCENE_TIP[IDEA.scene]&&!IDEA.custom?SCENE_TIP[IDEA.scene]:''});
+}
+async function ideaAI(btn){
+  if(!aiReady()){toast('請先在設定填好 API');return}
+  const pool=ideaPool();if(pool.length<2){toast('合身的娃衣還太少');return}
+  if(!needQuota('idea'))return;
+  const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> 想一想…';btn.disabled=true;
+  const d=S.dolls.find(x=>x.id===IDEA.dollId);
+  const list=pool.slice(0,150).map(i=>`${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.styles||[]).map(x=>x.name).join('/')}|${(i.motifs||[]).join('/')}|${isPressed(i)?'壓箱底':''}`).join('\n');
+  const prompt=`你是娃衣穿搭顧問。使用者要帶娃娃${d?`「${d.name}」`:''}去「${sceneName()}」拍照。
+下面是衣櫃裡合身的娃衣，格式 id|名稱|類型|顏色|風格|圖案|是否壓箱底：
+${list}
+
+請搭一套適合這個地點拍照的造型，只回傳 JSON，不要其他文字：
+{"title":"10字內的造型名稱","itemIds":["只能用清單裡的id"],"reason":"60字內，說明為什麼適合這個地點","tip":"40字內的拍照小建議"}
+規則：通常是 上衣+下身 或 洋裝，再視情況加帽子、外套、鞋子、配件，3到6件；不要同一個部位放兩件；${IDEA.press?'有標記「壓箱底」的請優先考慮，讓它們有機會出場；':''}每次給不一樣的組合。`;
+  try{
+    const r=parseJSON(await callAI(prompt));
+    const ids=(r.itemIds||[]).filter(i=>pool.some(x=>x.id===i));
+    if(!ids.length)throw new Error('AI 沒有給出衣櫃裡的娃衣，再試一次');
+    spendQuota('idea');
+    showIdea({ai:true,ids,title:r.title||sceneName()+'造型',reason:r.reason||'',tip:r.tip||''});
+  }catch(e){toast('建議失敗：'+e.message)}
+  btn.innerHTML=old;btn.disabled=false;
+}
+// 依部位自動排在畫布上
+const SLOT_POS={head:[50,14,90],outer:[50,40,150],top:[50,38,130],dress:[50,48,160],bottom:[50,64,130],socks:[50,80,80],shoes:[50,90,90],bag:[80,58,80],acc:[22,42,70]};
+function ideaToCanvas(){
+  const ids=IDEA.res.ids;const used={};
+  UI.canvas=ids.map(id=>{
+    const it=S.items.find(x=>x.id===id),sl=slotOf(it&&it.category)||'acc',p=SLOT_POS[sl]||[50,50,110];
+    const n=used[sl]=(used[sl]||0)+1;
+    return {itemId:id,x:p[0]+(n-1)*14,y:p[1]+(n-1)*6,scale:p[2],rot:0};
+  });
+  UI.selPc=null;
+  if(UI.tab!=='studio'){closeSheet();go('studio')}else{renderCanvas();window.scrollTo({top:0,behavior:'smooth'})}
 }
 
 /* ============================================================
@@ -2447,7 +2677,7 @@ function renderWears(){
     <div class="rowitem">
       <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
-        <span>${w.itemIds.map(i=>esc((S.items.find(x=>x.id===i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+        <span>${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
       <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
     </div>`).join('');
 }
@@ -2484,11 +2714,14 @@ function openShare(kind,id){
     cw=document.getElementById('canvas').clientWidth||cw;title='今天想這樣穿';doll=mainDoll();
   }
   Object.assign(SC,{items:items.map(i=>S.items.find(x=>x.id===i)).filter(Boolean),photo,layout,cw,date,doll,title,
-    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',cap:''});
+    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:''});
+  SC.withDoll=!photo&&!!(SC.doll&&SC.doll.photo);
   openSheet(`<h3>分享小卡</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
     <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
+    <div class="swap" id="scLay">${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
+    ${!SC.photo&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
     <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="今天是草莓甜點日 🍓" oninput="scCapChange(this.value)"></label>
     <div class="row">
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
@@ -2498,13 +2731,116 @@ function openShare(kind,id){
 }
 function scSet(k,v){
   SC[k]=v;
-  document.querySelectorAll(k==='theme'?'#scTheme button':'#scRatio button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
+  document.querySelectorAll({theme:'#scTheme',ratio:'#scRatio',lay:'#scLay'}[k]+' button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
   scRender();
 }
 let scTimer;
 function scCapChange(v){SC.cap=v;clearTimeout(scTimer);scTimer=setTimeout(scRender,250)}
 function rrect(x,X,Y,W,H,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath()}
 function fitText(x,t,maxW){if(x.measureText(t).width<=maxW)return t;while(t.length>1&&x.measureText(t+'…').width>maxW)t=t.slice(0,-1);return t+'…'}
+// 主圖：穿搭照，或照畫布位置擺的平鋪貼圖；Look 可以把娃娃放在左邊
+async function scArt(x,T,AX,AY,AW,AH,R,noShadow){
+  if(!noShadow){x.save();x.shadowColor='rgba(0,0,0,.12)';x.shadowBlur=40;x.shadowOffsetY=14;x.fillStyle=T.card;rrect(x,AX,AY,AW,AH,R);x.fill();x.restore()}
+  else{x.fillStyle=T.card;rrect(x,AX,AY,AW,AH,R);x.fill()}
+  x.save();rrect(x,AX,AY,AW,AH,R);x.clip();
+  if(SC.photo){
+    const im=await loadImg(SC.photo),s=Math.max(AW/im.width,AH/im.height);
+    x.drawImage(im,AX+(AW-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s);
+  }else{
+    x.fillStyle=T.line;for(let yy=AY+24;yy<AY+AH;yy+=36)for(let xx=AX+24;xx<AX+AW;xx+=36){x.beginPath();x.arc(xx,yy,2.2,0,7);x.fill()}
+    let IX=AX,IW=AW;
+    const dim=SC.withDoll&&SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null;
+    if(dim){
+      // 娃娃站在左邊，衣服擺在右邊
+      const dw=AW*.38,s=Math.min(dw*.92/dim.width,AH*.8/dim.height);
+      x.save();x.shadowColor='rgba(0,0,0,.18)';x.shadowBlur=26;x.shadowOffsetY=12;
+      x.drawImage(dim,AX+(dw-dim.width*s)/2+10,AY+AH*.94-dim.height*s,dim.width*s,dim.height*s);x.restore();
+      x.fillStyle=T.soft;x.globalAlpha=.6;x.beginPath();x.ellipse(AX+dw/2+10,AY+AH*.94,dw*.36,14,0,0,7);x.fill();x.globalAlpha=1;
+      IX=AX+dw;IW=AW-dw;
+    }
+    const ims=await Promise.all(SC.items.map(i=>loadImg(img(i)).catch(()=>null)));
+    x.shadowColor='rgba(0,0,0,.14)';x.shadowBlur=24;x.shadowOffsetY=10;
+    if(SC.layout&&SC.layout.length){
+      let rw=IW,rh=IW*4/3;if(rh>AH){rh=AH;rw=AH*3/4}
+      const rx=IX+(IW-rw)/2,ry=AY+(AH-rh)/2,k=rw/SC.cw;
+      SC.layout.forEach(p=>{
+        const it=SC.items.findIndex(i=>i.id===p.itemId),im=ims[it];if(!im)return;
+        const w=p.scale*k,h=w*im.height/im.width;
+        x.save();x.translate(rx+p.x/100*rw,ry+p.y/100*rh);x.rotate(p.rot*Math.PI/180);x.drawImage(im,-w/2,-h/2,w,h);x.restore();
+      });
+    }else{
+      const n=Math.min(ims.length,9),cols=n<=1?1:n<=4?2:3,rows=Math.ceil(n/cols),cwid=IW/cols,chei=AH/rows;
+      ims.slice(0,n).forEach((im,i)=>{if(!im)return;
+        const cx=IX+cwid*(i%cols+.5),cy=AY+chei*(Math.floor(i/cols)+.5),s=Math.min(cwid/im.width,chei/im.height)*.78;
+        x.save();x.translate(cx,cy);x.rotate(((i*37)%9-4)*Math.PI/180);x.drawImage(im,-im.width*s/2,-im.height*s/2,im.width*s,im.height*s);x.restore();
+      });
+    }
+  }
+  x.restore();
+}
+// 頁尾：娃娃頭像 + 名字，右邊品牌
+async function scFooter(x,T,P,W,fy,serif,sans){
+  if(SC.doll){
+    let tx=P;
+    if(SC.doll.photo){
+      const im=await loadImg(SC.doll.photo).catch(()=>null);
+      if(im){x.save();x.beginPath();x.arc(P+30,fy-12,30,0,7);x.fillStyle=T.soft;x.fill();x.clip();
+        const s=Math.max(60/im.width,60/im.height);x.drawImage(im,P+30-im.width*s/2,fy-42,im.width*s,im.height*s);x.restore();tx=P+76}
+    }
+    x.fillStyle=T.ink;x.font=`700 30px ${serif}`;x.fillText(SC.doll.name,tx,fy-2);
+    if(SC.doll.size){const w=x.measureText(SC.doll.name).width;x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(SC.doll.size,tx+w+14,fy-2)}
+  }
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,fy-2);
+  x.fillStyle=T.accent;x.beginPath();x.arc(W-P-x.measureText('娃衣衣櫃').width-20,fy-11,7,0,7);x.fill();
+  x.textAlign='left';
+}
+function scPills(x,T,X,Y,maxW,sans,lines){
+  x.font=`500 28px ${sans}`;let lx=X,ly=Y,line=0;
+  for(const it of SC.items){
+    const t=fitText(x,it.name,maxW-60),w=x.measureText(t).width+44;
+    if(lx+w>X+maxW){lx=X;ly+=62;if(++line>=lines)break}
+    x.fillStyle=T.card;rrect(x,lx,ly,w,50,25);x.fill();x.strokeStyle=T.line;x.lineWidth=2;x.stroke();
+    x.fillStyle=T.ink;x.fillText(t,lx+22,ly+35);lx+=w+12;
+  }
+  return ly+50;
+}
+// 拍立得：照片放在白框裡，稍微歪一點，上面貼一條紙膠帶
+async function scPolaroid(x,T,W,H,P,serif,num,sans){
+  const d=new Date(SC.date+'T00:00:00');
+  const FW=W-200,FX=100,aw=FW-64,ah=SC.ratio==='story'?aw*1.35:aw*.92,FH=32+ah+170,FY=Math.max(110,(H-150-(FH+120))/2);
+  x.save();x.translate(W/2,FY+FH/2);x.rotate(-2*Math.PI/180);x.translate(-W/2,-(FY+FH/2));
+  x.save();x.shadowColor='rgba(0,0,0,.18)';x.shadowBlur=40;x.shadowOffsetY=18;x.fillStyle='#FFFEFB';x.fillRect(FX,FY,FW,FH);x.restore();
+  await scArt(x,Object.assign({},T,SC.theme==='night'?{card:'#F4EEEA',line:'#E6DCD4',soft:'#EADCD9'}:{}),FX+32,FY+32,aw,ah,6,true);
+  x.fillStyle='#3A2E33';x.font=`600 54px ${serif}`;x.fillText(fitText(x,SC.title,FW-280),FX+40,FY+32+ah+92);
+  x.textAlign='right';x.fillStyle='#8C7F85';x.font=`600 40px ${num}`;x.fillText(`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`,FX+FW-40,FY+32+ah+88);x.textAlign='left';
+  if(SC.cap){x.fillStyle='#6B5A66';x.font=`500 30px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',FW-80),FX+40,FY+32+ah+140)}
+  x.restore();
+  // 紙膠帶
+  x.save();x.translate(W/2,FY+6);x.rotate(3*Math.PI/180);x.fillStyle=T.accent;x.globalAlpha=.28;x.fillRect(-110,-26,220,52);x.restore();
+  scPills(x,T,P,FY+FH+60,W-P*2,sans,SC.ratio==='story'?3:1);
+  await scFooter(x,T,P,W,H-P,serif,sans);
+}
+// 雜誌：大標題刊頭 + 滿版主圖 + 編號清單
+async function scMag(x,T,W,H,P,serif,num,sans){
+  const d=new Date(SC.date+'T00:00:00');
+  x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText('DOLL  WARDROBE',P,P+26);
+  x.textAlign='right';x.fillStyle=T.sub;x.fillText(`NO.${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`,W-P,P+26);x.letterSpacing='0px';x.textAlign='left';
+  x.fillStyle=T.ink;x.font=`700 96px ${serif}`;x.fillText(fitText(x,SC.title,W-P*2),P,P+140);
+  x.fillStyle=T.ink;x.fillRect(P,P+172,W-P*2,3);
+  const n=Math.min(SC.items.length,SC.ratio==='story'?10:6),rows=Math.ceil(n/2);
+  const listH=rows*56+(SC.cap?80:0)+130;
+  const AY=P+200,AH=H-AY-listH-P;
+  await scArt(x,T,0,AY,W,AH,0,true);
+  let y=AY+AH+64;
+  SC.items.slice(0,n).forEach((it,i)=>{
+    const cx=P+(i%2)*((W-P*2)/2),cy=y+Math.floor(i/2)*56;
+    x.fillStyle=T.accent;x.font=`700 34px ${num}`;x.fillText(String(i+1).padStart(2,'0'),cx,cy);
+    x.fillStyle=T.ink;x.font=`500 28px ${sans}`;x.fillText(fitText(x,it.name,(W-P*2)/2-80),cx+60,cy);
+  });
+  y+=rows*56+10;
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y+30)}
+  await scFooter(x,T,P,W,H-P,serif,sans);
+}
 async function scDraw(){
   const T=CARD_THEMES[SC.theme],W=1080,H=SC.ratio==='story'?1920:1350,P=72;
   try{await document.fonts.ready}catch(e){}
@@ -2513,6 +2849,9 @@ async function scDraw(){
   // 背景
   const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
   x.fillStyle=T.soft;x.globalAlpha=.55;x.beginPath();x.arc(W-60,120,220,0,7);x.fill();x.beginPath();x.arc(40,H-160,180,0,7);x.fill();x.globalAlpha=1;
+  x.textBaseline='alphabetic';
+  if(SC.lay==='polaroid'){await scPolaroid(x,T,W,H,P,serif,num,sans);return c}
+  if(SC.lay==='mag'){await scMag(x,T,W,H,P,serif,num,sans);return c}
   // 標題列
   const d=new Date(SC.date+'T00:00:00');
   x.textBaseline='alphabetic';
@@ -2526,36 +2865,7 @@ async function scDraw(){
   const showRow=!!SC.photo&&SC.items.length;
   const infoH=(showRow?280:120)+(SC.cap?90:0)+70;
   const AX=P,AY=P+170,AW=W-P*2,AH=H-AY-infoH-P;
-  // 主圖卡片
-  x.save();x.shadowColor='rgba(0,0,0,.12)';x.shadowBlur=40;x.shadowOffsetY=14;x.fillStyle=T.card;rrect(x,AX,AY,AW,AH,44);x.fill();x.restore();
-  x.save();rrect(x,AX,AY,AW,AH,44);x.clip();
-  if(SC.photo){
-    const im=await loadImg(SC.photo),s=Math.max(AW/im.width,AH/im.height);
-    x.drawImage(im,AX+(AW-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s);
-  }else{
-    // 點點底紋
-    x.fillStyle=T.line;for(let yy=AY+24;yy<AY+AH;yy+=36)for(let xx=AX+24;xx<AX+AW;xx+=36){x.beginPath();x.arc(xx,yy,2.2,0,7);x.fill()}
-    const ims=await Promise.all(SC.items.map(i=>loadImg(img(i)).catch(()=>null)));
-    x.shadowColor='rgba(0,0,0,.14)';x.shadowBlur=24;x.shadowOffsetY=10;
-    if(SC.layout&&SC.layout.length){
-      // 照搭配畫布的位置擺（畫布是 3:4）
-      let rw=AW,rh=AW*4/3;if(rh>AH){rh=AH;rw=AH*3/4}
-      const rx=AX+(AW-rw)/2,ry=AY+(AH-rh)/2,k=rw/SC.cw;
-      SC.layout.forEach(p=>{
-        const it=SC.items.findIndex(i=>i.id===p.itemId),im=ims[it];if(!im)return;
-        const w=p.scale*k,h=w*im.height/im.width;
-        x.save();x.translate(rx+p.x/100*rw,ry+p.y/100*rh);x.rotate(p.rot*Math.PI/180);x.drawImage(im,-w/2,-h/2,w,h);x.restore();
-      });
-    }else{
-      // 沒有排版就自動平鋪
-      const n=Math.min(ims.length,9),cols=n<=1?1:n<=4?2:3,rows=Math.ceil(n/cols),cwid=AW/cols,chei=AH/rows;
-      ims.slice(0,n).forEach((im,i)=>{if(!im)return;
-        const cx=AX+cwid*(i%cols+.5),cy=AY+chei*(Math.floor(i/cols)+.5),s=Math.min(cwid/im.width,chei/im.height)*.78;
-        x.save();x.translate(cx,cy);x.rotate(((i*37)%9-4)*Math.PI/180);x.drawImage(im,-im.width*s/2,-im.height*s/2,im.width*s,im.height*s);x.restore();
-      });
-    }
-  }
-  x.restore();
+  await scArt(x,T,AX,AY,AW,AH,44);
   // 下方資訊
   let y=AY+AH+48;
   if(showRow){
@@ -2570,35 +2880,13 @@ async function scDraw(){
     });
     y+=sz+120;
   }else{
-    // 娃衣名稱做成小標籤
-    x.font=`500 28px ${sans}`;let lx=AX,ly=y,line=0;
-    for(const it of SC.items){
-      const t=fitText(x,it.name,AW-60),w=x.measureText(t).width+44;
-      if(lx+w>AX+AW){lx=AX;ly+=62;if(++line>1)break}
-      x.fillStyle=T.card;rrect(x,lx,ly,w,50,25);x.fill();x.strokeStyle=T.line;x.lineWidth=2;x.stroke();
-      x.fillStyle=T.ink;x.fillText(t,lx+22,ly+35);lx+=w+12;
-    }
-    y=ly+90;
+    y=scPills(x,T,AX,y,AW,sans,2)+40;
   }
   if(SC.cap){
     x.fillStyle=T.ink;x.font=`500 38px ${serif}`;
     x.fillText(fitText(x,'「'+SC.cap+'」',AW),AX,y);y+=70;
   }
-  // 頁尾：娃娃 + 品牌
-  const fy=H-P;
-  if(SC.doll){
-    let tx=AX;
-    if(SC.doll.photo){
-      const im=await loadImg(SC.doll.photo).catch(()=>null);
-      if(im){x.save();x.beginPath();x.arc(AX+30,fy-12,30,0,7);x.fillStyle=T.soft;x.fill();x.clip();
-        const s=Math.max(60/im.width,60/im.height);x.drawImage(im,AX+30-im.width*s/2,fy-42,im.width*s,im.height*s);x.restore();tx=AX+76}
-    }
-    x.fillStyle=T.ink;x.font=`700 30px ${serif}`;x.fillText(SC.doll.name,tx,fy-2);
-    if(SC.doll.size){const w=x.measureText(SC.doll.name).width;x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(SC.doll.size,tx+w+14,fy-2)}
-  }
-  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,fy-2);
-  x.fillStyle=T.accent;x.beginPath();x.arc(W-P-x.measureText('娃衣衣櫃').width-20,fy-11,7,0,7);x.fill();
-  x.textAlign='left';
+  await scFooter(x,T,P,W,H-P,serif,sans);
   return c;
 }
 async function scRender(){
@@ -3274,12 +3562,13 @@ async function diagnose(btn){
     <button class="btn wide" style="margin-top:12px" onclick="openSettings()">回設定</button>`);
 }
 function exportBackup(withImages){
-  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,sizes:S.settings.sizes,customCats:customCats(),hiddenCats:S.settings.hiddenCats||[]}));
+  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,memory:S.memory,sizes:S.settings.sizes,customCats:customCats(),hiddenCats:S.settings.hiddenCats||[]}));
   if(!withImages){
     clone.items.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
     clone.wears.forEach(w=>w.photo=null);
     clone.dolls.forEach(d=>{d.photo=null;d.raw=null});
     clone.wish.forEach(w=>w.photo=null);
+    clone.memory.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
   }
   const out={format:'doll-wardrobe',version:1,exportedAt:new Date().toISOString(),withImages,data:clone};
   const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
@@ -3297,7 +3586,7 @@ async function importBackup(ev){
     if(j.format!=='doll-wardrobe')throw new Error('這不是娃衣衣櫃的備份檔');
     const mode=confirm('按「確定」覆蓋現有資料，按「取消」改成合併加入。');
     const d=j.data;
-    if(mode){S.items=d.items||[];S.sets=d.sets||[];S.looks=d.looks||[];S.wears=d.wears||[];S.dolls=d.dolls||[];S.wish=d.wish||[]}
+    if(mode){S.items=d.items||[];S.sets=d.sets||[];S.looks=d.looks||[];S.wears=d.wears||[];S.dolls=d.dolls||[];S.wish=d.wish||[];S.memory=d.memory||[]}
     else{
       const has=new Set(S.items.map(i=>i.id));
       S.items=S.items.concat((d.items||[]).filter(i=>!has.has(i.id)));
@@ -3311,6 +3600,8 @@ async function importBackup(ev){
       S.dolls=S.dolls.concat((d.dolls||[]).filter(i=>!hd.has(i.id)));
       const hx=new Set(S.wish.map(i=>i.id));
       S.wish=S.wish.concat((d.wish||[]).filter(i=>!hx.has(i.id)));
+      const hm=new Set(S.memory.map(i=>i.id));
+      S.memory=S.memory.concat((d.memory||[]).filter(i=>!hm.has(i.id)));
     }
     (d.sizes||[]).forEach(z=>{if(!S.settings.sizes.includes(z))S.settings.sizes.push(z)});
     S.settings.customCats=[...new Set([...customCats(),...(d.customCats||[])])];
@@ -3321,7 +3612,7 @@ async function importBackup(ev){
 }
 async function wipe(){
   if(!confirm('這會刪掉所有娃衣、娃娃、Look、穿著紀錄和考慮中清單。先匯出備份了嗎？'))return;
-  S.items=[];S.sets=[];S.looks=[];S.wears=[];S.dolls=[];S.wish=[];
+  S.items=[];S.sets=[];S.looks=[];S.wears=[];S.dolls=[];S.wish=[];S.memory=[];
   await save();closeSheet();go('home');toast('已清空');
 }
 
@@ -3331,7 +3622,7 @@ async function wipe(){
    再交給 IntersectionObserver 在進入畫面時淡入。
    ============================================================ */
 const Reveal=(()=>{
-  const SEL='.wcardbig,.pack,.qrow,.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
+  const SEL='.idea,.memcard,.wcardbig,.pack,.qrow,.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last={el:null,t:0};
   const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{
