@@ -572,6 +572,74 @@ nav.tabs button.plus.on{color:var(--berry)}
 .lk-cover span{font-size:12px;color:var(--ink-2);margin-bottom:6px}
 .mlist{margin:12px 0 0;padding-left:20px;font-size:13.5px;color:var(--ink-2);line-height:1.8}
 #v-studio > .row .btn{white-space:nowrap;padding:10px 13px}
+.btn small.left{font-size:10.5px;font-weight:500;opacity:.75;margin-left:4px}
+.qtable{display:grid;gap:6px}
+.qtable div{display:flex;justify-content:space-between;font-size:13px;padding:6px 10px;border-radius:10px;background:var(--paper-2)}
+.qtable b{font-variant-numeric:tabular-nums}
+.qcomp{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--card)}
+.qcomp div{display:grid;grid-template-columns:1fr 64px 64px;align-items:center;padding:9px 14px;font-size:13px;border-bottom:1px solid var(--paper-2)}
+.qcomp div:last-child{border:none}
+.qcomp b{text-align:center;font-variant-numeric:tabular-nums}
+.qcomp .qh{background:var(--paper-2);font-size:12px;color:var(--muted)}
+.qcomp div b:last-child{color:var(--berry-deep)}
+.mchart{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 10px;margin-bottom:6px}
+.mcap{font-size:12.5px;color:var(--ink-2);min-height:20px;margin-bottom:8px}
+.mcap b{color:var(--ink);font-variant-numeric:tabular-nums}
+.mbars{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;height:120px;align-items:end;border-bottom:1px solid var(--line)}
+.mcol{position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.mcol i{position:relative;display:block;width:min(70%,24px);border-radius:4px 4px 0 0;background:var(--berry);transition:opacity .15s}
+.mbars:hover .mcol i,.mbars:has(.on) .mcol i{opacity:.45}
+.mbars .mcol:hover i,.mbars .mcol.on i{opacity:1}
+.mcol em{position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);font-style:normal;font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.mlab{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:5px}
+.mlab span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap}
+.wchip{margin-left:8px;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 11px;border-radius:999px;
+  background:var(--gold-soft);color:var(--ink);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;border:1px solid rgba(179,144,96,.25)}
+.wchip i{font-style:normal;color:var(--gold)}
+.wcardbig{padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#B8627B,#843B52 60%,#6E2F44);box-shadow:0 14px 30px -14px rgba(132,59,82,.8)}
+.wcardbig>span{font-size:12.5px;opacity:.85;letter-spacing:.06em}
+.wcardbig>b{display:flex;align-items:baseline;gap:6px;font-family:var(--num);font-size:48px;line-height:1.1;margin-top:4px}
+.wcardbig>b i{font-style:normal;font-size:26px;color:#F3D9A4}
+.wcardbig>b small{font-family:var(--sans);font-size:14px;opacity:.8}
+.wcardbig .btn{background:#fff;color:var(--berry-deep);box-shadow:none}
+.wcardbig .btn.ghost{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)}
+.qrow{padding:11px 0;border-bottom:1px solid var(--line)}
+.qrow:last-child{border:none}
+.qrow b{display:block;font-size:13.5px}
+.qrow span{font-size:11.5px;color:var(--muted)}
+.qbar{height:6px;border-radius:3px;background:var(--paper-2);margin-top:6px;overflow:hidden}
+.qbar i{display:block;height:100%;border-radius:3px;background:var(--sage)}
+.upsell{position:relative;margin-top:16px;padding:14px 36px 14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));cursor:pointer}
+.upsell b{display:block;font-family:var(--serif);font-size:15px;margin-bottom:2px}
+.upsell span{font-size:12.5px;color:var(--ink-2);line-height:1.6}
+.upsell span b{display:inline;font-family:inherit;font-size:inherit;color:var(--berry-deep)}
+.upsell em{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-style:normal;color:var(--muted);font-size:20px}
+.packs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pack{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 6px 12px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1);transition:transform .18s var(--ease)}
+.pack:active{transform:scale(.96)}
+.pack em{position:absolute;top:-9px;font-style:normal;font-size:10.5px;padding:1px 8px;border-radius:999px;color:#fff;background:var(--berry)}
+.pack b{font-family:var(--num);font-size:30px;line-height:1}
+.pack b small{font-family:var(--sans);font-size:12px}
+.pack span{font-size:13px;font-weight:600;color:var(--berry-deep)}
+.pack .per{font-size:10.5px;color:var(--muted)}
+.lrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.lrow:last-child{border:none}
+.lrow small{display:block;font-size:11px;color:var(--muted)}
+.lrow b{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.lrow b.plus{color:var(--sage)}
+.cutopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;border-radius:var(--r);background:var(--card);border:1.5px solid var(--line);transition:border-color .2s,transform .18s var(--ease)}
+.cutopt:active{transform:scale(.98)}
+.cutopt:hover{border-color:var(--berry)}
+.cutopt div{flex:1}
+.cutopt b{display:block;font-size:15px}
+.cutopt span{font-size:12px;color:var(--muted)}
+.cutopt em{font-style:normal;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--berry-soft);color:var(--berry-deep);white-space:nowrap}
+.cutopt:first-of-type em{background:#E8EFE7;color:#4F6B52}
+:root[data-theme="dark"] .cutopt:first-of-type em{background:var(--sage-soft);color:var(--sage)}
+.cutopt[disabled]{opacity:.45}
+.remember{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--ink-2)}
+.remember input{width:18px;height:18px;accent-color:var(--berry)}
+.hint a{color:var(--berry-deep);font-weight:600}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -651,6 +719,7 @@ nav.tabs button.plus.on{color:var(--berry)}
     </button>
     <h1 id="title">娃衣衣櫃</h1>
     <span class="sub" id="topsub"></span>
+    <button class="wchip" id="wchip" onclick="go('wallet')" aria-label="錢包"></button>
     <button class="iconbtn" onclick="openSettings()" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -662,6 +731,9 @@ nav.tabs button.plus.on{color:var(--berry)}
 
     <!-- 考慮中 -->
     <section class="view" id="v-wish"><div id="wishList"></div></section>
+
+    <!-- 錢包 -->
+    <section class="view" id="v-wallet"><div id="walletView"></div></section>
 
     <!-- 我的娃娃 -->
     <section class="view" id="v-dolls"><div id="dollList"></div></section>
@@ -821,8 +893,10 @@ async function save(){ await DB.set('data',S); }
 async function load(){
   const d=await DB.get('data');
   if(d) S=Object.assign(S,d);
-  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ai',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
+  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ask',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
+  // 改版：預設改成每次詢問
+  if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
   S.dolls=S.dolls||[];S.wish=S.wish||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
@@ -1069,9 +1143,11 @@ async function aiSticker(dataURL){
   return img;
 }
 // 回傳 {sticker, src, mask}：sticker 是成品，src / mask 留給修補筆刷用
-async function cutout(dataURL){
-  let m=S.settings.stickerMode||'ai';
+async function cutout(dataURL,mode){
+  let m=mode||S.settings.stickerMode||'ask';
+  if(m==='ask')m='local';
   if(m==='ai'&&!aiReady())m='local';
+  if(m==='ai'&&!canPay('img')){m='local';toast('AI 出圖的額度和點數都不夠，這張先用簡易去背')}
   let W,H,src,a;
   if(m==='api'){
     const [out,orig]=await Promise.all([loadImg(await remoteCutout(dataURL)),loadImg(dataURL)]);
@@ -1083,6 +1159,7 @@ async function cutout(dataURL){
     for(let i=0;i<W*H;i++){a[i]=od[i*4+3];if(a[i]){src.data[i*4]=od[i*4];src.data[i*4+1]=od[i*4+1];src.data[i*4+2]=od[i*4+2]}}
   }else{
     const im=await loadImg(m==='ai'?await aiSticker(dataURL):dataURL);
+    if(m==='ai')spendQuota('img');
     const c=drawScaled(im,1000);W=c.width;H=c.height;
     const r=bgMask(c.getContext('2d'),W,H,m==='ai'?24:(S.settings.bgTol||42));
     src=r.data;a=r.a;
@@ -1091,6 +1168,154 @@ async function cutout(dataURL){
   return {sticker:await composeSticker(src,a,W,H),src:encSrc(src),mask:encMask(a,W,H)};
 }
 function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.mask}
+
+/* ============================================================
+   4b. AI 次數額度
+   每次呼叫 AI 都有成本，所以免費版每月有固定次數，會員給比較多（合理使用上限）。
+   次數只在 AI 成功回應後才扣；每個月 1 號自動重置。上架時改這張表就好。
+   ============================================================ */
+const QUOTA={
+  tag:{name:'AI 建檔分析',free:10,member:150},
+  buy:{name:'買前檢查',free:3,member:30},
+  img:{name:'AI 出圖去背',free:0,member:30},
+  wearid:{name:'穿搭照辨識',free:3,member:50}
+};
+function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
+const quotaMax=k=>isMember()?QUOTA[k].member:QUOTA[k].free;
+const quotaLeft=k=>Math.max(0,quotaMax(k)-(usage()[k]||0));
+// 先用額度，額度用完才扣點數
+function spendQuota(k){
+  const u=usage();
+  if(quotaLeft(k)>0){u[k]=(u[k]||0)+1;save()}
+  else addPoints(-POINT_COST[k],QUOTA[k].name);
+  updateWalletChip();
+}
+function needQuota(k){
+  if(quotaLeft(k)>0)return true;
+  if(wallet().points>=POINT_COST[k]){if(usage().pts)return true;askPoints(k);return false}
+  quotaBlocked(k);return false;
+}
+function quotaBlocked(k){
+  const q=QUOTA[k];
+  openSheet(`<h3>本月的「${q.name}」用完了</h3>
+    <div class="note">${q.free?`免費版每月可以用 ${q.free} 次，下個月 1 號會重置。`:`${q.name}沒有免費額度。`}可以用點數（每次 ${POINT_COST[k]} 點，你有 ${wallet().points} 點），或加入會員每月 ${q.member} 次。</div>
+    ${k==='img'?`<p class="hint" style="margin-top:10px">不用 AI 也可以：改用免費的簡易去背，再用「修補貼圖」擦乾淨。</p>`:''}
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost grow" onclick="closeSheet();go('wallet')">儲值點數</button>
+      <button class="btn grow" onclick="openMember()">了解會員</button>
+    </div>`);
+}
+function quotaTable(){
+  const u=usage();
+  return `<div class="qtable">${Object.entries(QUOTA).map(([k,q])=>`<div><span>${q.name}</span><b>${u[k]||0} / ${quotaMax(k)}</b></div>`).join('')}</div>`;
+}
+
+/* ---- 點數（非會員也能用 AI）----
+   先用每月免費／會員額度，用完才扣點數。點數要花在哪、多少錢一包都在這裡調。 */
+const POINT_COST={tag:1,wearid:1,buy:3,img:5};
+const PACKS=[{pts:30,price:30},{pts:100,price:90,tag:'熱門'},{pts:220,price:180,tag:'最划算'}];
+const TEST_CODES={DOLL2026:20,WELCOME:10};   // 網頁版測試用兌換碼，上架後改由伺服器驗證
+function wallet(){return S.wallet=S.wallet||{points:0,log:[],codes:[]}}
+const canPay=k=>quotaLeft(k)>0||wallet().points>=POINT_COST[k];
+function addPoints(n,why){
+  const w=wallet();w.points=Math.max(0,w.points+n);
+  w.log.unshift({t:Date.now(),n,why});w.log=w.log.slice(0,40);
+  save();updateWalletChip();
+}
+function updateWalletChip(){
+  const c=document.getElementById('wchip');if(!c)return;
+  c.innerHTML=isMember()?'<i>♛</i>會員':`<i>✦</i>${wallet().points}`;
+}
+// 會員每月額度，換算成點數大概值多少
+const memberValue=()=>Object.entries(QUOTA).reduce((a,[k,q])=>a+(q.member-q.free)*POINT_COST[k],0);
+function askPoints(k){
+  const q=QUOTA[k];
+  openSheet(`<h3>本月免費的「${q.name}」用完了</h3>
+    <div class="note">可以改用點數：每次 <b>${POINT_COST[k]} 點</b>，你現在有 <b>${wallet().points} 點</b>。</div>
+    <p class="hint" style="margin-top:10px">同意後，這個月額度用完時會自動改用點數，不會再問。</p>
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost grow" onclick="closeSheet()">先不要</button>
+      <button class="btn grow" onclick="usage().pts=1;save();closeSheet();toast('好了，再按一次就會用點數')">用點數繼續</button>
+    </div>`);
+}
+function renderWallet(){
+  const el=document.getElementById('walletView'),w=wallet(),u=usage();
+  const best=PACKS.reduce((a,p)=>p.price/p.pts<a.price/a.pts?p:a,PACKS[0]);
+  const mv=memberValue(),mvPrice=Math.round(mv*best.price/best.pts);
+  el.innerHTML=`
+  <div class="wcardbig">
+    <span>${isMember()?'會員・本月額度用完後也可以用點數':'我的點數'}</span>
+    <b><i>✦</i>${w.points}<small>點</small></b>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <button class="btn sm" onclick="document.getElementById('packs').scrollIntoView({behavior:'smooth'})">儲值點數</button>
+      <button class="btn sm ghost" onclick="document.getElementById('code').focus()">輸入兌換碼</button>
+    </div>
+  </div>
+
+  <h2 class="sec">本月還可以用</h2>
+  <div class="blist">${Object.entries(QUOTA).map(([k,q])=>{
+    const left=quotaLeft(k),max=quotaMax(k);
+    return `<div class="qrow"><div><b>${q.name}</b><span>${max?`${isMember()?'會員':'免費'}額度 ${left} / ${max}`:'沒有免費額度'}・之後每次 ${POINT_COST[k]} 點</span></div>
+      <div class="qbar"><i style="width:${max?left/max*100:0}%"></i></div></div>`}).join('')}</div>
+  <p class="hint" style="margin-top:8px">額度每月 1 號重置。額度用完才會扣點數，點數不會過期。</p>
+
+  ${isMember()?'':`<div class="upsell" onclick="openMember()">
+    <b>常用 AI？會員比較省</b>
+    <span>會員 NT$90／月，每月多出的額度大約等於 <b>${mv} 點</b>，用點數買要 NT$${mvPrice}。</span><em>›</em>
+  </div>`}
+
+  <h2 class="sec" id="packs">儲值點數</h2>
+  <div class="packs">${PACKS.map((p,i)=>`<button class="pack" onclick="buyPack(${i})">
+    ${p.tag?`<em>${p.tag}</em>`:''}<b>${p.pts}<small> 點</small></b><span>NT$${p.price}</span><small class="per">每點 $${(p.price/p.pts).toFixed(2)}</small></button>`).join('')}</div>
+  <p class="hint" style="margin-top:8px">網頁版是測試模式，按了會直接加點數，不會真的付款。</p>
+
+  <h2 class="sec">兌換碼</h2>
+  <div class="row"><input type="text" id="code" class="grow" placeholder="輸入兌換碼" autocapitalize="characters" onkeydown="if(event.key==='Enter')redeem()">
+    <button class="btn quiet" onclick="redeem()">兌換</button></div>
+
+  <h2 class="sec">點數紀錄</h2>
+  ${w.log.length?`<div class="blist">${w.log.slice(0,20).map(l=>`<div class="lrow"><span>${esc(l.why)}<small>${new Date(l.t).toLocaleDateString()}</small></span><b class="${l.n>0?'plus':''}">${l.n>0?'+':''}${l.n}</b></div>`).join('')}</div>`
+    :`<p class="hint">還沒有紀錄。</p>`}`;
+}
+async function buyPack(i){
+  const p=PACKS[i];
+  if(!confirm(`測試模式：直接加 ${p.pts} 點（正式版會是 NT$${p.price} 的購買流程）`))return;
+  addPoints(p.pts,`儲值 ${p.pts} 點`);renderWallet();toast(`已加 ${p.pts} 點`);
+}
+function redeem(){
+  const el=document.getElementById('code'),c=el.value.trim().toUpperCase(),w=wallet();
+  if(!c)return;
+  if(w.codes.includes(c)){toast('這個兌換碼已經用過了');return}
+  const n=TEST_CODES[c];if(!n){toast('兌換碼不正確');return}
+  w.codes.push(c);addPoints(n,`兌換碼 ${c}`);el.value='';renderWallet();toast(`兌換成功，加 ${n} 點`);
+}
+
+/* ---- 去背方式：每次讓使用者自己選（或記住選擇）---- */
+let PICK=null;
+function pickCut(count){
+  count=count||1;
+  return new Promise(res=>{
+    const m=S.settings.stickerMode||'ask';
+    if(!aiReady())return res('local');
+    if(m!=='ask')return res(m);
+    const left=quotaLeft('img'),pts=wallet().points,need=POINT_COST.img*Math.max(0,count-left);
+    const ok=left>=count||pts>=need;
+    PICK={res,opened:!NAV.open};
+    openSheet(`<h3>要怎麼去背？</h3>
+      <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>背景要是素色；沒去乾淨可以用修補筆刷擦</span></div><em>免費</em></button>
+      <button class="cutopt" onclick="pickDone('ai')" ${ok?'':'disabled'}><div><b>AI 出圖去背</b><span>什麼背景都可以，手和雜物也會一起清掉</span></div>
+        <em>${left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
+      ${ok?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
+      ${count>1?`<p class="hint">這次共 ${count} 張。</p>`:''}
+      <label class="remember"><input type="checkbox" id="pk_rem"> 記住我的選擇（之後可以在設定改）</label>`);
+  });
+}
+function pickDone(m){
+  if(document.getElementById('pk_rem').checked){S.settings.stickerMode=m;save()}
+  const p=PICK;PICK=null;if(!p)return;
+  if(p.opened)closeSheet();
+  p.res(m);
+}
 
 /* ============================================================
    4. AI：可接任意 API
@@ -1174,7 +1399,7 @@ const TABS=[
  ['insight','洞察','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
 ];
 // 不在底部分頁裡的子頁面：從首頁進入，左上角有返回
-const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'娃娃櫃'};
+const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'娃娃櫃',wallet:'錢包'};
 function buildTabs(){
   const cur=UI.tab in TITLES?'home':UI.tab;
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,p])=>
@@ -1201,6 +1426,8 @@ function go(k,fromPop){
   if(k==='insight')renderInsight();
   if(k==='wish')renderWish();
   if(k==='dolls')renderDolls();
+  if(k==='wallet')renderWallet();
+  updateWalletChip();
 }
 function navBack(){if(history.state&&history.state.view)history.back();else go(UI.lastTab||'home')}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2200)}
@@ -1410,8 +1637,9 @@ async function onDollPhoto(ev){
 }
 async function cutDoll(btn){
   btn.disabled=true;btn.innerHTML='<span class="spin dark"></span> 去背中';
-  try{const src=DD.raw||DD.photo;const r=await cutout(src);DD.raw=src;DD.photo=r.sticker;drawDoll()}
-  catch(e){toast(e.message);btn.disabled=false;btn.textContent='去背'}
+  const m=await pickCut();drawDoll();prog('娃娃去背中…');
+  try{const src=DD.raw||DD.photo;const r=await cutout(src,m);DD.raw=src;DD.photo=r.sticker;drawDoll();toast('去背完成')}
+  catch(e){toast(e.message);drawDoll()}
 }
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
@@ -1494,10 +1722,11 @@ function queueFromTags(photo,t,price){
 async function recheckWish(id){
   const w=S.wish.find(x=>x.id===id);if(!w)return;
   if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  if(!needQuota('buy'))return;
   openBuyCheck();
   BUY.photo=w.photo;BUY.t=w.t;BUY.wishId=id;
   BUY.busy=true;
-  try{await buyCompare()}catch(e){toast(e.message)}finally{BUY.busy=false}
+  try{await buyCompare();spendQuota('buy')}catch(e){toast(e.message)}finally{BUY.busy=false}
 }
 
 /* ============================================================
@@ -1608,7 +1837,8 @@ function dlSticker(id){
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
   toast('製作貼圖中，AI 出圖要等幾秒…');
-  try{ setCut(i,await cutout(i.photo)); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
+  const m=await pickCut();
+  try{ setCut(i,await cutout(i.photo,m)); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
   catch(e){ toast(e.message) }
 }
 function editItem(id){
@@ -1705,14 +1935,14 @@ function renderQueue(){
     </div>`).join('');
   document.getElementById('queueActions').innerHTML=UI.queue.length?`
     <div class="row" style="margin-top:4px">
-      <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析</button>
+      <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析<small class="left">剩 ${quotaLeft('tag')}</small></button>
       <button class="btn ghost" onclick="cutAll()">全部做貼圖</button>
       <span class="grow"></span>
       <button class="btn" onclick="commitQueue()">建檔 ${UI.queue.length} 筆</button>
     </div>`:'';
 }
 // 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
-function freeCut(){const m=S.settings.stickerMode||'ai';return m==='local'||(m==='ai'&&!aiReady())}
+function freeCut(){const m=S.settings.stickerMode||'ask';return m==='local'||m==='ask'||(m==='ai'&&(!aiReady()||!canPay('img')))}
 function cutTip(){
   return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
     <summary>免費去背的拍照小撇步</summary>
@@ -1745,30 +1975,40 @@ function togglePart(n,p){
 async function makePartStickers(n){
   const q=UI.queue[n];
   if(!q.parts.length){toast('這張還沒有可拆的單品');return}
+  const mode=await pickCut(q.parts.length);
   q.working=true;renderQueue();
   for(let k=0;k<q.parts.length;k++){
     const pt=q.parts[k];
     prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
     try{
       pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
-      setCut(pt,await cutout(pt.crop),'img');
+      setCut(pt,await cutout(pt.crop,mode),'img');
     }catch(e){ q.working=false;renderQueue();toast('失敗：'+e.message);return }
     renderQueue();
   }
   q.working=false;renderQueue();
   toast(`${q.parts.length} 件單品各自的貼圖完成`);
 }
-async function cutQ(n){
-  const q=UI.queue[n];toast('製作貼圖中，AI 出圖要等幾秒…');
-  try{setCut(q,await cutout(q.photo));renderQueue();toast('完成')}catch(e){toast(e.message)}
+async function cutQ(n,mode){
+  const q=UI.queue[n];
+  mode=mode||await pickCut();
+  toast(mode==='ai'?'製作貼圖中，AI 出圖要等幾秒…':'製作貼圖中…');
+  try{setCut(q,await cutout(q.photo,mode));renderQueue();toast('完成')}catch(e){toast(e.message)}
 }
-async function cutAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].cutout)await cutQ(i)}}
+async function cutAll(){
+  const todo=UI.queue.map((q,i)=>q.cutout?-1:i).filter(i=>i>=0);
+  if(!todo.length)return;
+  const mode=await pickCut(todo.length);
+  for(const i of todo)await cutQ(i,mode);
+}
 async function analyze(n){
   const q=UI.queue[n];
-  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
+  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return false}
+  if(!needQuota('tag'))return false;
   q.analyzing=true;renderQueue();
   try{
     const r=parseJSON(await callAI(tagPrompt(),q.photo));
+    spendQuota('tag');
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
     q.isSet=!!r.isSet;
@@ -1777,9 +2017,9 @@ async function analyze(n){
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
     q.season=r.season||'';q.material=r.material||'';
   }catch(e){toast('分析失敗：'+e.message)}
-  q.analyzing=false;renderQueue();
+  q.analyzing=false;renderQueue();return true;
 }
-async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length)await analyze(i)}}
+async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length&&await analyze(i)===false)break}}
 
 async function commitQueue(){
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
@@ -2090,11 +2330,18 @@ function comboToCanvas(a,b){
 }
 function openMember(){
   openSheet(`<h3>會員功能</h3>
-    <div class="note">網頁版目前是測試階段，可以直接打開會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
-    <ul class="mlist"><li>搭配分析：萬用單品、常穿 Look、固定組合、娃娃最愛</li></ul>
-    <button class="btn wide" style="margin-top:14px" onclick="setMember(true)">開啟會員功能（測試）</button>`);
+    <div class="qcomp">
+      <div class="qh"><span></span><b>免費</b><b>會員</b></div>
+      ${Object.values(QUOTA).map(q=>`<div><span>${q.name}／月</span><b>${q.free||'—'}</b><b>${q.member}</b></div>`).join('')}
+      <div><span>搭配分析</span><b>—</b><b>✓</b></div>
+      <div><span>花費分析</span><b>—</b><b>✓</b></div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">不想訂閱也可以用點數：建檔分析、穿搭辨識 1 點，買前檢查 3 點，AI 出圖 5 點。會員每月多出的額度大約等於 ${memberValue()} 點。</p>
+    <p class="hint" style="margin:10px 0 0">衣櫃、建檔、簡易去背、修補筆刷、搭配、穿搭紀錄、娃娃櫃、考慮中、分享小卡、備份都一直免費。</p>
+    <div class="note" style="margin-top:12px">網頁版目前是測試階段，可以直接開啟會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
+    <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
 }
-async function setMember(v){S.settings.member=v;await save();closeSheet();renderMatch();toast(v?'已開啟會員功能':'已關閉會員功能')}
+async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
   const l=S.looks.find(x=>x.id===id);
   UI.canvas=JSON.parse(JSON.stringify(l.layout||l.itemIds.map((i,n)=>({itemId:i,x:30+n*8,y:30+n*8,scale:120,rot:0}))));
@@ -2128,7 +2375,7 @@ function drawWearSheet(){
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
-      ${WEAR.photo?`<button class="btn quiet" onclick="identify()">AI 辨識</button>`:''}
+      ${WEAR.photo?`<button class="btn quiet" onclick="identify()">AI 辨識<small class="left">剩 ${quotaLeft('wearid')}</small></button>`:''}
     </div>
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
@@ -2163,6 +2410,7 @@ async function onWearPhoto(ev){
 }
 async function identify(){
   if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
+  if(!needQuota('wearid'))return;
   toast('AI 辨識中…');
   const cat=S.items.filter(i=>i.category!=='套裝').map(i=>
     `${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.motifs||[]).join('/')}`).join('\n');
@@ -2174,6 +2422,7 @@ ${cat}
 規則：只列出你有把握的；同一個部位若不確定，可以列出2到3個候選；完全找不到對應就不要列；相似度低於50不要列。`;
   try{
     const r=parseJSON(await callAI(prompt,WEAR.photo));
+    spendQuota('wearid');
     WEAR.cands=(r||[]).filter(c=>S.items.some(i=>i.id===c.id)).sort((a,b)=>b.score-a.score).slice(0,8);
     WEAR.picked=WEAR.cands.filter(c=>c.score>=80).map(c=>c.id);
     drawWearSheet();
@@ -2380,7 +2629,7 @@ function renderInsight(){
   const el=document.getElementById('insight');
   const items=S.items.filter(i=>i.category!=='套裝');
   if(items.length<3){
-    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>';
+    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+spendSection();
     return;
   }
   const buyGroup={},wearGroup={};
@@ -2465,7 +2714,8 @@ function renderInsight(){
       <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
-  el.innerHTML=h;
+  el.innerHTML=h+spendSection();
+  const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 
 /* ============================================================
@@ -2486,7 +2736,7 @@ function openBuyCheck(){
   if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
   BUY.photo=null;BUY.wishId=null;
   openSheet(`<h3>買前檢查</h3>
-    <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。</p>
+    <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。本月還可以檢查 <b>${quotaLeft('buy')}</b> 次。</p>
     <div id="buyIn"><div class="drop" onclick="document.getElementById('buyFile').click()">
       <strong>選擇照片</strong><span class="hint">電腦上也可以直接按 Ctrl／⌘ + V 貼上</span>
     </div>
@@ -2550,7 +2800,9 @@ function buyScore(t,i){
   return s;
 }
 async function runBuy(file){
-  if(BUY.busy)return;BUY.busy=true;
+  if(BUY.busy)return;
+  if(!needQuota('buy'))return;
+  BUY.busy=true;
   try{
     BUY.photo=await compress(file);
     buyStep('分析這件娃衣…');
@@ -2559,6 +2811,7 @@ async function runBuy(file){
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
     await buyCompare();
+    spendQuota('buy');
   }catch(e){
     const el=document.getElementById('buyOut');
     if(el)el.innerHTML=`<div class="note" style="margin-top:14px">分析失敗：${esc(e.message)}</div>
@@ -2682,6 +2935,74 @@ function buyToIntake(){
 }
 
 /* ============================================================
+   10b. 花費分析（會員功能）
+   ============================================================ */
+const money=v=>+String(v??'').replace(/[^\d.]/g,'')||0;
+const fmt$=n=>'$'+Math.round(n).toLocaleString();
+function spendStats(){
+  const pi=S.items.filter(i=>money(i.price)>0);
+  const clothes=pi.reduce((a,i)=>a+money(i.price),0);
+  const dolls=S.dolls.reduce((a,d)=>a+money(d.price),0);
+  const saved=S.wish.filter(w=>w.status==='skip').reduce((a,w)=>a+money(w.price),0);
+  // 最近 12 個月，娃衣看購入日期（沒填就用建檔日），娃娃看到家日
+  const now=new Date(),months=[];
+  for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,m:d.getMonth()+1,v:0})}
+  const add=(date,v)=>{const b=months.find(x=>x.key===(date||'').slice(0,7));if(b)b.v+=v};
+  const ds=t=>t?new Date(t).toISOString().slice(0,10):'';
+  pi.forEach(i=>add(i.buyDate||ds(i.createdAt),money(i.price)));
+  S.dolls.forEach(d=>{if(money(d.price))add(d.home||ds(d.createdAt),money(d.price))});
+  // 平均每穿一次的成本（套裝本身不算，穿搭紀錄記的是單品）
+  const cpw=pi.filter(i=>i.category!=='套裝').map(i=>{const w=wearCount(i.id);return {it:i,p:money(i.price),w,c:money(i.price)/Math.max(w,1)}});
+  const worn=cpw.filter(x=>x.w>0),wornSum=worn.reduce((a,x)=>a+x.p,0),wornN=worn.reduce((a,x)=>a+x.w,0);
+  const byCat={};pi.filter(i=>i.category!=='套裝').forEach(i=>byCat[i.category]=(byCat[i.category]||0)+money(i.price));
+  return {clothes,dolls,saved,months,priced:pi.length,
+    avg:wornN?wornSum/wornN:0,
+    best:worn.sort((a,b)=>a.c-b.c).slice(0,3),
+    idle:cpw.filter(x=>x.w===0).sort((a,b)=>b.p-a.p).slice(0,3),
+    cats:Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5)};
+}
+function spendSection(){
+  const head=`<h2 class="sec">花費分析 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>娃衣花費 $12,480</b><span>平均每穿一次 $86</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>最划算：白色蕾絲襯衫</b><span>每穿一次 $24</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>買了還沒穿：小熊斗篷</b><span>$780</span></div></div>
+    </div>
+    <div class="lk-cover"><b>這件衣服，每穿一次花多少錢？</b>
+      <span>每月花費、平均每穿一次的成本、最划算和買了還沒穿的娃衣</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const s=spendStats(),max=Math.max(...s.months.map(m=>m.v),1),tot=s.months.reduce((a,m)=>a+m.v,0);
+  if(!s.priced&&!s.dolls)return head+`<div class="hint">在單品的「編輯」填上價格，或在娃娃資料填金額，這裡就會開始計算。</div>`;
+  const peak=s.months.reduce((a,m)=>m.v>a.v?m:a,s.months[0]);
+  let h=head+`<div class="stat">
+    <div><b>${fmt$(s.clothes)}</b><span>娃衣花費・${s.priced} 件有價格</span></div>
+    <div><b>${fmt$(s.dolls)}</b><span>娃娃花費</span></div>
+    <div><b>${s.avg?fmt$(s.avg):'—'}</b><span>平均每穿一次</span></div>
+    <div><b>${fmt$(s.saved)}</b><span>忍住沒買省下</span></div></div>
+  <div class="mchart">
+    <div class="mcap" id="mcap">最近 12 個月共 <b>${fmt$(tot)}</b></div>
+    <div class="mbars">${s.months.map(m=>`<button class="mcol" data-t="${m.m} 月：${fmt$(m.v)}" aria-label="${m.m} 月花費 ${fmt$(m.v)}"
+      onmouseenter="mcap(this)" onfocus="mcap(this)" onclick="mcap(this)" onmouseleave="mcap()">
+      <i style="height:${m.v?Math.max(3,m.v/max*88):0}%">${m===peak&&m.v?`<em>${fmt$(m.v)}</em>`:''}</i></button>`).join('')}</div>
+    <div class="mlab">${s.months.map((m,i)=>`<span>${i%2?'':m.m+'月'}</span>`).join('')}</div>
+  </div>`;
+  const th=it=>`<div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
+  if(s.best.length)h+=`<p class="mh">最划算的娃衣</p><div class="blist">${s.best.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
+    <div class="tx"><b>${esc(x.it.name)}</b><span>每穿一次 ${fmt$(x.c)}・穿了 ${x.w} 次・${fmt$(x.p)}</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+  if(s.idle.length)h+=`<p class="mh">買了還沒穿過</p><div class="blist">${s.idle.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
+    <div class="tx"><b>${esc(x.it.name)}</b><span>${fmt$(x.p)}・穿一次就回本一點</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+  if(s.cats.length){const cm=s.cats[0][1];h+=`<p class="mh">花最多的類型</p>${s.cats.map(([k,v])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${fmt$(v)}</em></div>
+    <div class="track"><i class="worn" style="width:${v/cm*100}%"></i></div></div>`).join('')}`}
+  return h;
+}
+function mcap(el){
+  const c=document.getElementById('mcap');if(!c)return;
+  if(el){c.innerHTML=`<b>${el.dataset.t}</b>`;document.querySelectorAll('.mcol').forEach(b=>b.classList.toggle('on',b===el))}
+  else{c.innerHTML=c.dataset.d||c.innerHTML;document.querySelectorAll('.mcol').forEach(b=>b.classList.remove('on'))}
+}
+
+/* ============================================================
    11. 設定 / 備份
    ============================================================ */
 function openSettings(){
@@ -2734,7 +3055,8 @@ function openSettings(){
     <div class="card">
       <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
         <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="readForm();setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 0">網頁版測試用。目前會員功能：搭配分析。</p>
+      <p class="hint" style="margin:8px 0 10px">網頁版測試用。本月 AI 使用次數：</p>
+      ${quotaTable()}
     </div>
 
     <h2 class="sec">衣櫃類別</h2>
@@ -2764,12 +3086,13 @@ function openSettings(){
     <div class="card">
       <label class="f"><span>製作方式</span>
         <select id="s_smode" onchange="toggleSticker(this.value)">
-          <option value="ai" ${(st.stickerMode||'ai')==='ai'?'selected':''}>AI 出圖　需要會出圖的模型</option>
-          <option value="local" ${st.stickerMode==='local'?'selected':''}>簡易去背　免費，背景要是素色</option>
+          <option value="ask" ${(st.stickerMode||'ask')==='ask'?'selected':''}>每次詢問　做貼圖時自己選</option>
+          <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
+          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
           <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
         </select></label>
 
-      <div id="sk_ai" style="display:${(st.stickerMode||'ai')==='ai'?'block':'none'}">
+      <div id="sk_ai" style="display:${['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
         <label class="f"><span>出圖模型</span>
           <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
         <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。還沒設定 API 時會自動改用簡易去背。</p>
@@ -2853,7 +3176,7 @@ async function delSize(z){
   await save();openSettings();
 }
 function toggleSticker(v){
-  document.getElementById('sk_ai').style.display=v==='ai'?'block':'none';
+  document.getElementById('sk_ai').style.display=v==='ai'||v==='ask'?'block':'none';
   document.getElementById('sk_api').style.display=v==='api'?'block':'none';
 }
 function pickModel(btn,m){
@@ -3008,7 +3331,7 @@ async function wipe(){
    再交給 IntersectionObserver 在進入畫面時淡入。
    ============================================================ */
 const Reveal=(()=>{
-  const SEL='.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
+  const SEL='.wcardbig,.pack,.qrow,.lookcard,.locked,.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#wearList';
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last={el:null,t:0};
   const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{
