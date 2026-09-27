@@ -2518,17 +2518,20 @@ async function makePartStickers(n){
   const mode=await pickCut(q.parts.length,true);
   if(mode==='aiset')return aiSetCut(n);
   q.working=true;renderQueue();
+  // 一件失敗不要整批停下來：已經做好的留著，失敗的最後一起告訴使用者
+  const bad=[];
   for(let k=0;k<q.parts.length;k++){
     const pt=q.parts[k];
+    if(pt.img&&mode!=='tap')continue; // 已經有貼圖的就不再花一次
     prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
     try{
       pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
       setCut(pt,await cutout(pt.crop,mode),'img');
-    }catch(e){ q.working=false;renderQueue();toast('失敗：'+e.message);return }
+    }catch(e){ if(e.message==='已取消')break; bad.push(pt.name+'：'+e.message) }
     renderQueue();
   }
   q.working=false;renderQueue();
-  toast(`${q.parts.length} 件單品各自的貼圖完成`);
+  toast(bad.length?`${bad.length} 件沒做成（${bad[0]}）。點那件的小方框可以單獨重做`:`${q.parts.length} 件單品各自的貼圖完成`);
 }
 // AI 整套一張：請 AI 把套裝每件分開平鋪成一排，只出 1 張圖，再在手機上依位置切開、照順序對應到每一件
 const SET_PROMPT=names=>`把照片裡這套娃娃衣服的每一件單品分開，平鋪在純白色 #FFFFFF 背景上，由左到右排成一排，順序是：${names.map((n,i)=>(i+1)+'.'+n).join('　')}。每件之間留明顯的空白，不可以重疊或相碰，每件都完整不裁切。去掉背景、手、娃娃本體和雜物。不要陰影、文字、邊框、浮水印。顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。`;
