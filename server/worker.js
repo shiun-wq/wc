@@ -10,8 +10,9 @@
      MODEL_IMAGE         AI 出圖（貼圖）用的模型，留空 = 不開放 AI 出圖          （Text）
      IMAGE_API_BASE      出圖用的 API 地址，出圖在另一個地方才要填，留空 = 同上     （Text，選填）
      IMAGE_API_KEY       出圖用的 API 密鑰，留空 = 同上                        （Secret，選填）
-     IMAGE_API_STYLE     出圖服務的格式：chat（對話格式）或 task（先上傳圖片、送任務、再查結果，
-                         例如 ToAPIs）。留空 = 地址含 toapis 就用 task，其他用 chat  （Text，選填）
+     IMAGE_API_STYLE     出圖服務的格式：chat（對話格式）、task（ToAPIs 那種先上傳再送任務）、
+                         studio（1route Studio）。留空 = 依地址自動判斷          （Text，選填）
+     IMAGE_QUALITY       GPT Image 的品質：low / medium / high，留空 = 服務預設    （Text，選填）
      ALLOWED_ORIGINS     允許使用的網址，逗號分隔                               （Text）
                          例：https://shiun-wq.github.io,capacitor://localhost,https://localhost
      DAILY_LIMIT         每台裝置每天最多幾次，預設 30（需要綁 KV 才會生效）      （Text，選填）
@@ -46,6 +47,13 @@ export default {
         imageStyle: imageStyle(env),
         limit: !!env.QUOTA, origins: !!(env.ALLOWED_ORIGINS || '').trim()
       }, 200, cors);
+    }
+
+    // 查詢出圖進度（網頁切到背景再回來也能接著拿結果）
+    const jm = url.pathname.match(/^\/job\/([A-Za-z0-9_-]{4,100})$/);
+    if (jm && req.method === 'GET') {
+      if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
+      return imageStyle(env) === 'studio' ? studioStatus(jm[1], env, cors) : jobStatus(jm[1], env, cors);
     }
 
     if (url.pathname !== '/ai' || req.method !== 'POST') return json({ error: '找不到這個功能' }, 404, cors);
@@ -90,7 +98,8 @@ export default {
     const isImg = task === 'img';
     const base = (isImg && env.IMAGE_API_BASE) || env.API_BASE;
     const key = (isImg && env.IMAGE_API_KEY) || env.API_KEY;
-    if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors);
+    if (isImg && imageStyle(env) === 'studio') return studioImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
+    if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
     let up;
     try {
       up = await fetch(apiURL(base, '/chat/completions'), {
@@ -116,12 +125,126 @@ export default {
 
 function imageStyle(env) {
   const s = (env.IMAGE_API_STYLE || '').trim().toLowerCase();
-  if (s === 'task' || s === 'chat') return s;
-  return /toapis\./i.test(env.IMAGE_API_BASE || env.API_BASE || '') ? 'task' : 'chat';
+  if (s === 'task' || s === 'chat' || s === 'studio') return s;
+  const b = env.IMAGE_API_BASE || env.API_BASE || '';
+  return /1route\./i.test(b) ? 'studio' : /toapis\./i.test(b) ? 'task' : 'chat';
 }
 
 // 任務式出圖（ToAPIs 這類）：上傳照片拿網址 → 送出任務 → 每 2 秒查一次 → 把完成的圖直接轉給網頁
-async function taskImage(base, key, model, messages, env, cors) {
+/* ---- 1route Studio：POST /api/v1/images/edits/jobs → GET /api/v1/images/jobs/{id} → GET .../result ---- */
+const studioRoot = base => { try { return new URL(String(base).trim()).origin; } catch (e) { return 'https://api.1route.dev'; } };
+function studioModel(m) {
+  m = String(m || '').trim();
+  if (m.includes('/')) return m;
+  return (/^gemini|banana/i.test(m) ? 'google/' : 'openai/') + m;
+}
+
+async function studioImage(base, key, model, messages, env, cors, async) {
+  const fail = (msg, detail, status = 502) =>
+    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
+  const parts = messages[0].content;
+  const images = parts.filter(p => p.type === 'image_url').map(p => ({ dataUrl: p.image_url.url }));
+  const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  if (!images.length) return fail('沒有收到照片', '', 400);
+  const m = studioModel(model);
+  const body = { model: m, prompt, images };
+  if (m.startsWith('google/')) { body.resolution = '1K'; body.aspect_ratio = '1:1'; }
+  else { body.size = '1K'; if (env.IMAGE_QUALITY) body.quality = env.IMAGE_QUALITY; }
+  let j, r;
+  try {
+    r = await fetch(studioRoot(base) + '/api/v1/images/edits/jobs', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+      body: JSON.stringify(body)
+    });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
+  if (!r.ok || !j.jobId) {
+    const d = 'submit ' + r.status + ' ' + JSON.stringify(j);
+    if (r.status === 401) return fail('AI 服務設定有誤（密鑰）', d);
+    if (r.status === 429) return fail('AI 服務忙碌中，稍後再試', d, 429);
+    if (r.status === 413) return fail('照片太大了', d, 413);
+    return fail('AI 服務設定有誤（模型或格式）', d);
+  }
+  if (async) return json({ job: j.jobId }, 200, cors);
+  for (let i = 0; i < 100; i++) {
+    await new Promise(ok => setTimeout(ok, 2500));
+    const res = await studioStatus(j.jobId, env, cors);
+    if ((res.headers.get('content-type') || '').includes('json')) {
+      const x = await res.clone().json().catch(() => ({}));
+      if (x.pending) continue;
+    }
+    return res;
+  }
+  return fail('出圖太久了，稍後再試', 'timeout ' + j.jobId, 504);
+}
+
+async function studioStatus(id, env, cors) {
+  const fail = (msg, detail, status = 502) =>
+    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
+  const base = env.IMAGE_API_BASE || env.API_BASE, key = env.IMAGE_API_KEY || env.API_KEY;
+  if (!base || !key) return fail('AI 服務還沒設定好', '', 503);
+  const root = studioRoot(base), auth = { authorization: 'Bearer ' + key };
+  let j;
+  try {
+    const r = await fetch(root + '/api/v1/images/jobs/' + encodeURIComponent(id), { headers: auth });
+    j = await r.json().catch(() => ({}));
+    if (r.status === 404) return fail('找不到這個出圖任務', JSON.stringify(j), 404);
+    if (!r.ok) return json({ pending: true }, 200, cors); // 查詢本身暫時失敗就下一輪再問
+  } catch (e) { return json({ pending: true }, 200, cors); }
+  if (j.phase === 'queued' || j.phase === 'running') return json({ pending: true, phase: j.phase, queue: j.queuePosition || 0 }, 200, cors);
+  if (j.phase === 'failed' || j.phase === 'cancelled') {
+    const e = j.error || {};
+    return fail(e.code === 'cancelled' ? '出圖已取消' : '出圖失敗，換張照片或稍後再試', JSON.stringify(e));
+  }
+  if (j.phase !== 'completed') return json({ pending: true }, 200, cors);
+  let res;
+  try {
+    const r = await fetch(root + '/api/v1/images/jobs/' + encodeURIComponent(id) + '/result', { headers: auth });
+    if (r.status === 410) return fail('圖片已經過期了', '', 410);
+    res = await r.json();
+  } catch (e) { return json({ pending: true }, 200, cors); }
+  const img = res && res.images && res.images[0];
+  if (!img) return fail('出圖完成但沒拿到圖片', JSON.stringify(res));
+  // 有 base64 就直接包成對話格式回給網頁；網頁本來就會從裡面找 data:image
+  if (img.base64) return json({ choices: [{ message: { content: 'data:' + (img.mimeType || 'image/png') + ';base64,' + img.base64 } }] }, 200, cors);
+  if (img.url) {
+    const same = img.url.startsWith(root);
+    const r = await fetch(img.url, same ? { headers: auth } : {}).catch(() => null);
+    if (r && r.ok) return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': r.headers.get('content-type') || img.mimeType || 'image/png' } });
+  }
+  return fail('圖片下載失敗', JSON.stringify(img).slice(0, 200));
+}
+
+function imageRoot(base) {
+  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
+  return root;
+}
+
+async function jobStatus(id, env, cors) {
+  const fail = (msg, detail, status = 502) =>
+    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
+  const base = env.IMAGE_API_BASE || env.API_BASE, key = env.IMAGE_API_KEY || env.API_KEY;
+  if (!base || !key) return fail('AI 服務還沒設定好', '', 503);
+  let j;
+  try {
+    const r = await fetch(imageRoot(base) + '/images/generations/' + encodeURIComponent(id), { headers: { authorization: 'Bearer ' + key } });
+    j = await r.json().catch(() => ({}));
+    if (r.status === 404) return fail('找不到這個出圖任務', JSON.stringify(j), 404);
+  } catch (e) { return json({ pending: true }, 200, cors); }
+  const st = j.status || (j.data && j.data.status);
+  if (st === 'failed') return fail('出圖失敗，換張照片或稍後再試', JSON.stringify(j.error || j.fail_reason || j));
+  if (st !== 'completed') return json({ pending: true, progress: j.progress || 0 }, 200, cors);
+  const outUrl = findUrl(j.result) || findUrl(j);
+  if (!outUrl) return fail('出圖完成但沒拿到圖片', JSON.stringify(j));
+  const r = await fetch(outUrl).catch(() => null);
+  if (!r || !r.ok) return fail('圖片下載失敗', outUrl);
+  const type = r.headers.get('content-type') || 'image/png';
+  return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': type.startsWith('image/') ? type : 'image/png' } });
+}
+
+async function taskImage(base, key, model, messages, env, cors, async) {
   const fail = (msg, detail, status = 502) =>
     json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
   const parts = messages[0].content;
@@ -129,8 +252,7 @@ async function taskImage(base, key, model, messages, env, cors) {
   const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n').slice(0, 1000);
   if (!img) return fail('沒有收到照片', '', 400);
   const auth = { authorization: 'Bearer ' + key };
-  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
+  const root = imageRoot(base);
 
   // 1. 上傳照片
   const m = img.image_url.url.match(/^data:(image\/[a-z+]+);base64,(.*)$/i);
@@ -167,6 +289,8 @@ async function taskImage(base, key, model, messages, env, cors) {
     } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
   }
   if (!taskId) return fail('AI 服務設定有誤（模型或格式）', last);
+  // 網頁要自己來查進度：直接回任務編號，這樣使用者切到別的 App 也不會斷
+  if (async) return json({ job: taskId }, 200, cors);
 
   // 3. 等結果，最多約 2 分鐘
   let outUrl;
@@ -212,7 +336,7 @@ function originAllowed(origin, env) {
 function corsHeaders(origin) {
   const h = {
     'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-device',
+    'access-control-allow-headers': 'content-type, x-device, x-async',
     'access-control-max-age': '86400',
     vary: 'origin'
   };
