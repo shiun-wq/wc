@@ -1020,6 +1020,8 @@ async function load(){
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
   // 改版：預設改成每次詢問
   if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
+  // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
+  if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
   S.dolls=S.dolls||[];S.wish=S.wish||[];S.memory=S.memory||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
@@ -1250,18 +1252,10 @@ function extractImage(j){
   return null;
 }
 async function aiSticker(dataURL){
-  const c=cfg();
-  if(!c.endpoint)throw new Error('尚未設定 API');
-  const model=(S.settings.stickerModel||'').trim()||c.model;
-  const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
-    method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model,max_tokens:8192,messages:[{role:'user',content:[
-      {type:'image_url',image_url:{url:dataURL}},
-      {type:'text',text:STICKER_PROMPT}
-    ]}]})
-  });
-  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,120))}
-  const img=extractImage(await r.json());
+  const img=extractImage(await aiChat('img',[
+    {type:'image_url',image_url:{url:dataURL}},
+    {type:'text',text:STICKER_PROMPT}
+  ]));
   if(!img)throw new Error('這個模型沒有回傳圖片，請改用會出圖的模型');
   return img;
 }
@@ -1624,7 +1618,7 @@ function pickCut(count){
       <button class="cutopt" onclick="pickDone('tap')"><div><b>點選去背</b><span>點一下衣服就圈出來，什麼背景都可以</span></div><em>免費・推薦</em></button>
       <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>全自動，但背景要是素色</span></div><em>免費</em></button>
       <button class="cutopt" onclick="pickDone('ai')" ${ok?'':'disabled'}><div><b>AI 出圖去背</b><span>什麼背景都可以，手和雜物也會一起清掉</span></div>
-        <em>${!aiReady()?'需要設定 API':left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
+        <em>${!aiReady()?(devMode()?'需要設定 API':'暫停服務'):left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
       ${ok||!aiReady()?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
       ${count>1?`<p class="hint">這次共 ${count} 張。</p>`:''}
       <label class="remember"><input type="checkbox" id="pk_rem"> 記住我的選擇（之後可以在設定改）</label>`);
@@ -1640,8 +1634,41 @@ function pickDone(m){
 /* ============================================================
    4. AI：可接任意 API
    ============================================================ */
+// 正式的 AI 後台（Cloudflare Worker）網址。部署好之後填這裡，所有人都會走後台，密鑰不會出現在網頁上。
+const BACKEND='https://doll-ai.zeshiun.workers.dev';
 const cfg=()=>S.settings.presets.find(p=>p.id===S.settings.activeId)||{};
-const aiReady=()=>!!cfg().endpoint;
+const devMode=()=>!!S.settings.devMode;
+const backendURL=()=>((devMode()&&S.settings.backendUrl)||BACKEND).trim().replace(/\/+$/,'');
+// 開發者模式可以切成直接連 API，自己測試用
+const viaBackend=()=>!!backendURL()&&!(devMode()&&S.settings.aiRoute==='direct');
+const aiReady=()=>viaBackend()||(devMode()&&!!cfg().endpoint);
+const aiMissing=()=>devMode()?'請先在設定填好 API':'AI 功能暫時無法使用';
+function deviceId(){
+  if(!S.settings.deviceId){S.settings.deviceId=Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');save()}
+  return S.settings.deviceId;
+}
+// 所有 AI 請求都從這裡出去。task：tag／buy／wearid／idea／img／test
+async function aiChat(task,content){
+  let r;
+  if(viaBackend()){
+    try{
+      r=await fetch(backendURL()+'/ai',{method:'POST',headers:{'content-type':'application/json','x-device':deviceId()},
+        body:JSON.stringify({task,messages:[{role:'user',content}]})});
+    }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
+    if(!r.ok){let m='';try{m=(await r.json()).error||''}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    return r.json();
+  }
+  const c=cfg();
+  if(!c.endpoint)throw new Error(aiMissing());
+  const model=task==='img'?((S.settings.stickerModel||'').trim()||c.model):c.model;
+  r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
+    method:'POST',headers:authHead(c.key),
+    body:JSON.stringify({model,max_tokens:task==='test'?16:8192,messages:[{role:'user',content}]})
+  });
+  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
+  return r.json();
+}
+const aiText=j=>{const m=j.choices?.[0]?.message;return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||''};
 // 填 base（.../v1）就好，路徑自動補
 function apiURL(base,path){
   base=(base||'').trim().replace(/\/+$/,'');
@@ -1676,19 +1703,10 @@ async function listModels(endpoint,key){
   }
   throw new Error(last==='CORS'?'伺服器沒開放讀取模型清單，直接手動輸入模型名稱就好':'抓取失敗（'+last+'），可以手動輸入');
 }
-async function callAI(prompt,imageDataURL){
-  const c=cfg();
-  if(!c.endpoint)throw new Error('尚未設定 API 地址');
+async function callAI(task,prompt,imageDataURL){
   const content=[{type:'text',text:prompt}];
   if(imageDataURL)content.unshift({type:'image_url',image_url:{url:imageDataURL}});
-  const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
-    method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
-  });
-  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
-  const j=await r.json();
-  const m=j.choices?.[0]?.message;
-  return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||'';
+  return aiText(await aiChat(task,content));
 }
 // 會思考的模型有時把回應寫到一半就被截斷，這裡盡量把 JSON 補完整再讀
 function repairJSON(t){
@@ -2114,7 +2132,7 @@ function queueFromTags(photo,t,price){
 }
 async function recheckWish(id){
   const w=S.wish.find(x=>x.id===id);if(!w)return;
-  if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  if(!aiReady()){toast(aiMissing());return}
   if(!needQuota('buy'))return;
   openBuyCheck();
   BUY.photo=w.photo;BUY.t=w.t;BUY.wishId=id;
@@ -2470,11 +2488,11 @@ async function cutAll(){
 }
 async function analyze(n){
   const q=UI.queue[n];
-  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return false}
+  if(!aiReady()){toast(aiMissing());return false}
   if(!needQuota('tag'))return false;
   q.analyzing=true;renderQueue();
   try{
-    const r=parseJSON(await callAI(tagPrompt(),q.photo));
+    const r=parseJSON(await callAI('tag',tagPrompt(),q.photo));
     spendQuota('tag');
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
@@ -2887,7 +2905,7 @@ function ideaRandom(){
     tip:SCENE_TIP[IDEA.scene]&&!IDEA.custom?SCENE_TIP[IDEA.scene]:''});
 }
 async function ideaAI(btn){
-  if(!aiReady()){toast('請先在設定填好 API');return}
+  if(!aiReady()){toast(aiMissing());return}
   const pool=ideaPool();if(pool.length<2){toast('合身的娃衣還太少');return}
   if(!needQuota('idea'))return;
   const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> 想一想…';btn.disabled=true;
@@ -2901,7 +2919,7 @@ ${list}
 {"title":"10字內的造型名稱","itemIds":["只能用清單裡的id"],"reason":"60字內，說明為什麼適合這個地點","tip":"40字內的拍照小建議"}
 規則：通常是 上衣+下身 或 洋裝，再視情況加帽子、外套、鞋子、配件，3到6件；不要同一個部位放兩件；${IDEA.press?'有標記「壓箱底」的請優先考慮，讓它們有機會出場；':''}每次給不一樣的組合。`;
   try{
-    const r=parseJSON(await callAI(prompt));
+    const r=parseJSON(await callAI('idea',prompt));
     const ids=(r.itemIds||[]).filter(i=>pool.some(x=>x.id===i));
     if(!ids.length)throw new Error('AI 沒有給出衣櫃裡的娃衣，再試一次');
     spendQuota('idea');
@@ -2978,7 +2996,7 @@ async function onWearPhoto(ev){
   WEAR.photo=await compress(f);drawWearSheet();
 }
 async function identify(){
-  if(!aiReady()){toast('請先在設定填好 API 地址與模型');return}
+  if(!aiReady()){toast(aiMissing());return}
   if(!needQuota('wearid'))return;
   toast('AI 辨識中…');
   const cat=S.items.filter(i=>i.category!=='套裝').map(i=>
@@ -2990,7 +3008,7 @@ ${cat}
 [{"id":"清單中的id","score":0到100的相似度}]
 規則：只列出你有把握的；同一個部位若不確定，可以列出2到3個候選；完全找不到對應就不要列；相似度低於50不要列。`;
   try{
-    const r=parseJSON(await callAI(prompt,WEAR.photo));
+    const r=parseJSON(await callAI('wearid',prompt,WEAR.photo));
     spendQuota('wearid');
     WEAR.cands=(r||[]).filter(c=>S.items.some(i=>i.id===c.id)).sort((a,b)=>b.score-a.score).slice(0,8);
     WEAR.picked=WEAR.cands.filter(c=>c.score>=80).map(c=>c.id);
@@ -3364,7 +3382,7 @@ const famLabel={'粉':'粉色','紅':'紅色','橘':'橘色','黃':'黃色','綠
 const idle=i=>{const l=lastWear(i.id);return !l||days(l)>180};
 
 function openBuyCheck(){
-  if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  if(!aiReady()){toast(aiMissing());return}
   BUY.photo=null;BUY.wishId=null;
   openSheet(`<h3>買前檢查</h3>
     <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。本月還可以檢查 <b>${quotaLeft('buy')}</b> 次。</p>
@@ -3405,16 +3423,9 @@ function thumb(src,max){
     return c.toDataURL('image/jpeg',.82);
   });
 }
-async function callAIImgs(prompt,imgs){
-  const c=cfg();
+async function callAIImgs(task,prompt,imgs){
   const content=[...imgs.map(u=>({type:'image_url',image_url:{url:u}})),{type:'text',text:prompt}];
-  const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
-    method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model:c.model,max_tokens:8192,messages:[{role:'user',content}]})
-  });
-  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
-  const m=(await r.json()).choices?.[0]?.message;
-  return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||'';
+  return aiText(await aiChat(task,content));
 }
 // 本機比對：類型、顏色、風格、圖案重疊越多分數越高
 function buyScore(t,i){
@@ -3437,7 +3448,7 @@ async function runBuy(file){
   try{
     BUY.photo=await compress(file);
     buyStep('分析這件娃衣…');
-    const r=parseJSON(await callAI(tagPrompt(),BUY.photo));
+    const r=parseJSON(await callAI('buy',tagPrompt(),BUY.photo));
     const t={name:r.name||'',category:r.isSet?'套裝':(r.category||'其他'),isSet:!!r.isSet,
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
@@ -3466,7 +3477,7 @@ recolor：同款式或同設計，但顏色不同
 similar：款式不同，但風格、元素或配色很像
 different：沒什麼關係`;
     try{
-      const out=parseJSON(await callAIImgs(prompt,imgs));
+      const out=parseJSON(await callAIImgs('buy',prompt,imgs));
       verdict=(Array.isArray(out)?out:[]).map(v=>({...v,it:cands[(+v.n)-1]?.i})).filter(v=>v.it);
     }catch(e){toast('圖片比對失敗，先只顯示標籤統計')}
   }
@@ -3644,16 +3655,30 @@ function openSettings(){
   setTimeout(showUsage,50);
   const th=st.theme||'light';
   openSheet(`
-    <h3>設定</h3>
+    <h3 onclick="devTap()">設定</h3>
 
     <h2 class="sec" style="margin-top:4px">外觀</h2>
     <div class="swap" id="s_theme">
       ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
     </div>
 
-    <h2 class="sec">AI 連線</h2>
-
+    <h2 class="sec">AI 服務</h2>
+    <div class="card">
+      <div class="row"><span class="grow" style="font-size:13.5px">${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span>
+        <button class="btn sm quiet" onclick="testAPI(this)">測試</button></div>
+    </div>
+    ${devMode()?`
+    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
     <div class="card" style="margin-top:6px">
+      <label class="f"><span>後台網址</span>
+        <input type="text" id="s_backend" value="${esc(st.backendUrl||'')}" placeholder="${esc(BACKEND||'https://xxx.workers.dev')}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <div class="swap">
+        ${[['backend','走後台'],['direct','直接連 API']].map(([k,l])=>`<button class="${(st.aiRoute||'backend')===k?'on':''}" onclick="readForm();S.settings.aiRoute='${k}';save().then(openSettings)">${l}</button>`).join('')}
+      </div>
+      <p class="hint" style="margin:8px 0 0">後台網址留空 = 用程式裡寫好的正式後台。「直接連 API」只給自己測試，用下面這組設定。</p>
+    </div>
+
+    <div class="card">
       <div class="row" style="margin-bottom:9px">
         <b class="grow" style="font-size:13.5px">預設配置</b>
         <button class="btn sm ghost" onclick="newPreset()">新增</button>
@@ -3685,6 +3710,7 @@ function openSettings(){
     </div>
     <button class="btn ghost wide" style="margin-top:8px" onclick="diagnose(this)">連不上？跑一次診斷</button>
     <p class="warn" style="margin-top:8px">${window.self!==window.top?'注意：這個頁面目前嵌在別的視窗裡執行。如果是在 Claude 的預覽視窗，對外連線會被沙箱擋掉，必須把 HTML 下載後用瀏覽器開啟。':'密鑰只存在這台裝置。'}</p>
+    `:''}
 
     <h2 class="sec">會員（測試）</h2>
     <div class="card">
@@ -3725,13 +3751,13 @@ function openSettings(){
           <option value="tap" ${st.stickerMode==='tap'?'selected':''}>一律點選去背　免費，點一下衣服</option>
           <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
           <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
-          <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
+          ${devMode()||st.stickerMode==='api'?`<option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>`:''}
         </select></label>
 
-      <div id="sk_ai" style="display:${['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
+      <div id="sk_ai" style="display:${devMode()&&['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
         <label class="f"><span>出圖模型</span>
           <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
-        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。還沒設定 API 時會自動改用簡易去背。</p>
+        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。只在「直接連 API」時有用，走後台時用後台設定的出圖模型。</p>
       </div>
 
       <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
@@ -3817,7 +3843,7 @@ async function showUsage(){
     if(el&&e.usage)el.innerHTML=`・已使用 ${(e.usage/1048576).toFixed(1)} MB`}catch(e){}
 }
 function toggleSticker(v){
-  document.getElementById('sk_ai').style.display=v==='ai'||v==='ask'?'block':'none';
+  document.getElementById('sk_ai').style.display=devMode()&&(v==='ai'||v==='ask')?'block':'none';
   document.getElementById('sk_api').style.display=v==='api'?'block':'none';
 }
 function pickModel(btn,m){
@@ -3827,11 +3853,16 @@ function pickModel(btn,m){
 function readForm(){
   const v=k=>{const e=document.getElementById(k);return e?e.value:''};
   const c=cfg();
-  c.name=v('s_name')||'未命名';
-  c.endpoint=v('s_endpoint').trim();
-  c.key=v('s_key').trim();
-  c.model=v('s_model').trim();
-  S.settings.stickerMode=v('s_smode');S.settings.stickerModel=v('s_smodel');
+  // 開發者欄位沒顯示時不要把舊值蓋成空的
+  if(document.getElementById('s_endpoint')){
+    c.name=v('s_name')||'未命名';
+    c.endpoint=v('s_endpoint').trim();
+    c.key=v('s_key').trim();
+    c.model=v('s_model').trim();
+    S.settings.backendUrl=v('s_backend').trim();
+  }
+  S.settings.stickerMode=v('s_smode');
+  if(document.getElementById('s_smodel'))S.settings.stickerModel=v('s_smodel');
   S.settings.bgTol=+v('s_bgtol')||42;S.settings.stickerEdge=+v('s_edge');
   S.settings.bgUrl=v('s_bgurl')||S.settings.bgUrl;S.settings.bgKey=v('s_bgkey')||S.settings.bgKey;
 }
@@ -3865,12 +3896,23 @@ async function saveSettings(loud){
   readForm();await save();
   if(loud)toast('設定已儲存');
 }
+// 開發者模式：連點「設定」標題 7 下開啟
+let DEVTAP=[];
+function devTap(){
+  const now=Date.now();DEVTAP=DEVTAP.filter(t=>now-t<2500);DEVTAP.push(now);
+  if(DEVTAP.length>=7&&!devMode()){DEVTAP=[];readForm();setDev(true)}
+}
+async function setDev(on){
+  S.settings.devMode=on;await save();openSettings();
+  toast(on?'開發者模式已開啟':'開發者模式已關閉');
+}
 async function testAPI(btn){
   await saveSettings(0);
-  if(!cfg().model){toast('請先填模型名稱');return}
+  if(!aiReady()){toast(aiMissing());return}
+  if(!viaBackend()&&!cfg().model){toast('請先填模型名稱');return}
   const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> 測試中';btn.disabled=true;
   try{
-    const r=await callAI('只回覆這兩個字：正常');
+    const r=await callAI('test','只回覆這兩個字：正常');
     toast('連接成功：'+r.trim().slice(0,30));
   }catch(e){toast('連接失敗：'+e.message)}
   btn.innerHTML=old;btn.disabled=false;
@@ -3882,7 +3924,20 @@ async function diagnose(btn){
   const frame=window.self!==window.top;
   const file=location.protocol==='file:';
   out.push(['執行環境',file?'本機檔案 file://　網頁來源是 null，多數伺服器會直接擋':(frame?'嵌在 iframe 裡　如果這是 Claude 的預覽視窗，對外連線一定會被沙箱擋掉':'網頁 '+location.origin)]);
-  if(!c.endpoint){out.push(['API 地址','還沒填']);}
+  if(viaBackend()){
+    out.push(['連線方式','走後台　'+backendURL()]);
+    let h;
+    try{
+      const r=await fetch(backendURL()+'/health');const j=await r.json();
+      const miss=[['API 地址',j.api],['API 密鑰',j.key],['文字模型',j.text]].filter(x=>!x[1]).map(x=>x[0]);
+      h=(miss.length?'還沒填：'+miss.join('、'):'必填的都填好了')+'　出圖模型'+(j.image?'有':'沒')+'填'+(j.imageApi?'（另一個中轉站'+(j.imageKey?'':'，但密鑰沒填')+'）':'')+'・次數限制'+(j.limit?'有':'沒')+'開・網址白名單'+(j.origins?'有':'沒')+'設';
+    }catch(e){h='連不上後台　檢查網址有沒有打對、Worker 有沒有按 Deploy'}
+    out.push(['後台設定',h]);
+    let p;
+    try{p='正常　'+(await callAI('test','只回覆這兩個字：正常')).trim().slice(0,30)}catch(e){p='失敗　'+e.message}
+    out.push(['對話請求',p]);
+  }
+  else if(!c.endpoint){out.push(['API 地址','還沒填']);}
   else{
     let reach;
     try{await fetch(apiURL(c.endpoint,'/models'),{mode:'no-cors'});reach='通　伺服器碰得到'}
@@ -3908,7 +3963,8 @@ async function diagnose(btn){
   else if(file)advice='用 file:// 開啟時網頁來源是 null，很多 API 伺服器會拒絕。把檔案放上任何一個網址（GitHub Pages 免費且夠用）就會正常。';
   else if(/CORS/.test(j))advice='伺服器碰得到，但沒開放跨域。要在 API 伺服器那邊回這幾個標頭：Access-Control-Allow-Origin、Access-Control-Allow-Headers: content-type,authorization、Access-Control-Allow-Methods: GET,POST,OPTIONS，而且 OPTIONS 要回 200。';
   else if(/HTTP 4/.test(j))advice='連線本身沒問題，是密鑰或模型名稱不對。看上面對話請求回傳的內容。';
-  else if(/HTTP 200/.test(j))advice='一切正常，可以直接用了。';
+  else if(/HTTP 200|(^| )正常/.test(j))advice='一切正常，可以直接用了。';
+  else if(/這個網址沒有被允許/.test(j))advice='後台的 ALLOWED_ORIGINS 沒有包含這個網址：'+location.origin+'，加進去再按 Deploy。';
   openSheet(`<h3>連線診斷</h3>
     ${out.map(([k,v])=>`<div class="rowitem" style="display:block"><b style="font-size:13px">${k}</b><div class="hint" style="word-break:break-all">${esc(v)}</div></div>`).join('')}
     ${advice?`<div class="note" style="margin-top:12px">${advice}</div>`:''}
