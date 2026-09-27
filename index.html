@@ -1657,6 +1657,12 @@ async function aiChat(task,content){
         body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
     if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    // 任務式出圖時後台直接回圖片本身，這裡轉成和對話格式一樣的樣子
+    if((r.headers.get('content-type')||'').startsWith('image/')){
+      const blob=await r.blob();
+      const url=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(blob)});
+      return {choices:[{message:{content:url}}]};
+    }
     return r.json();
   }
   const c=cfg();
