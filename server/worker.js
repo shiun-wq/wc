@@ -129,7 +129,8 @@ async function taskImage(base, key, model, messages, env, cors) {
   const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n').slice(0, 1000);
   if (!img) return fail('沒有收到照片', '', 400);
   const auth = { authorization: 'Bearer ' + key };
-  const root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
 
   // 1. 上傳照片
   const m = img.image_url.url.match(/^data:(image\/[a-z+]+);base64,(.*)$/i);
@@ -144,7 +145,7 @@ async function taskImage(base, key, model, messages, env, cors) {
     const r = await fetch(root + '/uploads/images', { method: 'POST', headers: auth, body: form });
     const j = await r.json().catch(() => ({}));
     photoUrl = j && j.data && j.data.url;
-    if (!r.ok || !photoUrl) return fail(r.status === 401 || r.status === 403 ? 'AI 服務設定有誤（密鑰）' : '照片上傳失敗', 'upload ' + r.status + ' ' + JSON.stringify(j));
+    if (!r.ok || !photoUrl) return fail(r.status === 401 || r.status === 403 ? 'AI 服務設定有誤（密鑰）' : '照片上傳失敗（' + r.status + (j.message ? '，' + j.message : '') + '）', 'upload ' + r.status + ' ' + JSON.stringify(j));
   } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
 
   // 2. 送出任務（文件有兩種 image_urls 寫法，第一種被拒就換第二種）

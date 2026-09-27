@@ -405,6 +405,20 @@ dl.meta dd{margin:0}
 .rowitem:last-child{border:none}
 .rowitem .th{width:52px;height:52px;flex:0 0 52px;border-radius:14px;background:var(--swatch);overflow:hidden;border:1px solid var(--line)}
 .rowitem .th img{width:100%;height:100%;object-fit:contain;padding:4px}
+.cfam{display:flex;flex-wrap:wrap;gap:7px}
+.cfam span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
+.cfam i{width:12px;height:12px;border-radius:50%;border:1px solid var(--line-2)}
+.cfam b{font-weight:600;color:var(--ink)}
+.wkbars{display:flex;gap:6px;align-items:flex-end;height:110px;padding:6px 2px 0;margin-bottom:6px}
+.wkbars div{flex:1;height:100%;display:flex;flex-direction:column;align-items:center}
+.wkbars b{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-height:0}
+.wkbars i{display:block;width:100%;max-width:30px;border-radius:8px 8px 3px 3px;background:linear-gradient(var(--berry),var(--berry-deep));opacity:.85;max-height:calc(100% - 16px)}
+.wkbars span{font-size:11px;color:var(--muted);margin-top:5px}
+.wkbars em{font-style:normal;font-weight:500;font-size:10.5px;color:var(--ink-2);line-height:14px}
+.rowitem .th.col{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;padding:2px}
+.rowitem .th.col img{padding:1px;min-width:0;min-height:0}
+.rowitem .th.col.c2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.rowitem .th.col.c3 img:first-child{grid-row:span 2}
 .rowitem .tx{flex:1;min-width:0}
 .rowitem .tx b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rowitem .tx span{font-size:11.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -1658,12 +1672,13 @@ async function aiChat(task,content){
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
     if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
     // 任務式出圖時後台直接回圖片本身，這裡轉成和對話格式一樣的樣子
-    if((r.headers.get('content-type')||'').startsWith('image/')){
-      const blob=await r.blob();
-      const url=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(blob)});
+    const blob=await r.blob(),head=new Uint8Array(await blob.slice(0,4).arrayBuffer());
+    const isImg=(r.headers.get('content-type')||'').startsWith('image/')||(head[0]===0x89&&head[1]===0x50)||(head[0]===0xFF&&head[1]===0xD8)||(head[0]===0x52&&head[1]===0x49);
+    if(isImg){
+      const url=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(isImg&&!blob.type.startsWith('image/')?new Blob([blob],{type:head[0]===0xFF?'image/jpeg':head[0]===0x52?'image/webp':'image/png'}):blob)});
       return {choices:[{message:{content:url}}]};
     }
-    return r.json();
+    try{return JSON.parse(await blob.text())}catch(e){throw new Error('AI 服務回傳的內容看不懂，請再試一次')}
   }
   const c=cfg();
   if(!c.endpoint)throw new Error(aiMissing());
@@ -1901,7 +1916,7 @@ function renderHome(){
 
   <h2 class="sec">最近穿搭</h2>
   ${recent.length?`<div class="blist">${recent.map(w=>`<div class="rowitem" onclick="go('wear')">
-    <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
+    ${wearThumb(w)}
     <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b><span>${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
     <div class="rt"><button class="btn sm quiet" onclick="event.stopPropagation();openShare('wear','${w.id}')">小卡</button></div></div>`).join('')}</div>
     <button class="btn ghost wide sm" style="margin-top:10px" onclick="go('wear')">全部紀錄</button>`
@@ -2224,6 +2239,14 @@ function wearCount(id){return S.wears.filter(w=>w.itemIds.includes(id)).length}
 function lastWear(id){const w=S.wears.filter(x=>x.itemIds.includes(id)).map(x=>x.date).sort();return w.length?w[w.length-1]:null}
 function setName(id){return (S.sets.find(s=>s.id===id)||{}).name||''}
 function img(it){return it.cutout||it.photo||''}
+// 穿搭紀錄的縮圖：有照片用照片，沒有就把這次穿的單品貼圖拼在一起（最多 4 件）
+function wearThumb(w){
+  if(w.photo)return `<div class="th"><img src="${w.photo}" style="object-fit:cover;padding:0" alt=""></div>`;
+  const its=w.itemIds.map(anyItem).filter(i=>i&&img(i)&&i.category!=='套裝');
+  const pick=(its.length?its:w.itemIds.map(anyItem).filter(i=>i&&img(i))).slice(0,4);
+  if(pick.length<2)return `<div class="th">${pick[0]?`<img src="${img(pick[0])}" alt="">`:''}</div>`;
+  return `<div class="th col c${pick.length}">${pick.map(i=>`<img src="${img(i)}" alt="">`).join('')}</div>`;
+}
 
 function renderCloset(){
   const keep=['catchips','viewchips','sizechips'].map(k=>[k,document.getElementById(k).scrollLeft]);
@@ -2778,10 +2801,12 @@ function matchStats(){
   return {looks,versatile,combos,fav};
 }
 function renderMatch(){
-  const el=document.getElementById('matchStats');if(!el)return;
+  const el=document.getElementById('matchStats');if(el)el.innerHTML=matchSection();
+}
+function matchSection(){
   const head=`<h2 class="sec">搭配分析 <span class="vip">會員</span></h2>`;
   if(!isMember()){
-    el.innerHTML=head+`<div class="locked">
+    return head+`<div class="locked">
       <div class="lk-blur">
         <div class="rowitem"><div class="th"></div><div class="tx"><b>最萬搭：白色蕾絲襯衫</b><span>跟 12 件搭過</span></div></div>
         <div class="rowitem"><div class="th"></div><div class="tx"><b>最常穿：週末野餐</b><span>穿了 8 次</span></div></div>
@@ -2792,9 +2817,8 @@ function renderMatch(){
         <span>最萬搭的單品、最常穿的 Look、總是一起出場的組合，還有每隻娃娃最愛的那件</span>
         <button class="btn" onclick="openMember()">了解會員</button>
       </div></div>`;
-    return;
   }
-  if(S.wears.length<2){el.innerHTML=head+'<div class="hint">再多記錄幾次穿搭，這裡就會開始出現分析。</div>';return}
+  if(S.wears.length<2)return head+'<div class="hint">再多記錄幾次穿搭，這裡就會開始出現分析。</div>';
   const m=matchStats(),th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
   const row=(it,b,s,on)=>`<div class="rowitem" ${on?`onclick="${on}"`:''}>${th(it)}<div class="tx"><b>${b}</b><span>${s}</span></div>${on?'<div class="rt">›</div>':''}</div>`;
   let h=head;
@@ -2807,7 +2831,7 @@ function renderMatch(){
       <div class="tx"><b>${esc(a.name)} × ${esc(b.name)}</b><span>一起穿了 ${x.n} 次</span></div>
       ${saved?'':`<div class="rt"><button class="btn sm quiet" onclick="comboToCanvas('${a.id}','${b.id}')">做成 Look</button></div>`}</div>`}).join('')}</div>`;
   if(m.fav.length)h+=`<p class="mh">每隻娃娃的最愛</p><div class="blist">${m.fav.map(x=>row(x.it,`${esc(x.d.name)} 最常穿：${esc(x.it.name)}`,`穿了 ${x.n} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
-  el.innerHTML=h;
+  return h;
 }
 function comboToCanvas(a,b){
   UI.canvas=[...UI.canvas.filter(p=>p.dollId),{itemId:a,x:50,y:32,scale:130,rot:0},{itemId:b,x:50,y:68,scale:130,rot:0}];UI.selPc=null;
@@ -2819,6 +2843,7 @@ function openMember(){
       <div class="qh"><span></span><b>免費</b><b>會員</b></div>
       ${Object.values(QUOTA).map(q=>`<div><span>${q.name}／月</span><b>${q.free||'—'}</b><b>${q.member}</b></div>`).join('')}
       <div><span>搭配分析</span><b>—</b><b>✓</b></div>
+      <div><span>穿搭習慣分析</span><b>—</b><b>✓</b></div>
       <div><span>花費分析</span><b>—</b><b>✓</b></div>
     </div>
     <p class="hint" style="margin:10px 0 0">不想訂閱也可以用點數：建檔分析、穿搭辨識 1 點，買前檢查 3 點，AI 出圖 5 點。會員每月多出的額度大約等於 ${memberValue()} 點。</p>
@@ -3050,7 +3075,7 @@ function renderWears(){
   if(!S.wears.length){el.innerHTML='<div class="empty"><strong>還沒有紀錄</strong>每記錄一次，衣櫃洞察就更準一點</div>';return}
   el.innerHTML=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(w=>`
     <div class="rowitem">
-      <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
+      ${wearThumb(w)}
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
         <span>${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
       <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
@@ -3339,6 +3364,31 @@ function renderInsight(){
     h+=`<div class="note">你最常穿的那幾件，共同點是：<strong>${traits.map(esc).join('、')}</strong>。下次挑娃衣時可以拿這個當參考。</div>`;
   }
 
+  // 最常穿的單品
+  const topWorn=items.map(i=>({i,c:wearCount(i.id)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,8);
+  if(topWorn.length){
+    h+=`<h2 class="sec">最常穿的娃衣</h2>
+    <div class="hscroll">${topWorn.map((x,k)=>`<button class="piece" onclick="openItem('${x.i.id}')">
+      <div class="sw"><img src="${img(x.i)}" alt=""><span class="tag">${k===0?'👑 ':''}${x.c} 次</span></div>
+      <div class="nm">${esc(x.i.name)}</div></button>`).join('')}</div>`;
+  }
+  // 娃娃出場排行
+  const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  if(dollRank.length){
+    const dm=dollRank[0].n;
+    h+=`<h2 class="sec">娃娃出場排行</h2>`+dollRank.slice(0,6).map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 次</em></div>
+      <div class="track"><i class="worn" style="width:${x.n/dm*100}%"></i></div></div>`).join('');
+  }
+  // 衣櫃色彩
+  const fam={};
+  items.forEach(i=>new Set((i.colors||[]).map(colorFam)).forEach(f=>{if(famLabel[f])fam[f]=(fam[f]||0)+1}));
+  const famTop=Object.entries(fam).sort((a,b)=>b[1]-a[1]);
+  if(famTop.length){
+    h+=`<h2 class="sec">衣櫃色彩</h2>
+    <div class="cfam">${famTop.map(([f,n])=>`<span><i style="background:${FAM_HEX[f]}"></i>${famLabel[f]}<b>${n}</b></span>`).join('')}</div>
+    <p class="hint" style="margin:6px 0 0">${famTop.length>=3?`最多的是${famLabel[famTop[0][0]]}，${famTop.length<=4?'色系滿集中的':'顏色分佈很豐富'}。`:''}${['紅','橘','黃','綠','藍','紫','粉'].filter(f=>!fam[f]).slice(0,2).map(f=>famLabel[f]).join('、')?`還沒有${['紅','橘','黃','綠','藍','紫','粉'].filter(f=>!fam[f]).slice(0,2).map(f=>famLabel[f]).join('、')}的娃衣。`:''}</p>`;
+  }
+
   h+=`<h2 class="sec">買了多少，穿了多少</h2>
   <div class="legend"><s>有穿過</s><s class="b">還沒穿</s></div>`;
   buyTop.slice(0,8).forEach(([k,n])=>{
@@ -3381,8 +3431,43 @@ function renderInsight(){
       <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
-  el.innerHTML=h+spendSection();
+  el.innerHTML=h+matchSection()+habitSection(items)+spendSection();
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
+}
+const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
+// 會員：穿搭習慣（星期幾、每月趨勢、最近的風格變化）
+function habitSection(items){
+  const head=`<h2 class="sec">穿搭習慣 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>最常在星期六換裝</b><span>週末佔 62%</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>這個月比上個月多穿 4 次</b><span>最近 6 個月趨勢</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>最近越來越常買：甜系</b><span>風格變化</span></div></div>
+    </div>
+    <div class="lk-cover"><b>你是週末派還是每天換裝派？</b>
+      <span>換裝的星期分佈、每月穿搭趨勢、最近買的風格跟以前有什麼不同</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  if(S.wears.length<3)return head+'<div class="hint">記錄 3 次以上穿搭，這裡就會開始出現。</div>';
+  const WK=['日','一','二','三','四','五','六'],wd=[0,0,0,0,0,0,0];
+  S.wears.forEach(w=>{const d=new Date(w.date+'T12:00:00');if(!isNaN(d))wd[d.getDay()]++});
+  const wmax=Math.max(...wd,1),top=wd.indexOf(Math.max(...wd)),wkend=Math.round((wd[0]+wd[6])/S.wears.length*100);
+  let h=head+`<p class="mh">最常在星期${WK[top]}換裝・週末佔 ${wkend}%</p>
+    <div class="wkbars">${wd.map((n,i)=>`<div><b><em>${n||''}</em><i style="height:${n?Math.max(6,n/wmax*100):0}%"></i></b><span>${WK[i]}</span></div>`).join('')}</div>`;
+  const now=new Date(),mon=[];
+  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mon.push({m:d.getMonth()+1,n:S.wears.filter(w=>w.date.startsWith(key)).length})}
+  const mmax=Math.max(...mon.map(x=>x.n),1),diff=mon[5].n-mon[4].n;
+  h+=`<p class="mh">最近 6 個月・這個月${diff>0?`比上個月多 ${diff} 次`:diff<0?`比上個月少 ${-diff} 次`:'跟上個月一樣'}</p>
+    <div class="wkbars">${mon.map(x=>`<div><b><em>${x.n||''}</em><i style="height:${x.n?Math.max(6,x.n/mmax*100):0}%"></i></b><span>${x.m}月</span></div>`).join('')}</div>`;
+  // 風格變化：最近 90 天建檔的 vs 之前
+  const cut=Date.now()-90*864e5,recent=items.filter(i=>(i.createdAt||0)>=cut),old=items.filter(i=>(i.createdAt||0)<cut);
+  const styleShare=list=>{const t={};list.forEach(i=>(i.styles||[]).forEach(x=>t[x.name]=(t[x.name]||0)+1));const n=list.length||1;return Object.fromEntries(Object.entries(t).map(([k,v])=>[k,v/n]))};
+  if(recent.length>=3&&old.length>=3){
+    const a=styleShare(recent),b=styleShare(old);
+    const up=Object.keys(a).map(k=>({k,d:a[k]-(b[k]||0)})).filter(x=>x.d>.15).sort((x,y)=>y.d-x.d).slice(0,3);
+    const down=Object.keys(b).map(k=>({k,d:b[k]-(a[k]||0)})).filter(x=>x.d>.15).sort((x,y)=>y.d-x.d).slice(0,2);
+    if(up.length||down.length)h+=`<div class="note">最近 3 個月${up.length?`越來越常買<strong>${up.map(x=>esc(x.k)).join('、')}</strong>`:''}${up.length&&down.length?'，':''}${down.length?`比較少買<strong>${down.map(x=>esc(x.k)).join('、')}</strong>`:''}。</div>`;
+  }
+  return h;
 }
 
 /* ============================================================
