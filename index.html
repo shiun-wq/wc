@@ -4,221 +4,410 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#FAF6F7">
+<meta name="theme-color" content="#F5F0EB">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="娃衣衣櫃">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <title>娃衣衣櫃</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   設計語彙
+   暖象牙底 + 深梅墨字 + 乾燥玫瑰強調 + 霧金點綴
+   元件尺寸以 iOS / Android 觸控規範為準（最小 44px），
+   之後包成 App（Capacitor / WebView）可直接沿用。
+   ============================================================ */
 :root{
-  --ink:#3B2E39;
-  --ink-2:#6B5A66;
-  --muted:#9A8E96;
-  --paper:#FAF6F7;
-  --card:#FFFFFF;
-  --line:#E7DEE3;
-  --berry:#C4527A;
-  --berry-soft:#F7E9EF;
+  /* 色彩 */
+  --ink:#2F2529;
+  --ink-2:#5F5158;
+  --muted:#978A90;
+  --paper:#F5F0EB;
+  --paper-2:#EFE8E1;
+  --card:#FFFDFB;
+  --line:#E6DCD4;
+  --line-2:#D9CCC2;
+  --berry:#A24D66;          /* 主強調：乾燥玫瑰 */
+  --berry-deep:#843B52;
+  --berry-soft:#F4E7E8;
+  --swatch:#F3ECE8;         /* 單品底色 */
+  --gold:#B39060;
+  --gold-soft:#F3EADB;
   --blue:#6E7BA8;
-  --sage:#7A9478;
-  --amber:#C08A3E;
-  --r:14px;
-  --tab-h:62px;
-  --sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Sans TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --sage:#7E977F;
+  --amber:#B8843F;
+
+  /* 陰影 */
+  --sh-1:0 1px 2px rgba(47,37,41,.04),0 2px 8px rgba(47,37,41,.04);
+  --sh-2:0 2px 6px rgba(47,37,41,.05),0 10px 28px rgba(47,37,41,.08);
+  --sh-3:0 -6px 30px rgba(47,37,41,.12);
+
+  /* 形狀 / 尺寸 */
+  --r:18px;
+  --r-sm:12px;
+  --tab-h:64px;
+  --tap:44px;
+
+  /* 動態 */
+  --ease:cubic-bezier(.22,.8,.26,1);
+  --spring:cubic-bezier(.32,1.25,.5,1);
+
+  /* 字體 */
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Hiragino Sans TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
   --serif:"Noto Serif TC","Songti TC","PingFang TC",serif;
+  --num:"Cormorant Garamond","Noto Serif TC",Georgia,serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{
   font-family:var(--sans);background:var(--paper);color:var(--ink);
-  font-size:15px;line-height:1.6;overscroll-behavior-y:none;
+  font-size:15px;line-height:1.6;letter-spacing:.01em;
+  overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer;border:none;background:none;padding:0}
+button{cursor:pointer;border:none;background:none;padding:0;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 img{display:block;max-width:100%}
+::selection{background:var(--berry-soft);color:var(--berry-deep)}
 
 /* ---------- shell ---------- */
-#app{max-width:520px;margin:0 auto;min-height:100vh;background:var(--paper);position:relative}
-header.top{
-  position:sticky;top:0;z-index:40;background:rgba(250,246,247,.94);
-  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
-  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
-  display:flex;align-items:baseline;gap:10px;
+#app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--paper);position:relative}
+@media (min-width:560px){
+  body{background:
+    radial-gradient(1200px 600px at 10% -10%,#F3E4E4 0,transparent 60%),
+    radial-gradient(900px 500px at 110% 110%,#EFE6D8 0,transparent 60%),
+    #EAE3DC}
+  #app{box-shadow:0 0 0 1px var(--line),0 30px 80px rgba(47,37,41,.10)}
 }
-header.top h1{font-family:var(--serif);font-weight:700;font-size:20px;margin:0;letter-spacing:.02em}
-header.top .sub{font-size:12px;color:var(--muted);margin-left:auto}
-.iconbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--ink-2)}
-.iconbtn:active{background:var(--berry-soft)}
+header.top{
+  position:sticky;top:0;z-index:40;
+  background:rgba(245,240,235,.82);
+  -webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
+  border-bottom:1px solid transparent;
+  padding:calc(env(safe-area-inset-top) + 12px) 18px 12px;
+  display:flex;align-items:center;gap:10px;
+  transition:border-color .25s,box-shadow .25s;
+}
+header.top.scrolled{border-bottom-color:var(--line);box-shadow:0 6px 20px -14px rgba(47,37,41,.25)}
+header.top h1{
+  font-family:var(--serif);font-weight:700;font-size:21px;margin:0;letter-spacing:.08em;
+  display:flex;align-items:center;gap:9px;
+}
+header.top h1::before{
+  content:"";width:9px;height:9px;border-radius:50%;
+  background:linear-gradient(135deg,var(--berry),var(--gold));
+  box-shadow:0 0 0 4px var(--berry-soft);
+}
+header.top .sub{font-size:12px;color:var(--muted);margin-left:auto;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.iconbtn{width:var(--tap);height:var(--tap);margin-right:-8px;border-radius:14px;display:grid;place-items:center;color:var(--ink-2);transition:background .2s,transform .2s var(--ease)}
+.iconbtn:active{background:var(--berry-soft);transform:scale(.92)}
 
-main{padding:14px 16px calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px)}
+main{padding:16px 18px calc(var(--tab-h) + env(safe-area-inset-bottom) + 32px)}
 .view{display:none}
-.view.on{display:block}
+.view.on{display:block;animation:viewIn .38s var(--ease)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}}
 
 nav.tabs{
   position:fixed;bottom:0;left:0;right:0;z-index:50;
-  max-width:520px;margin:0 auto;background:rgba(255,255,255,.96);
-  backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  max-width:520px;margin:0 auto;
+  background:rgba(255,253,251,.86);
+  -webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
+  border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(5,1fr);
-  padding-bottom:env(safe-area-inset-bottom);
+  padding:0 6px env(safe-area-inset-bottom);
 }
-nav.tabs button{height:var(--tab-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:11px}
-nav.tabs button svg{width:21px;height:21px}
-nav.tabs button.on{color:var(--berry)}
+nav.tabs button{
+  height:var(--tab-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--muted);font-size:11px;letter-spacing:.08em;position:relative;
+  transition:color .25s;
+}
+nav.tabs button svg{width:22px;height:22px;position:relative;z-index:1;transition:transform .35s var(--spring)}
+nav.tabs button::before{
+  content:"";position:absolute;top:9px;left:50%;width:52px;height:30px;margin-left:-26px;border-radius:999px;
+  background:var(--berry-soft);transform:scaleX(.4);opacity:0;
+  transition:transform .35s var(--spring),opacity .2s;
+}
+nav.tabs button.on{color:var(--berry);font-weight:600}
+nav.tabs button.on::before{transform:scaleX(1);opacity:1}
+nav.tabs button.on svg{transform:translateY(-1px)}
+nav.tabs button:active svg{transform:scale(.88)}
 
 /* ---------- bits ---------- */
-h2.sec{font-family:var(--serif);font-size:17px;font-weight:700;margin:26px 0 10px}
+h2.sec{
+  font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:.06em;
+  margin:30px 0 12px;display:flex;align-items:center;gap:10px;
+}
+h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line-2),transparent)}
 h2.sec:first-child{margin-top:4px}
-.hint{font-size:12.5px;color:var(--muted);line-height:1.5}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.6}
 .row{display:flex;gap:8px;align-items:center}
 .grow{flex:1}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.card + .card{margin-top:10px}
-label.f{display:block;margin-bottom:10px}
-label.f > span{display:block;font-size:12px;color:var(--ink-2);margin-bottom:4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh-1)}
+.card + .card{margin-top:12px}
+label.f{display:block;margin-bottom:12px}
+label.f > span{display:block;font-size:12px;color:var(--ink-2);margin-bottom:5px;letter-spacing:.04em}
 input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
-  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  width:100%;min-height:var(--tap);padding:10px 14px;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--card);
+  font-size:16px; /* 16px 以上 iOS 聚焦時不會自動放大 */
+  transition:border-color .2s,box-shadow .2s,background .2s;
+  -webkit-appearance:none;appearance:none;
 }
-textarea{resize:vertical;min-height:60px}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--berry);outline-offset:-1px;border-color:transparent}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:11px;background:var(--berry);color:#fff;font-weight:600;font-size:14px}
-.btn:active{transform:scale(.98)}
-.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-.btn.quiet{background:var(--berry-soft);color:var(--berry)}
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23978A90' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px;
+}
+input::placeholder,textarea::placeholder{color:#B5AAAF}
+#q{
+  padding-left:42px;border-radius:999px;background-color:var(--card);box-shadow:var(--sh-1);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23978A90' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:16px center;background-size:17px;
+}
+textarea{resize:vertical;min-height:72px}
+input[type=range]{width:100%;accent-color:var(--berry)}
+input[type=file]{font-size:13px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);box-shadow:0 0 0 4px rgba(162,77,102,.12)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:var(--tap);padding:10px 18px;border-radius:14px;
+  background:linear-gradient(180deg,#AE5670,var(--berry));color:#fff;
+  font-weight:600;font-size:14.5px;letter-spacing:.06em;
+  box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 6px 16px -6px rgba(162,77,102,.55);
+  transition:transform .18s var(--ease),box-shadow .2s,background .2s,opacity .2s;
+}
+.btn:active{transform:scale(.97);box-shadow:0 2px 8px -4px rgba(162,77,102,.5)}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.btn.quiet{background:var(--berry-soft);color:var(--berry-deep);box-shadow:none}
 .btn.wide{width:100%}
 .btn[disabled]{opacity:.45;pointer-events:none}
-.btn.sm{padding:7px 12px;font-size:13px;border-radius:9px}
-.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 16px 2px;margin:0 -16px 12px;scrollbar-width:none}
+.btn.sm{min-height:36px;padding:7px 14px;font-size:13px;border-radius:11px;letter-spacing:.04em}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:3px 18px;margin:0 -18px 12px;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:0 0 auto;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;color:var(--ink-2)}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.empty{text-align:center;padding:46px 20px;color:var(--muted)}
-.empty strong{display:block;font-family:var(--serif);font-size:16px;color:var(--ink);margin-bottom:6px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 22px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13.5px;z-index:120;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center}
-.toast.on{opacity:1}
+.chip{
+  flex:0 0 auto;min-height:36px;padding:6px 15px;border-radius:999px;scroll-snap-align:start;
+  border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink-2);letter-spacing:.04em;
+  transition:background .2s,color .2s,border-color .2s,transform .18s var(--ease);
+}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#FBF7F3;box-shadow:0 4px 12px -6px rgba(47,37,41,.6)}
+#viewchips .chip{min-height:32px;font-size:12.5px;background:transparent}
+#viewchips .chip.on{background:var(--berry-soft);border-color:transparent;color:var(--berry-deep);box-shadow:none}
+.empty{text-align:center;padding:56px 24px;color:var(--muted);font-size:13.5px;line-height:1.7}
+.empty::before{
+  content:"";display:block;width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A24D66' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z'/%3E%3C/svg%3E") center/28px no-repeat,
+    var(--berry-soft);
+}
+.empty strong{display:block;font-family:var(--serif);font-size:17px;font-weight:600;color:var(--ink);margin-bottom:6px;letter-spacing:.06em}
+.toast{
+  position:fixed;left:50%;transform:translate(-50%,10px);bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 18px);
+  background:rgba(47,37,41,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  color:#FBF7F3;padding:11px 20px;border-radius:999px;font-size:13.5px;letter-spacing:.03em;
+  z-index:120;opacity:0;transition:opacity .25s,transform .35s var(--spring);pointer-events:none;
+  max-width:88vw;text-align:center;box-shadow:0 10px 30px -10px rgba(47,37,41,.5);
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
 
-/* ---------- wardrobe grid: die-cut on swatch ---------- */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.piece{position:relative;text-align:left}
+/* ---------- wardrobe grid ---------- */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px}
+@media (min-width:430px){.grid{grid-template-columns:repeat(3,1fr);gap:18px 12px}}
+.piece{position:relative;text-align:left;transition:transform .2s var(--ease)}
+.piece:active{transform:scale(.97)}
 .piece .sw{
-  aspect-ratio:1;border-radius:12px;overflow:hidden;position:relative;
-  background:var(--berry-soft);display:grid;place-items:center;
+  aspect-ratio:1;border-radius:var(--r);overflow:hidden;position:relative;
+  background:radial-gradient(120% 90% at 50% 20%,#FFFDFB 0,var(--swatch) 70%);
+  border:1px solid rgba(230,220,212,.8);
+  display:grid;place-items:center;box-shadow:var(--sh-1);
+  transition:box-shadow .25s;
 }
-.piece .sw img{width:100%;height:100%;object-fit:contain;padding:9px}
+.piece .sw img{width:100%;height:100%;object-fit:contain;padding:12px;filter:drop-shadow(0 4px 6px rgba(47,37,41,.10))}
 .piece .tag{
-  position:absolute;left:7px;bottom:7px;background:rgba(255,255,255,.93);
-  border-radius:6px;padding:2px 6px;font-size:10.5px;color:var(--ink-2);letter-spacing:.03em;
+  position:absolute;left:8px;bottom:8px;background:rgba(255,253,251,.88);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  border-radius:999px;padding:2px 9px;font-size:10.5px;color:var(--ink-2);letter-spacing:.04em;
 }
-.piece .keep{position:absolute;right:7px;top:7px;font-size:13px}
-.piece .nm{font-size:12.5px;margin-top:6px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.piece .mt{font-size:11px;color:var(--muted)}
-.piece.dim .sw{opacity:.55}
+.piece .keep{position:absolute;right:8px;top:8px;font-size:13px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(255,253,251,.88)}
+.piece .nm{font-size:13px;font-weight:500;margin-top:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.piece .mt{font-size:11px;color:var(--muted);margin-top:1px;letter-spacing:.03em}
+.piece.dim .sw img{opacity:.6}
 
 /* ---------- sheet ---------- */
 .sheet{position:fixed;inset:0;z-index:100;display:none}
 .sheet.on{display:block}
-.sheet .scrim{position:absolute;inset:0;background:rgba(59,46,57,.42)}
+.sheet .scrim{position:absolute;inset:0;background:rgba(47,37,41,.38);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade .25s ease}
+@keyframes fade{from{opacity:0}}
 .sheet .panel{
   position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;
-  background:var(--paper);border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;
-  padding:0 16px calc(24px + env(safe-area-inset-bottom));
-  animation:up .22s ease;
+  background:var(--paper);border-radius:26px 26px 0 0;max-height:92vh;max-height:92dvh;overflow-y:auto;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:0 18px calc(28px + env(safe-area-inset-bottom));
+  box-shadow:var(--sh-3);
+  animation:up .42s var(--ease);
 }
-@keyframes up{from{transform:translateY(28px)}}
-@media (prefers-reduced-motion:reduce){.sheet .panel{animation:none}}
-.sheet .grab{position:sticky;top:0;background:var(--paper);padding:10px 0 8px;z-index:2}
-.sheet .grab i{display:block;width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto}
-.sheet h3{font-family:var(--serif);font-size:19px;margin:2px 0 12px}
+@keyframes up{from{transform:translateY(100%)}}
+.sheet .grab{position:sticky;top:0;background:var(--paper);padding:10px 0 10px;z-index:2}
+.sheet .grab i{display:block;width:40px;height:5px;border-radius:3px;background:var(--line-2);margin:0 auto}
+.sheet h3{font-family:var(--serif);font-size:21px;font-weight:600;margin:4px 0 14px;letter-spacing:.05em;line-height:1.4}
 
 /* ---------- detail ---------- */
-.hero{border-radius:14px;overflow:hidden;background:var(--berry-soft);aspect-ratio:1;display:grid;place-items:center;margin-bottom:12px}
-.hero img{width:100%;height:100%;object-fit:contain;padding:16px}
-.swap{display:flex;gap:6px;margin-bottom:14px}
-.swap button{flex:1;padding:7px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--ink-2)}
-.swap button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-dl.meta{display:grid;grid-template-columns:88px 1fr;gap:7px 12px;margin:0;font-size:13.5px}
-dl.meta dt{color:var(--muted);font-size:12.5px}
+.hero{
+  border-radius:22px;overflow:hidden;aspect-ratio:1;display:grid;place-items:center;margin-bottom:14px;
+  background:radial-gradient(120% 90% at 50% 20%,#FFFDFB 0,var(--swatch) 70%);
+  border:1px solid var(--line);box-shadow:var(--sh-2);
+}
+.hero img{width:100%;height:100%;object-fit:contain;padding:20px;filter:drop-shadow(0 8px 14px rgba(47,37,41,.12))}
+.swap{display:flex;gap:4px;margin-bottom:14px;padding:4px;background:var(--paper-2);border-radius:14px}
+.swap button{flex:1;min-height:36px;padding:7px;border-radius:10px;font-size:12.5px;color:var(--ink-2);letter-spacing:.04em;transition:background .2s,color .2s,box-shadow .2s}
+.swap button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--sh-1)}
+dl.meta{
+  display:grid;grid-template-columns:88px 1fr;gap:0 12px;margin:0;font-size:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px 16px;
+}
+dl.meta dt,dl.meta dd{padding:10px 0;border-bottom:1px solid var(--paper-2)}
+dl.meta dt:last-of-type,dl.meta dd:last-of-type{border-bottom:none}
+dl.meta dt{color:var(--muted);font-size:12.5px;letter-spacing:.04em}
 dl.meta dd{margin:0}
-.tagline{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.tg{font-size:11.5px;padding:3px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink-2)}
-.tg.st{background:var(--berry-soft);border-color:transparent;color:var(--berry)}
+.tagline{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.tg{font-size:11.5px;padding:4px 11px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);letter-spacing:.03em}
+.tg.st{background:var(--berry-soft);border-color:transparent;color:var(--berry-deep)}
 
 /* ---------- intake ---------- */
-.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:26px 16px;text-align:center;background:#fff}
-.drop strong{font-family:var(--serif);display:block;margin-bottom:4px}
-.qcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px;margin-bottom:10px;display:flex;gap:11px}
-.qcard .th{width:78px;height:78px;flex:0 0 78px;border-radius:10px;background:var(--berry-soft);overflow:hidden}
+.drop{
+  border:1.5px dashed var(--line-2);border-radius:22px;padding:34px 20px;text-align:center;
+  background:radial-gradient(100% 120% at 50% 0,#FFFDFB 0,var(--card) 60%);
+  transition:border-color .2s,transform .2s var(--ease),background .2s;cursor:pointer;
+}
+.drop::before{
+  content:"";display:block;width:56px;height:56px;margin:0 auto 12px;border-radius:18px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='6' width='18' height='14' rx='2'/%3E%3Ccircle cx='12' cy='13' r='3.2'/%3E%3Cpath d='M8 6l1.5-2h5L16 6'/%3E%3C/svg%3E") center/26px no-repeat,
+    linear-gradient(135deg,#B8627B,var(--berry-deep));
+  box-shadow:0 10px 22px -10px rgba(162,77,102,.7);
+}
+.drop:active{transform:scale(.985);border-color:var(--berry)}
+.drop strong{font-family:var(--serif);font-weight:600;font-size:17px;display:block;margin-bottom:6px;letter-spacing:.06em}
+.qcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-top:12px;display:flex;gap:12px;box-shadow:var(--sh-1)}
+.qcard .th{width:84px;height:84px;flex:0 0 84px;border-radius:14px;background:var(--swatch);overflow:hidden}
 .qcard .th img{width:100%;height:100%;object-fit:contain}
 .qcard .bd{flex:1;min-width:0}
-.qcard input[type=text],.qcard select{padding:6px 9px;font-size:13px;border-radius:8px}
+.qcard input[type=text],.qcard select{min-height:38px;padding:7px 11px;font-size:14px;border-radius:10px}
+.qcard select{padding-right:32px;background-position:right 9px center}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.parts button{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
+.parts button{font-size:12px;min-height:30px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);transition:background .2s,color .2s}
 .parts button.on{background:var(--berry);border-color:var(--berry);color:#fff}
-.partrow{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px}
-.pt{flex:0 0 auto;text-align:center;width:52px}
-.pt .ptimg{width:52px;height:52px;border-radius:8px;background:var(--berry-soft);display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;border:1.5px dashed var(--line)}
+.partrow{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}
+.partrow::-webkit-scrollbar{display:none}
+.pt{flex:0 0 auto;text-align:center;width:54px}
+.pt .ptimg{width:54px;height:54px;border-radius:12px;background:var(--swatch);display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;border:1.5px dashed var(--line-2)}
 .pt.ok .ptimg{border-style:solid;border-color:var(--sage)}
 .pt .ptimg img{width:100%;height:100%;object-fit:contain;padding:3px}
 .pt span{display:block;font-size:10px;margin-top:3px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#queueActions:not(:empty){margin-top:14px}
 
 /* ---------- studio ---------- */
-#canvas{position:relative;width:100%;aspect-ratio:3/4;background:
-  repeating-linear-gradient(45deg,#fff 0 12px,#FDF9FA 12px 24px);
-  border:1px solid var(--line);border-radius:var(--r);overflow:hidden;touch-action:none}
-.pc{position:absolute;width:120px;transform-origin:center;touch-action:none;user-select:none}
-.pc img{width:100%;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(59,46,57,.13))}
-.pc.sel{outline:1.5px dashed var(--berry);outline-offset:3px;border-radius:4px}
-.ctrl{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px;margin-top:10px}
-.ctrl input[type=range]{width:100%;accent-color:var(--berry)}
-.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-height:196px;overflow-y:auto;margin-top:10px}
-.drawer button{aspect-ratio:1;border-radius:9px;background:var(--berry-soft);overflow:hidden;border:1px solid transparent}
-.drawer button img{width:100%;height:100%;object-fit:contain;padding:4px}
+#canvas{position:relative;width:100%;aspect-ratio:3/4;
+  background:
+    radial-gradient(circle at 1px 1px,rgba(151,138,144,.28) 1px,transparent 1.4px) 0 0/18px 18px,
+    radial-gradient(120% 80% at 50% 0,#FFFDFB 0,#F8F2EE 100%);
+  border:1px solid var(--line);border-radius:22px;overflow:hidden;touch-action:none;box-shadow:var(--sh-2)}
+.pc{position:absolute;width:120px;transform-origin:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.pc img{width:100%;pointer-events:none;filter:drop-shadow(0 6px 10px rgba(47,37,41,.16))}
+.pc.sel{outline:1.5px dashed var(--berry);outline-offset:4px;border-radius:6px}
+.ctrl{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;box-shadow:var(--sh-1)}
+.ctrl input[type=range]{width:100%;accent-color:var(--berry);height:28px}
+.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:220px;overflow-y:auto;margin-top:10px}
+.drawer button{aspect-ratio:1;border-radius:12px;background:var(--swatch);overflow:hidden;border:1px solid var(--line);transition:transform .18s var(--ease)}
+.drawer button:active{transform:scale(.94)}
+.drawer button img{width:100%;height:100%;object-fit:contain;padding:5px}
 
 /* ---------- picker ---------- */
-.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pick button{position:relative;aspect-ratio:1;border-radius:10px;background:var(--berry-soft);overflow:hidden;border:2px solid transparent}
-.pick button img{width:100%;height:100%;object-fit:contain;padding:5px}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pick button{position:relative;aspect-ratio:1;border-radius:14px;background:var(--swatch);overflow:hidden;border:2px solid transparent;transition:border-color .2s,transform .18s var(--ease)}
+.pick button:active{transform:scale(.95)}
+.pick button img{width:100%;height:100%;object-fit:contain;padding:6px}
 .pick button.on{border-color:var(--berry)}
-.pick button.on::after{content:"✓";position:absolute;right:4px;top:2px;color:var(--berry);font-weight:700;font-size:13px}
-.pick .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.9);font-size:9.5px;padding:2px 3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick button.on::after{content:"✓";position:absolute;right:5px;top:5px;width:20px;height:20px;border-radius:50%;background:var(--berry);color:#fff;font-weight:700;font-size:11px;display:grid;place-items:center;line-height:1}
+.pick .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,253,251,.9);font-size:9.5px;padding:3px 4px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- insight ---------- */
-.stat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.stat div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-.stat b{font-family:var(--serif);font-size:26px;display:block;line-height:1.1}
-.stat span{font-size:11.5px;color:var(--muted)}
-.bar{margin-bottom:11px}
-.bar .lb{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
-.bar .lb em{font-style:normal;color:var(--muted);font-size:12px}
-.track{height:9px;border-radius:5px;background:var(--berry-soft);overflow:hidden;display:flex}
-.track i{display:block;height:100%}
-.track i.worn{background:var(--sage)}
-.track i.idle{background:#E3D5DC}
-.legend{font-size:11.5px;color:var(--muted);display:flex;gap:12px;margin:-4px 0 12px}
-.legend s{text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-.legend s::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--sage)}
-.legend s.b::before{background:#E3D5DC}
-.note{background:var(--berry-soft);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.65}
-.note + .note{margin-top:9px}
-.note strong{color:var(--berry)}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.stat div{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh-1);
+  position:relative;overflow:hidden;
+}
+.stat div::after{content:"";position:absolute;right:-18px;top:-18px;width:60px;height:60px;border-radius:50%;background:var(--berry-soft);opacity:.7}
+.stat div:nth-child(2)::after{background:var(--gold-soft)}
+.stat div:nth-child(3)::after{background:#E8EFE7}
+.stat div:nth-child(4)::after{background:#E9EAF2}
+.stat b{font-family:var(--num);font-weight:600;font-size:36px;display:block;line-height:1.05;letter-spacing:.01em;position:relative;z-index:1;font-variant-numeric:lining-nums}
+.stat span{font-size:11.5px;color:var(--muted);letter-spacing:.08em;position:relative;z-index:1}
+.bar{margin-bottom:14px}
+.bar .lb{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px}
+.bar .lb em{font-style:normal;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.track{height:10px;border-radius:999px;background:var(--paper-2);overflow:hidden;display:flex}
+.track i{display:block;height:100%;transform-origin:left;transition:transform .9s var(--ease) .15s}
+.track i.worn{background:linear-gradient(90deg,#8FA891,var(--sage))}
+.track i.idle{background:#E4D6DA}
+.rv:not(.in) .track i{transform:scaleX(0)}
+.legend{font-size:11.5px;color:var(--muted);display:flex;gap:14px;margin:-4px 0 14px}
+.legend s{text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.legend s::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--sage)}
+.legend s.b::before{background:#E4D6DA}
+.note{
+  background:linear-gradient(135deg,var(--berry-soft),#F7EEE9);border-radius:var(--r);
+  padding:14px 16px 14px 18px;font-size:13.5px;line-height:1.75;position:relative;overflow:hidden;
+}
+.note::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--berry)}
+.note + .note{margin-top:10px}
+.note strong{color:var(--berry-deep)}
 
-.rowitem{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rowitem{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.rowitem[onclick]{cursor:pointer;transition:background .2s}
+.rowitem[onclick]:active{background:var(--paper-2)}
 .rowitem:last-child{border:none}
-.rowitem .th{width:46px;height:46px;flex:0 0 46px;border-radius:9px;background:var(--berry-soft);overflow:hidden}
-.rowitem .th img{width:100%;height:100%;object-fit:contain;padding:3px}
+.rowitem .th{width:52px;height:52px;flex:0 0 52px;border-radius:14px;background:var(--swatch);overflow:hidden;border:1px solid var(--line)}
+.rowitem .th img{width:100%;height:100%;object-fit:contain;padding:4px}
 .rowitem .tx{flex:1;min-width:0}
-.rowitem .tx b{display:block;font-size:13.5px;font-weight:600}
-.rowitem .tx span{font-size:11.5px;color:var(--muted)}
+.rowitem .tx b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowitem .tx span{font-size:11.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rowitem .rt{font-size:12px;color:var(--muted);text-align:right;flex:0 0 auto}
+#lookList,#wearList{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 14px;box-shadow:var(--sh-1)}
+#lookList:has(> .hint),#wearList:has(> .empty){background:none;border:none;box-shadow:none;padding:0}
+#v-wear > .btn.wide{min-height:52px;font-size:15px;border-radius:16px}
 
 .conf{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:4px}
 .conf i{display:block;height:100%;background:var(--sage)}
 .conf.low i{background:var(--amber)}
 
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+.btn.ghost .spin,.btn.quiet .spin{border-color:rgba(162,77,102,.25);border-top-color:var(--berry)}
 @keyframes sp{to{transform:rotate(360deg)}}
-.divider{height:1px;background:var(--line);margin:18px 0}
-.warn{font-size:12.5px;color:var(--amber);line-height:1.55}
+.edwrap{position:relative;display:flex;justify-content:center;border-radius:20px;overflow:hidden;border:1px solid var(--line);
+  background:repeating-conic-gradient(#EEE7E2 0 25%,#FFFDFB 0 50%) 0 0/18px 18px}
+#edc{display:block;height:auto;max-width:100%;touch-action:none;cursor:crosshair}
+.edcur{position:absolute;display:none;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);
+  border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(47,37,41,.55),inset 0 0 0 1px rgba(47,37,41,.25)}
+.divider{height:1px;background:var(--line);margin:20px 0}
+.warn{font-size:12.5px;color:var(--amber);line-height:1.6}
+
+/* ---------- 捲動淡入 ----------
+   JS 會把動態產生的卡片加上 .rv，進入畫面時再加 .in。
+   使用獨立的 translate 屬性，不會覆蓋元件本身的 transform（按壓縮放等）。 */
+.rv{opacity:0;translate:0 18px;transition:opacity .6s var(--ease),translate .7s var(--ease);transition-delay:var(--d,0ms)}
+.rv.in{opacity:1;translate:0 0}
+.rv.quick{transition:none}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  .rv{opacity:1;translate:none}
+  .spin{animation-duration:.7s!important;animation-iteration-count:infinite!important}
+}
 </style>
 </head>
 <body>
@@ -357,7 +546,8 @@ async function save(){ await DB.set('data',S); }
 async function load(){
   const d=await DB.get('data');
   if(d) S=Object.assign(S,d);
-  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ml',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
+  S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ai',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
+  if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
   if(!S.settings.presets.length){
     S.settings.presets=[{id:uid('p'),name:'New Preset',endpoint:'',key:'',model:'',models:[]}];
     S.settings.activeId=S.settings.presets[0].id;
@@ -386,41 +576,117 @@ async function compress(file){
   const im=await fileToImg(file);
   return drawScaled(im,1000).toDataURL('image/jpeg',.82);
 }
-// 白/純色底的簡易去背：從四邊往內做泛洪，顏色接近背景就變透明
-function localCutout(dataURL,tol){
-  tol=tol??(S.settings.bgTol||42);
-  return new Promise(res=>{
-    const im=new Image();
-    im.onload=()=>{
-      const c=drawScaled(im,760),x=c.getContext('2d'),W=c.width,H=c.height;
-      const d=x.getImageData(0,0,W,H),p=d.data;
-      const at=(i,j)=>(j*W+i)*4;
-      let r=0,g=0,b=0,n=0;
-      for(const [i,j] of [[0,0],[W-1,0],[0,H-1],[W-1,H-1],[W>>1,0],[W>>1,H-1]]){
-        const k=at(i,j);r+=p[k];g+=p[k+1];b+=p[k+2];n++;
-      }
-      r/=n;g/=n;b/=n;
-      const seen=new Uint8Array(W*H),q=new Int32Array(W*H);let h=0,t=0;
-      const push=(i,j)=>{const id=j*W+i;if(seen[id])return;
-        const k=id*4,dd=Math.abs(p[k]-r)+Math.abs(p[k+1]-g)+Math.abs(p[k+2]-b);
-        if(dd>tol*3)return; seen[id]=1;q[t++]=id;};
-      for(let i=0;i<W;i++){push(i,0);push(i,H-1)}
-      for(let j=0;j<H;j++){push(0,j);push(W-1,j)}
-      while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;
-        p[id*4+3]=0;
-        if(i>0)push(i-1,j); if(i<W-1)push(i+1,j);
-        if(j>0)push(i,j-1); if(j<H-1)push(i,j+1);
-      }
-      // 邊緣柔化一圈
-      for(let j=1;j<H-1;j++)for(let i=1;i<W-1;i++){
-        const id=j*W+i;if(seen[id])continue;
-        if(seen[id-1]||seen[id+1]||seen[id-W]||seen[id+W])p[id*4+3]=150;
-      }
-      x.putImageData(d,0,0);
-      res(c.toDataURL('image/png'));
-    };
-    im.src=dataURL;
-  });
+/* ---- 去背引擎 ----
+   來源圖 → 算透明遮罩 → 清理遮罩 → 裁掉多餘空白 → 加白邊。
+   來源圖和遮罩會跟著單品存起來，之後可以用筆刷修補。 */
+function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('圖片讀取失敗'));im.src=src})}
+// 背景色：四邊像素的中位數，不會被角落的雜物帶偏
+function borderColor(p,W,H){
+  const rs=[],gs=[],bs=[];
+  const add=id=>{const k=id*4;rs.push(p[k]);gs.push(p[k+1]);bs.push(p[k+2])};
+  for(let i=0;i<W;i+=2){add(i);add((H-1)*W+i)}
+  for(let j=0;j<H;j+=2){add(j*W);add(j*W+W-1)}
+  const med=a=>{a.sort((x,y)=>x-y);return a[a.length>>1]};
+  return [med(rs),med(gs),med(bs)];
+}
+// 素色底遮罩：從四邊往內泛洪。
+// 每個背景點記住「附近的背景色」並慢慢跟著變，所以能吃掉陰影和漸層，但跨不過衣服的邊界。
+// 邊緣依色差給半透明，並把背景色從邊緣像素裡扣掉（去白邊／灰邊）。
+function bgMask(ctx,W,H,tol){
+  const d=ctx.getImageData(0,0,W,H),p=d.data,N=W*H;
+  const g0=borderColor(p,W,H),T=tol*3;
+  const ref=new Float32Array(N*3),bgm=new Uint8Array(N),q=new Int32Array(N);let h=0,t=0;
+  const dRef=(id,r)=>{const k=id*4;return Math.abs(p[k]-ref[r])+Math.abs(p[k+1]-ref[r+1])+Math.abs(p[k+2]-ref[r+2])};
+  const dG=id=>{const k=id*4;return Math.abs(p[k]-g0[0])+Math.abs(p[k+1]-g0[1])+Math.abs(p[k+2]-g0[2])};
+  const take=(id,r)=>{const k=id*4,o=id*3;bgm[id]=1;q[t++]=id;
+    ref[o]=ref[r]*.9+p[k]*.1;ref[o+1]=ref[r+1]*.9+p[k+1]*.1;ref[o+2]=ref[r+2]*.9+p[k+2]*.1};
+  const seed=id=>{if(bgm[id]||dG(id)>T)return;const o=id*3;ref[o]=g0[0];ref[o+1]=g0[1];ref[o+2]=g0[2];take(id,o)};
+  for(let i=0;i<W;i++){seed(i);seed((H-1)*W+i)}
+  for(let j=0;j<H;j++){seed(j*W);seed(j*W+W-1)}
+  const go=(from,id)=>{if(bgm[id])return;const r=from*3;
+    if(dRef(id,r)<=T&&dG(id)<=T*2)take(id,r)};
+  while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;
+    if(i>0)go(id,id-1);if(i<W-1)go(id,id+1);if(j>0)go(id,id-W);if(j<H-1)go(id,id+W);}
+  const a=new Uint8ClampedArray(N);
+  for(let id=0;id<N;id++)a[id]=bgm[id]?0:255;
+  for(let j=1;j<H-1;j++)for(let i=1;i<W-1;i++){
+    const id=j*W+i;if(bgm[id])continue;
+    const nb=bgm[id-1]?id-1:bgm[id+1]?id+1:bgm[id-W]?id-W:bgm[id+W]?id+W:-1;
+    if(nb<0)continue;
+    const r=nb*3,al=Math.max(.2,Math.min(1,(dRef(id,r)-T*.6)/(T*1.4)));
+    a[id]=Math.round(al*255);
+    const k=id*4;
+    p[k]=(p[k]-(1-al)*ref[r])/al;p[k+1]=(p[k+1]-(1-al)*ref[r+1])/al;p[k+2]=(p[k+2]-(1-al)*ref[r+2])/al;
+  }
+  return {data:d,a};
+}
+// 遮罩清理：去掉半透明霧邊、零碎小塊，補起小破洞
+function cleanMask(a,W,H){
+  const N=W*H,lab=new Int32Array(N),q=new Int32Array(N),sizes=[0];
+  for(let i=0;i<N;i++){if(a[i]<40)a[i]=0;else if(a[i]>215)a[i]=255}
+  let L=0;
+  for(let s=0;s<N;s++){
+    if(a[s]<128||lab[s])continue;
+    L++;let h=0,t=0;q[t++]=s;lab[s]=L;
+    while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const x=i+dx,y=j+dy;if(x<0||y<0||x>=W||y>=H)continue;
+        const n=y*W+x;if(!lab[n]&&a[n]>=128){lab[n]=L;q[t++]=n}}}
+    sizes.push(t);
+  }
+  if(L){
+    let big=0;for(const s of sizes)if(s>big)big=s;
+    const min=Math.max(big*.06,N*.0015),keep=sizes.map(s=>s>=min);
+    for(let i=0;i<N;i++)if(lab[i]&&!keep[lab[i]]){a[i]=0;lab[i]=0}
+    for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+      const id=j*W+i;if(a[id]===0||a[id]>=128)continue;
+      let ok=false;
+      for(let dy=-2;dy<=2&&!ok;dy++)for(let dx=-2;dx<=2;dx++){
+        const x=i+dx,y=j+dy;if(x>=0&&y>=0&&x<W&&y<H&&lab[y*W+x]){ok=true;break}}
+      if(!ok)a[id]=0;
+    }
+  }
+  // 小破洞：碰不到外框、面積很小的透明區域填回
+  const out=new Uint8Array(N);let h=0,t=0;
+  const sd=id=>{if(!out[id]&&a[id]<128){out[id]=1;q[t++]=id}};
+  for(let i=0;i<W;i++){sd(i);sd((H-1)*W+i)}
+  for(let j=0;j<H;j++){sd(j*W);sd(j*W+W-1)}
+  while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;
+    if(i>0)sd(id-1);if(i<W-1)sd(id+1);if(j>0)sd(id-W);if(j<H-1)sd(id+W);}
+  const hole=N*.0015;
+  for(let s=0;s<N;s++){
+    if(out[s]||a[s]>=128)continue;
+    h=0;t=0;q[t++]=s;out[s]=1;
+    while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;
+      for(const n of [i>0?id-1:-1,i<W-1?id+1:-1,j>0?id-W:-1,j<H-1?id+W:-1])
+        if(n>=0&&!out[n]&&a[n]<128){out[n]=1;q[t++]=n}}
+    if(t<hole)for(let k=0;k<t;k++)a[q[k]]=255;
+  }
+  return a;
+}
+// 合成 → 裁到內容 → 加白邊
+function composeSticker(src,a,W,H){
+  let x0=W,y0=H,x1=-1,y1=-1;
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++)if(a[j*W+i]){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}
+  if(x1<0)throw new Error('整張都被去掉了，試試調低「去底強度」或用修補筆刷補回');
+  const m=2;x0=Math.max(0,x0-m);y0=Math.max(0,y0-m);x1=Math.min(W-1,x1+m);y1=Math.min(H-1,y1+m);
+  const w=x1-x0+1,hh=y1-y0+1,out=new ImageData(w,hh),o=out.data,s=src.data;
+  for(let j=0;j<hh;j++)for(let i=0;i<w;i++){
+    const id=(j+y0)*W+i+x0,k=id*4,ok=(j*w+i)*4;
+    o[ok]=s[k];o[ok+1]=s[k+1];o[ok+2]=s[k+2];o[ok+3]=a[id];
+  }
+  const c=document.createElement('canvas');c.width=w;c.height=hh;c.getContext('2d').putImageData(out,0,0);
+  return makeSticker(c.toDataURL('image/png'));
+}
+function encSrc(src){
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
+  c.getContext('2d').putImageData(src,0,0);return c.toDataURL('image/jpeg',.9);
+}
+function encMask(a,W,H){
+  const d=new ImageData(W,H),p=d.data;
+  for(let i=0;i<W*H;i++){p[i*4]=p[i*4+1]=p[i*4+2]=a[i];p[i*4+3]=255}
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  c.getContext('2d').putImageData(d,0,0);return c.toDataURL('image/png');
 }
 // 遠端去背（remove.bg 或任何回傳圖片的自訂 endpoint）
 async function remoteCutout(dataURL){
@@ -490,50 +756,7 @@ function makeSticker(dataURL,w){
     im.src=dataURL;
   });
 }
-/* ---- 瀏覽器內建 AI 去背（RMBG-1.4，第一次用會下載約 40MB，之後有快取） ---- */
-let RM=null,RMloading=null;
 function prog(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._)}
-async function loadRMBG(){
-  if(RM)return RM;
-  if(RMloading)return RMloading;
-  RMloading=(async()=>{
-    prog('第一次使用，下載去背模型中…');
-    const t=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.5');
-    t.env.allowLocalModels=false;
-    const seen={};
-    const cb=d=>{
-      if(d.status==='progress'&&d.total){
-        seen[d.file]=d.progress;
-        const v=Object.values(seen);
-        prog('下載去背模型　'+Math.round(v.reduce((a,b)=>a+b,0)/v.length)+'%');
-      }
-    };
-    const model=await t.AutoModel.from_pretrained('briaai/RMBG-1.4',{config:{model_type:'custom'},progress_callback:cb});
-    const processor=await t.AutoProcessor.from_pretrained('briaai/RMBG-1.4',{config:{
-      do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,
-      image_mean:[0.5,0.5,0.5],image_std:[1,1,1],resample:2,size:{width:1024,height:1024}
-    }});
-    RM={t,model,processor};
-    return RM;
-  })();
-  try{ return await RMloading }catch(e){ RMloading=null; throw e }
-}
-async function mlCutout(dataURL){
-  const {t,model,processor}=await loadRMBG();
-  prog('去背處理中…');
-  const image=await t.RawImage.fromURL(dataURL);
-  const {pixel_values}=await processor(image);
-  const {output}=await model({input:pixel_values});
-  const mask=await t.RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width,image.height);
-  const c=document.createElement('canvas');
-  c.width=image.width;c.height=image.height;
-  const x=c.getContext('2d');
-  x.drawImage(image.toCanvas(),0,0);
-  const d=x.getImageData(0,0,c.width,c.height);
-  for(let i=0;i<mask.data.length;i++)d.data[4*i+3]=mask.data[i];
-  x.putImageData(d,0,0);
-  return c.toDataURL('image/png');
-}
 const STICKER_PROMPT='把圖中的娃娃衣服或配件單獨抽出來，去掉背景、手、娃娃本體和所有雜物，只留下這件單品本身。輸出一張圖片：單品置中且完整不裁切，背景填滿純白色 #FFFFFF，不要陰影、不要文字、不要邊框、不要浮水印，顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。';
 // 從各種格式的回應裡把圖片挖出來
 function extractImage(j){
@@ -562,29 +785,36 @@ async function aiSticker(dataURL){
   if(!img)throw new Error('這個模型沒有回傳圖片，請改用會出圖的模型');
   return img;
 }
+// 回傳 {sticker, src, mask}：sticker 是成品，src / mask 留給修補筆刷用
 async function cutout(dataURL){
-  const m=S.settings.stickerMode||'ml';
-  let raw;
-  if(m==='ml'){
-    try{ raw=await mlCutout(dataURL) }
-    catch(e){ throw new Error('去背模型載入失敗：'+e.message) }
-  }else if(m==='ai'){
-    const white=await aiSticker(dataURL);
-    raw=await localCutout(white,30);
-  }else if(m==='api'){
-    raw=await remoteCutout(dataURL);
+  let m=S.settings.stickerMode||'ai';
+  if(m==='ai'&&!aiReady())m='local';
+  let W,H,src,a;
+  if(m==='api'){
+    const [out,orig]=await Promise.all([loadImg(await remoteCutout(dataURL)),loadImg(dataURL)]);
+    const c=drawScaled(out,1000);W=c.width;H=c.height;
+    const od=c.getContext('2d').getImageData(0,0,W,H).data;
+    const oc=document.createElement('canvas');oc.width=W;oc.height=H;
+    const ox=oc.getContext('2d');ox.drawImage(orig,0,0,W,H);
+    src=ox.getImageData(0,0,W,H);a=new Uint8ClampedArray(W*H);
+    for(let i=0;i<W*H;i++){a[i]=od[i*4+3];if(a[i]){src.data[i*4]=od[i*4];src.data[i*4+1]=od[i*4+1];src.data[i*4+2]=od[i*4+2]}}
   }else{
-    raw=await localCutout(dataURL);
+    const im=await loadImg(m==='ai'?await aiSticker(dataURL):dataURL);
+    const c=drawScaled(im,1000);W=c.width;H=c.height;
+    const r=bgMask(c.getContext('2d'),W,H,m==='ai'?24:(S.settings.bgTol||42));
+    src=r.data;a=r.a;
   }
-  return makeSticker(raw);
+  cleanMask(a,W,H);
+  return {sticker:await composeSticker(src,a,W,H),src:encSrc(src),mask:encMask(a,W,H)};
 }
+function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.mask}
 
 /* ============================================================
    4. AI：可接任意 API
    ============================================================ */
 const cfg=()=>S.settings.presets.find(p=>p.id===S.settings.activeId)||{};
 const aiReady=()=>!!cfg().endpoint;
-// 中轉站格式：填 base（.../v1）就好，路徑自動補
+// 填 base（.../v1）就好，路徑自動補
 function apiURL(base,path){
   base=(base||'').trim().replace(/\/+$/,'');
   if(/\/(chat\/completions|messages|models)$/.test(base))base=base.replace(/\/[^/]+$/,'').replace(/\/chat$/,'');
@@ -616,7 +846,7 @@ async function listModels(endpoint,key){
       last='回應裡沒有模型清單';
     }catch(e){ last=/Failed to fetch|NetworkError|Load failed/i.test(e.message)?'CORS':'．'+e.message }
   }
-  throw new Error(last==='CORS'?'中轉站沒開放跨域讀取模型清單，直接手動輸入模型名稱就好':'抓取失敗（'+last+'），可以手動輸入');
+  throw new Error(last==='CORS'?'伺服器沒開放讀取模型清單，直接手動輸入模型名稱就好':'抓取失敗（'+last+'），可以手動輸入');
 }
 async function callAI(prompt,imageDataURL){
   const c=cfg();
@@ -734,7 +964,10 @@ function openItem(id){
       <button class="${UI.detailImg==='photo'?'on':''}" onclick="UI.detailImg='photo';openItem('${id}')">原始照片</button>
       <button onclick="recut('${id}')">重做貼圖</button>
     </div>
-    <button class="btn ghost wide sm" style="margin:-6px 0 14px" onclick="dlSticker('${id}')">下載貼圖 PNG</button>
+    ${i.cutout?`<div class="row" style="margin:-6px 0 14px">
+      <button class="btn quiet sm grow" onclick="editSticker('${id}')">修補貼圖</button>
+      <button class="btn ghost sm grow" onclick="dlSticker('${id}')">下載 PNG</button>
+    </div>`:''}
     <div class="tagline">
       ${(i.styles||[]).map(s=>`<span class="tg st">${esc(s.name)} ${s.score||''}</span>`).join('')}
       ${(i.colors||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
@@ -774,7 +1007,7 @@ function dlSticker(id){
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
   toast('製作貼圖中，AI 出圖要等幾秒…');
-  try{ i.cutout=await cutout(i.photo); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
+  try{ setCut(i,await cutout(i.photo)); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
   catch(e){ toast(e.message) }
 }
 function editItem(id){
@@ -890,7 +1123,7 @@ async function makePartStickers(n){
     prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
     try{
       pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
-      pt.img=await cutout(pt.crop);
+      setCut(pt,await cutout(pt.crop),'img');
     }catch(e){ q.working=false;renderQueue();toast('失敗：'+e.message);return }
     renderQueue();
   }
@@ -899,7 +1132,7 @@ async function makePartStickers(n){
 }
 async function cutQ(n){
   const q=UI.queue[n];toast('製作貼圖中，AI 出圖要等幾秒…');
-  try{q.cutout=await cutout(q.photo);renderQueue();toast('完成')}catch(e){toast(e.message)}
+  try{setCut(q,await cutout(q.photo));renderQueue();toast('完成')}catch(e){toast(e.message)}
 }
 async function cutAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].cutout)await cutQ(i)}}
 async function analyze(n){
@@ -925,7 +1158,7 @@ async function commitQueue(){
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   let n=0;
   for(const q of UI.queue){
-    const base={photo:q.photo,cutout:q.cutout,colors:q.colors,styles:q.styles,motifs:q.motifs,
+    const base={photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
       season:q.season,material:q.material,sizes:[],brand:'',shop:'',buyDate:'',price:'',note:'',
       keepsake:false,keepsakeReason:'',createdAt:Date.now()};
     if(q.isSet){
@@ -938,7 +1171,7 @@ async function commitQueue(){
         const sfx=seen[pt.name]>1?' '+String.fromCharCode(64+seen[pt.name]):'';
         S.items.push(Object.assign({},base,{
           id:uid('i'),setId:sid,name:`${nm}－${pt.name}${sfx}`,category:pt.name,
-          photo:pt.crop||q.photo, cutout:pt.img||null
+          photo:pt.crop||q.photo, cutout:pt.img||null, cutSrc:pt.cutSrc||null, cutMask:pt.cutMask||null
         }));n++;
       }
     }else{
@@ -947,6 +1180,97 @@ async function commitQueue(){
   }
   UI.queue=[];renderQueue();await save();
   toast(`已建檔 ${n} 件`);go('closet');
+}
+
+/* ============================================================
+   7b. 貼圖修補筆刷
+   ============================================================ */
+const ED={size:28};
+async function editSticker(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  if(!i.cutSrc||!i.cutMask){toast('這是舊版貼圖，先按「重做貼圖」就可以修補');return}
+  const [si,mi]=await Promise.all([loadImg(i.cutSrc),loadImg(i.cutMask)]);
+  const W=si.width,H=si.height,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');x.drawImage(si,0,0);const src=x.getImageData(0,0,W,H);
+  x.clearRect(0,0,W,H);x.drawImage(mi,0,0,W,H);const md=x.getImageData(0,0,W,H).data;
+  const a=new Uint8ClampedArray(W*H);for(let k=0;k<W*H;k++)a[k]=md[k*4];
+  Object.assign(ED,{id,W,H,src,a,orig:a.slice(),undo:[],tool:'erase',view:new ImageData(W,H)});
+  openSheet(`<h3>修補貼圖</h3>
+    <div class="edwrap" id="edwrap"><canvas id="edc" width="${W}" height="${H}" style="width:min(100%,${(58*W/H).toFixed(2)}vh)"></canvas><i class="edcur" id="edcur"></i></div>
+    <div class="swap" style="margin-top:12px">
+      <button id="ed_erase" class="on" onclick="edTool('erase')">擦掉</button>
+      <button id="ed_keep" onclick="edTool('keep')">補回</button>
+    </div>
+    <label class="f"><span>筆刷大小</span><input type="range" min="6" max="90" value="${ED.size}" oninput="ED.size=+this.value"></label>
+    <p class="hint" style="margin:-4px 0 14px">「擦掉」塗掉沒去乾淨的背景，「補回」把被誤刪的地方塗回來（補回時會淡淡顯示原圖當參考）。格子代表透明。</p>
+    <div class="row">
+      <button class="btn ghost" onclick="edUndo()">復原</button>
+      <button class="btn ghost" onclick="edReset()">重來</button>
+      <span class="grow"></span>
+      <button class="btn" onclick="edSave()">儲存貼圖</button>
+    </div>
+    <button class="btn ghost wide" style="margin-top:8px" onclick="openItem('${id}')">取消</button>`);
+  edDraw();edBind();
+}
+function edDraw(x0=0,y0=0,x1=ED.W,y1=ED.H){
+  const {W,src,a,view}=ED,s=src.data,v=view.data,ghost=ED.tool==='keep'?70:0;
+  x0=Math.max(0,x0|0);y0=Math.max(0,y0|0);x1=Math.min(ED.W,Math.ceil(x1));y1=Math.min(ED.H,Math.ceil(y1));
+  for(let j=y0;j<y1;j++)for(let i=x0;i<x1;i++){
+    const id=j*W+i,k=id*4;v[k]=s[k];v[k+1]=s[k+1];v[k+2]=s[k+2];v[k+3]=Math.max(a[id],ghost);
+  }
+  const c=document.getElementById('edc');if(c)c.getContext('2d').putImageData(view,0,0,x0,y0,x1-x0,y1-y0);
+}
+function edTool(t){
+  ED.tool=t;
+  document.getElementById('ed_erase').classList.toggle('on',t==='erase');
+  document.getElementById('ed_keep').classList.toggle('on',t==='keep');
+  edDraw();
+}
+function edStamp(cx,cy,r){
+  const {W,H,a}=ED,erase=ED.tool==='erase',in_=r*.65;
+  const x0=Math.max(0,Math.floor(cx-r)),x1=Math.min(W-1,Math.ceil(cx+r));
+  const y0=Math.max(0,Math.floor(cy-r)),y1=Math.min(H-1,Math.ceil(cy+r));
+  for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++){
+    const d=Math.hypot(i-cx,j-cy);if(d>r)continue;
+    const f=d<=in_?1:(r-d)/(r-in_),id=j*W+i;
+    a[id]=erase?Math.min(a[id],255*(1-f)):Math.max(a[id],255*f);
+  }
+  return [x0,y0,x1+1,y1+1];
+}
+function edBind(){
+  const c=document.getElementById('edc'),wrap=document.getElementById('edwrap'),cur=document.getElementById('edcur');
+  let last=null;
+  const pos=e=>{const r=c.getBoundingClientRect(),k=ED.W/r.width;
+    return {x:(e.clientX-r.left)*k,y:(e.clientY-r.top)*k,r:ED.size/2*k}};
+  const showCur=e=>{const w=wrap.getBoundingClientRect();
+    cur.style.cssText=`display:block;width:${ED.size}px;height:${ED.size}px;left:${e.clientX-w.left}px;top:${e.clientY-w.top}px`};
+  const paint=p=>{
+    const from=last||p,n=Math.max(1,Math.ceil(Math.hypot(p.x-from.x,p.y-from.y)/(p.r*.3)));
+    let bx0=1e9,by0=1e9,bx1=-1,by1=-1;
+    for(let s=1;s<=n;s++){
+      const [a0,b0,a1,b1]=edStamp(from.x+(p.x-from.x)*s/n,from.y+(p.y-from.y)*s/n,p.r);
+      bx0=Math.min(bx0,a0);by0=Math.min(by0,b0);bx1=Math.max(bx1,a1);by1=Math.max(by1,b1);
+    }
+    edDraw(bx0,by0,bx1,by1);last=p;
+  };
+  c.onpointerdown=e=>{
+    e.preventDefault();c.setPointerCapture(e.pointerId);
+    ED.undo.push(ED.a.slice());if(ED.undo.length>20)ED.undo.shift();
+    last=null;showCur(e);paint(pos(e));
+  };
+  c.onpointermove=e=>{showCur(e);if(last)paint(pos(e))};
+  c.onpointerup=c.onpointercancel=e=>{last=null;if(e.pointerType!=='mouse')cur.style.display='none'};
+  c.onpointerleave=()=>{if(!last)cur.style.display='none'};
+}
+function edUndo(){const u=ED.undo.pop();if(!u){toast('沒有可以復原的步驟');return}ED.a.set(u);edDraw()}
+function edReset(){ED.undo.push(ED.a.slice());ED.a.set(ED.orig);edDraw()}
+async function edSave(){
+  const i=S.items.find(x=>x.id===ED.id);if(!i)return;
+  try{
+    i.cutout=await composeSticker(ED.src,ED.a,ED.W,ED.H);
+    i.cutMask=encMask(ED.a,ED.W,ED.H);
+    await save();openItem(i.id);renderCloset();toast('貼圖已更新');
+  }catch(e){toast(e.message)}
 }
 
 /* ============================================================
@@ -1265,7 +1589,7 @@ function openSettings(){
 
     <div class="card">
       <label class="f"><span>API 地址（Endpoint）</span>
-        <input type="text" id="s_endpoint" value="${esc(c.endpoint||'')}" placeholder="https://your-relay.com/v1" autocapitalize="off" autocorrect="off"></label>
+        <input type="text" id="s_endpoint" value="${esc(c.endpoint||'')}" placeholder="https://api.example.com/v1" autocapitalize="off" autocorrect="off"></label>
       <label class="f"><span>API 密鑰</span>
         <input type="password" id="s_key" value="${esc(c.key||'')}" autocapitalize="off" autocorrect="off"></label>
       <label class="f" style="margin-bottom:0"><span>模型</span>
@@ -1288,20 +1612,15 @@ function openSettings(){
     <div class="card">
       <label class="f"><span>製作方式</span>
         <select id="s_smode" onchange="toggleSticker(this.value)">
-          <option value="ml" ${(st.stickerMode||'ml')==='ml'?'selected':''}>瀏覽器 AI 去背　推薦，免密鑰、任何背景</option>
-          <option value="local" ${st.stickerMode==='local'?'selected':''}>簡易去背　最快，但背景要純白</option>
-          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>API 出圖　需要會出圖的模型</option>
+          <option value="ai" ${(st.stickerMode||'ai')==='ai'?'selected':''}>AI 出圖　需要會出圖的模型</option>
+          <option value="local" ${st.stickerMode==='local'?'selected':''}>簡易去背　免費，背景要是素色</option>
           <option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>
         </select></label>
 
-      <div id="sk_ml" style="display:${(st.stickerMode||'ml')==='ml'?'block':'none'}">
-        <p class="hint" style="margin:-4px 0 12px">真正的去背模型，直接在你手機裡跑，不連任何 API。第一次使用會下載約 40MB 的模型檔，之後就有快取、離線也能用。單張大概 3 到 10 秒。</p>
-      </div>
-
-      <div id="sk_ai" style="display:${st.stickerMode==='ai'?'block':'none'}">
+      <div id="sk_ai" style="display:${(st.stickerMode||'ai')==='ai'?'block':'none'}">
         <label class="f"><span>出圖模型</span>
           <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
-        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看你的中轉站有哪些。</p>
+        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。還沒設定 API 時會自動改用簡易去背。</p>
       </div>
 
       <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
@@ -1315,7 +1634,7 @@ function openSettings(){
 
       <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
-      <p class="hint" style="margin:0">只有「簡易去背」會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。</p>
+      <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。</p>
     </div>
 
     <h2 class="sec">備份</h2>
@@ -1333,7 +1652,6 @@ function openSettings(){
   `);
 }
 function toggleSticker(v){
-  document.getElementById('sk_ml').style.display=v==='ml'?'block':'none';
   document.getElementById('sk_ai').style.display=v==='ai'?'block':'none';
   document.getElementById('sk_api').style.display=v==='api'?'block':'none';
 }
@@ -1422,8 +1740,8 @@ async function diagnose(btn){
   let advice='';
   const j=out.map(o=>o[1]).join(' ');
   if(frame&&/不通/.test(j))advice='這個檔案現在跑在沙箱裡，不論你怎麼設定都連不出去。請把 HTML 下載下來，用 Safari 或 Chrome 開，或者放到 GitHub Pages、Cloudflare Pages 之類的地方。';
-  else if(file)advice='用 file:// 開啟時網頁來源是 null，很多中轉站會拒絕。把檔案放上任何一個網址（GitHub Pages 免費且夠用）就會正常。';
-  else if(/CORS/.test(j))advice='伺服器碰得到，但沒開放跨域。要在中轉站那邊回這幾個標頭：Access-Control-Allow-Origin、Access-Control-Allow-Headers: content-type,authorization、Access-Control-Allow-Methods: GET,POST,OPTIONS，而且 OPTIONS 要回 200。';
+  else if(file)advice='用 file:// 開啟時網頁來源是 null，很多 API 伺服器會拒絕。把檔案放上任何一個網址（GitHub Pages 免費且夠用）就會正常。';
+  else if(/CORS/.test(j))advice='伺服器碰得到，但沒開放跨域。要在 API 伺服器那邊回這幾個標頭：Access-Control-Allow-Origin、Access-Control-Allow-Headers: content-type,authorization、Access-Control-Allow-Methods: GET,POST,OPTIONS，而且 OPTIONS 要回 200。';
   else if(/HTTP 4/.test(j))advice='連線本身沒問題，是密鑰或模型名稱不對。看上面對話請求回傳的內容。';
   else if(/HTTP 200/.test(j))advice='一切正常，可以直接用了。';
   openSheet(`<h3>連線診斷</h3>
@@ -1434,7 +1752,7 @@ async function diagnose(btn){
 function exportBackup(withImages){
   const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears}));
   if(!withImages){
-    clone.items.forEach(i=>{i.photo=null;i.cutout=null});
+    clone.items.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
     clone.wears.forEach(w=>w.photo=null);
   }
   const out={format:'doll-wardrobe',version:1,exportedAt:new Date().toISOString(),withImages,data:clone};
@@ -1473,6 +1791,56 @@ async function wipe(){
   S.items=[];S.sets=[];S.looks=[];S.wears=[];
   await save();closeSheet();go('closet');toast('已清空');
 }
+
+/* ============================================================
+   12. 捲動淡入 / 頂欄陰影
+   畫面多半由 innerHTML 重繪，所以用 MutationObserver 抓新節點，
+   再交給 IntersectionObserver 在進入畫面時淡入。
+   ============================================================ */
+const Reveal=(()=>{
+  const SEL='.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#lookList,#wearList';
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let last={el:null,t:0};
+  const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{
+    let n=0;
+    es.forEach(e=>{
+      if(!e.isIntersecting)return;
+      e.target.style.setProperty('--d',Math.min(n++,6)*55+'ms');
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    });
+  },{rootMargin:'0px 0px -6% 0px',threshold:.08}):null;
+  function tag(root,quick){
+    const list=[];
+    if(root.matches&&root.matches(SEL))list.push(root);
+    if(root.querySelectorAll)list.push(...root.querySelectorAll(SEL));
+    list.forEach(el=>{
+      if(el.classList.contains('rv'))return;
+      if(reduce||!io||quick){el.classList.add('rv','in');return}
+      el.classList.add('rv');io.observe(el);
+    });
+  }
+  function watch(root){
+    new MutationObserver(ms=>{
+      // 同一區塊短時間內連續重繪（例如搜尋框打字），直接顯示，避免一直閃
+      const now=performance.now();
+      ms.forEach(m=>{
+        const quick=last.el===m.target&&now-last.t<700;
+        last={el:m.target,t:now};
+        m.addedNodes.forEach(nd=>nd.nodeType===1&&tag(nd,quick));
+      });
+    }).observe(root,{childList:true,subtree:true});
+    tag(root);
+  }
+  return {watch};
+})();
+Reveal.watch(document.querySelector('main'));
+Reveal.watch(document.getElementById('sheetBody'));
+(function(){
+  const h=document.querySelector('header.top');
+  const on=()=>h.classList.toggle('scrolled',scrollY>4);
+  addEventListener('scroll',on,{passive:true});on();
+})();
 
 /* ============================================================
    啟動
