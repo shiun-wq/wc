@@ -284,7 +284,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
   background:radial-gradient(120% 90% at 50% 20%,var(--hi) 0,var(--swatch) 70%);
   border:1px solid var(--line);box-shadow:var(--sh-2);
 }
-.hero img{width:100%;height:100%;object-fit:contain;padding:20px;filter:drop-shadow(0 8px 14px rgba(47,37,41,.12))}
+.hero{position:relative}
+.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:20px;filter:drop-shadow(0 8px 14px rgba(47,37,41,.12))}
 .swap{display:flex;gap:4px;margin-bottom:14px;padding:4px;background:var(--paper-2);border-radius:14px}
 .swap button{flex:1;min-height:36px;padding:7px;border-radius:10px;font-size:12.5px;color:var(--ink-2);letter-spacing:.04em;transition:background .2s,color .2s,box-shadow .2s}
 .swap button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--sh-1)}
@@ -412,11 +413,6 @@ dl.meta dd{margin:0}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
 .btn.ghost .spin,.btn.quiet .spin{border-color:rgba(162,77,102,.25);border-top-color:var(--berry)}
 @keyframes sp{to{transform:rotate(360deg)}}
-.edwrap{position:relative;display:flex;justify-content:center;border-radius:20px;overflow:hidden;border:1px solid var(--line);
-  background:repeating-conic-gradient(var(--checker) 0 25%,var(--hi) 0 50%) 0 0/18px 18px}
-#edc{display:block;height:auto;max-width:100%;touch-action:none;cursor:crosshair}
-.edcur{position:absolute;display:none;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);
-  border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(47,37,41,.55),inset 0 0 0 1px rgba(47,37,41,.25)}
 .buybar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin:0 0 14px;padding:12px 14px;
   border-radius:var(--r);background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft));border:1px solid rgba(162,77,102,.12);
   transition:transform .18s var(--ease)}
@@ -674,7 +670,7 @@ nav.tabs button.plus.on{color:var(--berry)}
 .idea p{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--ink-2)}
 .idea .tipline{padding:8px 10px;border-radius:10px;background:var(--gold-soft);color:var(--ink)}
 .tapwrap{position:relative;display:flex;justify-content:center;border-radius:18px;overflow:hidden;background:var(--paper-2)}
-#tapc{display:block;height:auto;max-width:100%;cursor:crosshair;touch-action:manipulation}
+#tapc{display:block;height:auto;max-width:100%;cursor:crosshair;touch-action:none}
 .tapload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(245,240,235,.82);text-align:center}
 :root[data-theme="dark"] .tapload{background:rgba(28,23,25,.82)}
 .tapload b{font-size:14px}.tapload small{font-size:12px;color:var(--muted)}
@@ -1210,80 +1206,164 @@ async function loadTapModel(){
   })();
   try{return await MPLOAD}catch(e){MPLOAD=null;throw new Error('點選去背模型載入失敗，請檢查網路後再試一次')}
 }
+// 修補貼圖：用和做貼圖一樣的畫面（智慧選取 + 筆刷），從目前的遮罩接著改
+async function editSticker(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  // 舊版貼圖沒有存原圖和遮罩，就從照片重新選
+  const has=i.cutSrc&&i.cutMask;
+  if(!has&&!i.photo){toast('這件沒有原始照片可以修補');return}
+  try{
+    const r=await tapCutout(has?i.cutSrc:i.photo,has?{mask:i.cutMask,title:'修補貼圖',brush:true}:{title:'修補貼圖'});
+    setCut(i,r);await save();openItem(id);renderCloset();toast('貼圖已更新');
+  }catch(e){if(e.message!=='已取消')toast(e.message)}
+}
 let TAP=null;
 // 回傳和 cutout() 一樣的 {sticker,src,mask}
-function tapCutout(dataURL){
+// 兩種工具：智慧選取（點一下或畫一筆，交給模型）和筆刷（自己塗），都可以「留下」或「去掉」
+function tapCutout(dataURL,opt){
+  opt=opt||{};
   return new Promise(async(res,rej)=>{
     const im=await loadImg(dataURL);
     const c=drawScaled(im,1000),W=c.width,H=c.height;
-    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:null,hist:[],mode:'add',opened:!NAV.open,busy:false};
-    openSheet(`<h3>點一下要留下的衣服</h3>
-      <p class="hint" style="margin:-6px 0 10px">先點衣服的中間。沒選到的用「加入」再點；多選到的（娃娃、手、背景）切到「去掉」點一下。</p>
-      <div class="swap" id="tapmode" style="margin-bottom:10px">
-        <button class="on" onclick="tapMode('add')">＋ 加入</button><button onclick="tapMode('sub')">－ 去掉</button></div>
-      <div class="tapwrap"><canvas id="tapc" width="${W}" height="${H}" style="width:min(100%,${(56*W/H).toFixed(2)}vh)"></canvas><div class="tapload" id="tapload"><span class="spin dark"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div></div>
+    // 修補既有貼圖：把原本的遮罩載進來接著改
+    let init=null;
+    if(opt.mask){
+      const mi=await loadImg(opt.mask).catch(()=>null);
+      if(mi){const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d');mx.drawImage(mi,0,0,W,H);
+        const md=mx.getImageData(0,0,W,H).data;init=new Uint8ClampedArray(W*H);for(let k=0;k<W*H;k++)init[k]=md[k*4]}
+    }
+    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:init,hist:[],sign:'add',tool:'smart',size:TAP_SIZE,opened:!NAV.open,busy:false};
+    openSheet(`<h3>${opt.title||'選出要留下的部分'}</h3>
+      <p class="hint" style="margin:-6px 0 10px" id="taptip"></p>
+      <div class="swap" id="taptool" style="margin-bottom:6px">
+        <button class="on" onclick="tapTool('smart')">✦ 智慧選取</button><button onclick="tapTool('brush')">🖌 筆刷</button></div>
+      <div class="swap" id="tapsign" style="margin-bottom:10px">
+        <button class="on" onclick="tapSign('add')">＋ 留下</button><button onclick="tapSign('sub')">－ 去掉</button></div>
+      <label class="f" id="tapsize" style="display:none;margin:-2px 0 8px"><span>筆刷大小</span><input type="range" min="6" max="80" value="${TAP_SIZE}" oninput="TAP_SIZE=+this.value;if(TAP)TAP.size=TAP_SIZE"></label>
+      <div class="tapwrap"><canvas id="tapc" width="${W}" height="${H}" style="width:min(100%,${(52*W/H).toFixed(2)}vh)"></canvas><div class="tapload" id="tapload"><span class="spin dark"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div></div>
       <div class="row" style="margin-top:12px">
         <button class="btn ghost" onclick="tapUndo()">復原</button>
         <button class="btn ghost" onclick="tapReset()">重來</button>
         <span class="grow hint" id="taphint" style="text-align:center">還沒選</span>
         <button class="btn" id="tapok" onclick="tapDone()" disabled>完成</button>
       </div>`,()=>{if(TAP){const r=TAP.rej;TAP=null;r(new Error('已取消'))}});
-    tapDraw();
+    tapTip();tapDraw();tapBind();
+    if(opt.brush)tapTool('brush');
     try{await loadTapModel();const l=document.getElementById('tapload');if(l)l.remove()}
-    catch(e){const r=TAP&&TAP.rej;if(TAP&&TAP.opened)closeSheet();TAP=null;if(r)r(e);return}
-    const cv=document.getElementById('tapc');
-    cv.onclick=e=>{const r=cv.getBoundingClientRect();tapAt((e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)};
+    catch(e){
+      // 模型載不下來也還能用筆刷
+      const l=document.getElementById('tapload');if(l)l.remove();
+      if(TAP){tapTool('brush');toast('智慧選取載入失敗，可以先用筆刷塗')}
+    }
   });
 }
-function tapMode(m){
-  if(!TAP)return;TAP.mode=m;
-  document.querySelectorAll('#tapmode button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(m==='add')));
+let TAP_SIZE=24;
+function tapTip(){
+  const t=document.getElementById('taptip');if(!t||!TAP)return;
+  t.textContent=TAP.tool==='smart'
+    ?'點一下，或沿著要留下的東西「畫一筆」，AI 會幫你圈出來。毛絨娃娃建議畫一筆，比點一下準。'
+    :'直接用手指塗：「留下」把漏掉的塗回來，「去掉」擦掉多選的。細節可以把筆刷調小。';
 }
-function tapAt(nx,ny){
-  if(!TAP||TAP.busy||!MPSEG)return;
-  const sub=TAP.mode==='sub';
-  if(sub&&!TAP.a){toast('先點要留下的衣服');return}
+function tapTool(t){
+  if(!TAP)return;TAP.tool=t;
+  document.querySelectorAll('#taptool button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(t==='smart')));
+  document.getElementById('tapsize').style.display=t==='brush'?'':'none';
+  tapTip();
+}
+function tapSign(m){
+  if(!TAP)return;TAP.sign=m;
+  document.querySelectorAll('#tapsign button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(m==='add')));
+}
+function tapBind(){
+  const cv=document.getElementById('tapc');if(!cv)return;
+  cv.style.touchAction='none';
+  let pts=null,last=null;
+  const pos=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height,k:TAP.W/r.width}};
+  cv.onpointerdown=e=>{
+    if(!TAP||TAP.busy)return;e.preventDefault();cv.setPointerCapture(e.pointerId);
+    const p=pos(e);pts=[p];
+    if(TAP.tool==='brush'){tapPush();if(!TAP.a)TAP.a=new Uint8ClampedArray(TAP.W*TAP.H);last=p;tapPaint(p,p)}
+  };
+  cv.onpointermove=e=>{
+    if(!pts||!TAP)return;const p=pos(e);pts.push(p);
+    if(TAP.tool==='brush'){tapPaint(last,p);last=p}
+    else{const x=cv.getContext('2d');x.strokeStyle=TAP.sign==='sub'?'#2F2529':'#fff';x.lineWidth=Math.max(4,TAP.W/120);x.lineCap='round';
+      const a=pts[pts.length-2];x.beginPath();x.moveTo(a.x*TAP.W,a.y*TAP.H);x.lineTo(p.x*TAP.W,p.y*TAP.H);x.stroke()}
+  };
+  cv.onpointerup=cv.onpointercancel=()=>{
+    if(!pts||!TAP){pts=null;return}
+    const s=pts;pts=null;
+    if(TAP.tool==='brush'){tapDraw();return}
+    const span=Math.hypot(s[s.length-1].x-s[0].x,s[s.length-1].y-s[0].y);
+    tapSmart(span<.02?[s[0]]:s.filter((_,i)=>i%Math.ceil(s.length/40)===0));
+  };
+}
+function tapPush(){TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});if(TAP.hist.length>25)TAP.hist.shift()}
+// 筆刷：沿著手指畫過的線蓋上圓點
+function tapPaint(p0,p1){
+  const {W,H,a}=TAP,r=TAP.size/2*p1.k,sub=TAP.sign==='sub';
+  const n=Math.max(1,Math.ceil(Math.hypot((p1.x-p0.x)*W,(p1.y-p0.y)*H)/(r*.35)));
+  let x0=1e9,y0=1e9,x1=-1,y1=-1;
+  for(let s=0;s<=n;s++){
+    const cx=(p0.x+(p1.x-p0.x)*s/n)*W,cy=(p0.y+(p1.y-p0.y)*s/n)*H;
+    const ax=Math.max(0,cx-r|0),bx=Math.min(W-1,cx+r|0),ay=Math.max(0,cy-r|0),by=Math.min(H-1,cy+r|0);
+    for(let y=ay;y<=by;y++)for(let x=ax;x<=bx;x++){
+      const d=Math.hypot(x-cx,y-cy);if(d>r)continue;
+      const f=d<r*.7?1:(r-d)/(r*.3),i=y*W+x;
+      a[i]=sub?Math.min(a[i],255*(1-f)):Math.max(a[i],255*f);
+    }
+    x0=Math.min(x0,ax);y0=Math.min(y0,ay);x1=Math.max(x1,bx);y1=Math.max(y1,by);
+  }
+  tapDraw(x0,y0,x1+1,y1+1);
+}
+// 智慧選取：一個點用 keypoint，畫一筆用 scribble
+function tapSmart(pts){
+  if(!MPSEG){toast('智慧選取還沒載入好');tapDraw();return}
+  const sub=TAP.sign==='sub';
+  if(sub&&!TAP.a){toast('先選要留下的部分');tapDraw();return}
   TAP.busy=true;
-  MPSEG.segment(TAP.canvas,{keypoint:{x:nx,y:ny}},r=>{
+  const roi=pts.length===1?{keypoint:{x:pts[0].x,y:pts[0].y}}:{scribble:pts.map(p=>({x:p.x,y:p.y}))};
+  MPSEG.segment(TAP.canvas,roi,r=>{
     const m=r.confidenceMasks&&r.confidenceMasks[0];
-    if(m){
+    if(m&&TAP){
       const f=m.getAsFloat32Array(),mw=m.width,mh=m.height,{W,H}=TAP;
-      TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});
+      tapPush();
       const a=TAP.a?TAP.a.slice():new Uint8ClampedArray(W*H);
       for(let y=0;y<H;y++)for(let x=0;x<W;x++){
         const v=f[Math.min(mh-1,y*mh/H|0)*mw+Math.min(mw-1,x*mw/W|0)],i=y*W+x;
-        // 加入：跟目前的結果聯集；去掉：把這一塊挖掉
         if(sub){if(v>.5)a[i]=0}else a[i]=Math.max(a[i],v*255);
       }
-      TAP.a=a;TAP.pts.push({x:nx,y:ny,sub});
+      TAP.a=a;TAP.pts.push(...(pts.length===1?[{x:pts[0].x,y:pts[0].y,sub}]:[]));
     }
-    TAP.busy=false;tapDraw();
+    if(TAP){TAP.busy=false;tapDraw()}
   });
+}
+function tapDraw(x0=0,y0=0,x1,y1){
+  const cv=document.getElementById('tapc');if(!cv||!TAP)return;
+  const x=cv.getContext('2d'),{W,H,src,a}=TAP;x1=x1??W;y1=y1??H;
+  const w=x1-x0,h=y1-y0;if(w<=0||h<=0)return;
+  const v=x.createImageData(w,h),s=src.data,d=v.data;
+  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+    const i=(yy+y0)*W+xx+x0,k=i*4,o=(yy*w+xx)*4,al=a?a[i]/255:1;
+    // 選到的保持原色，沒選到的變暗
+    const t=.35+.65*al,add=(1-al);
+    d[o]=s[k]*t+30*add;d[o+1]=s[k+1]*t+24*add;d[o+2]=s[k+2]*t+28*add;d[o+3]=255;
+  }
+  x.putImageData(v,x0,y0);
+  if(w===W&&h===H){
+    const R=Math.max(8,W/60);x.lineWidth=Math.max(3,W/200);
+    TAP.pts.forEach(p=>{
+      x.fillStyle=p.sub?'#2F2529':'#fff';x.strokeStyle=p.sub?'#fff':'#A24D66';
+      x.beginPath();x.arc(p.x*W,p.y*H,R,0,7);x.fill();x.stroke();
+      if(p.sub){x.beginPath();x.moveTo(p.x*W-R*.5,p.y*H);x.lineTo(p.x*W+R*.5,p.y*H);x.stroke()}
+    });
+  }
+  const ok=document.getElementById('tapok'),hn=document.getElementById('taphint');
+  if(ok)ok.disabled=!a;
+  if(hn)hn.textContent=a?'亮的部分會留下':'還沒選';
 }
 function tapUndo(){if(!TAP||!TAP.hist.length)return;const h=TAP.hist.pop();TAP.a=h.a;TAP.pts.length=h.n;tapDraw()}
-function tapDraw(){
-  const cv=document.getElementById('tapc');if(!cv||!TAP)return;
-  const x=cv.getContext('2d'),{W,H,src,a}=TAP;
-  const v=new ImageData(W,H),s=src.data,d=v.data;
-  for(let i=0;i<W*H;i++){
-    const k=i*4,on=a&&a[i]>127;
-    if(!a||on){d[k]=s[k];d[k+1]=s[k+1];d[k+2]=s[k+2]}
-    else{d[k]=s[k]*.35+30;d[k+1]=s[k+1]*.35+24;d[k+2]=s[k+2]*.35+28}
-    d[k+3]=255;
-  }
-  x.putImageData(v,0,0);
-  x.fillStyle='#fff';x.strokeStyle='#A24D66';x.lineWidth=Math.max(3,W/200);
-  const R=Math.max(8,W/60);
-  TAP.pts.forEach(p=>{
-    x.fillStyle=p.sub?'#2F2529':'#fff';x.strokeStyle=p.sub?'#fff':'#A24D66';
-    x.beginPath();x.arc(p.x*W,p.y*H,R,0,7);x.fill();x.stroke();
-    if(p.sub){x.beginPath();x.moveTo(p.x*W-R*.5,p.y*H);x.lineTo(p.x*W+R*.5,p.y*H);x.stroke()}
-  });
-  const ok=document.getElementById('tapok'),h=document.getElementById('taphint');
-  if(ok)ok.disabled=!a;
-  if(h)h.textContent=a?'亮的部分會留下':'還沒選';
-}
-function tapReset(){if(!TAP)return;TAP.pts=[];TAP.a=null;TAP.hist=[];tapMode('add');tapDraw()}
+function tapReset(){if(!TAP)return;tapPush();TAP.pts=[];TAP.a=null;tapSign('add');tapDraw()}
 async function tapDone(){
   if(!TAP||!TAP.a)return;
   const t=TAP;TAP=null;
@@ -2213,7 +2293,7 @@ function cutTip(){
       <li><b>底色跟衣服差越多越好</b>：淺色衣服用深色底，深色衣服用淺色底</li>
       <li><b>光線要均勻</b>：白天靠窗拍，避開強烈的影子</li>
       <li><b>衣服整件攤開</b>，不要超出照片邊緣，也不要跟其他東西疊在一起</li>
-      <li>還是有沒去乾淨的地方？到單品頁按<b>「修補貼圖」</b>用手指擦掉就好</li>
+      <li>還是有沒去乾淨的地方？到單品頁按<b>「修補貼圖」</b>，用筆刷擦掉或智慧選取重新圈就好</li>
     </ul>
     <button class="btn sm quiet" onclick="event.preventDefault();hideTip()">知道了，不再顯示</button>
   </details>`;
@@ -2315,93 +2395,6 @@ async function commitQueue(){
 /* ============================================================
    7b. 貼圖修補筆刷
    ============================================================ */
-const ED={size:28};
-async function editSticker(id){
-  const i=S.items.find(x=>x.id===id);if(!i)return;
-  if(!i.cutSrc||!i.cutMask){toast('這是舊版貼圖，先按「重做貼圖」就可以修補');return}
-  const [si,mi]=await Promise.all([loadImg(i.cutSrc),loadImg(i.cutMask)]);
-  const W=si.width,H=si.height,c=document.createElement('canvas');c.width=W;c.height=H;
-  const x=c.getContext('2d');x.drawImage(si,0,0);const src=x.getImageData(0,0,W,H);
-  x.clearRect(0,0,W,H);x.drawImage(mi,0,0,W,H);const md=x.getImageData(0,0,W,H).data;
-  const a=new Uint8ClampedArray(W*H);for(let k=0;k<W*H;k++)a[k]=md[k*4];
-  Object.assign(ED,{id,W,H,src,a,orig:a.slice(),undo:[],tool:'erase',view:new ImageData(W,H)});
-  openSheet(`<h3>修補貼圖</h3>
-    <div class="edwrap" id="edwrap"><canvas id="edc" width="${W}" height="${H}" style="width:min(100%,${(58*W/H).toFixed(2)}vh)"></canvas><i class="edcur" id="edcur"></i></div>
-    <div class="swap" style="margin-top:12px">
-      <button id="ed_erase" class="on" onclick="edTool('erase')">擦掉</button>
-      <button id="ed_keep" onclick="edTool('keep')">補回</button>
-    </div>
-    <label class="f"><span>筆刷大小</span><input type="range" min="6" max="90" value="${ED.size}" oninput="ED.size=+this.value"></label>
-    <p class="hint" style="margin:-4px 0 14px">「擦掉」塗掉沒去乾淨的背景，「補回」把被誤刪的地方塗回來（補回時會淡淡顯示原圖當參考）。格子代表透明。</p>
-    <div class="row">
-      <button class="btn ghost" onclick="edUndo()">復原</button>
-      <button class="btn ghost" onclick="edReset()">重來</button>
-      <span class="grow"></span>
-      <button class="btn" onclick="edSave()">儲存貼圖</button>
-    </div>
-    <button class="btn ghost wide" style="margin-top:8px" onclick="openItem('${id}')">取消</button>`);
-  edDraw();edBind();
-}
-function edDraw(x0=0,y0=0,x1=ED.W,y1=ED.H){
-  const {W,src,a,view}=ED,s=src.data,v=view.data,ghost=ED.tool==='keep'?70:0;
-  x0=Math.max(0,x0|0);y0=Math.max(0,y0|0);x1=Math.min(ED.W,Math.ceil(x1));y1=Math.min(ED.H,Math.ceil(y1));
-  for(let j=y0;j<y1;j++)for(let i=x0;i<x1;i++){
-    const id=j*W+i,k=id*4;v[k]=s[k];v[k+1]=s[k+1];v[k+2]=s[k+2];v[k+3]=Math.max(a[id],ghost);
-  }
-  const c=document.getElementById('edc');if(c)c.getContext('2d').putImageData(view,0,0,x0,y0,x1-x0,y1-y0);
-}
-function edTool(t){
-  ED.tool=t;
-  document.getElementById('ed_erase').classList.toggle('on',t==='erase');
-  document.getElementById('ed_keep').classList.toggle('on',t==='keep');
-  edDraw();
-}
-function edStamp(cx,cy,r){
-  const {W,H,a}=ED,erase=ED.tool==='erase',in_=r*.65;
-  const x0=Math.max(0,Math.floor(cx-r)),x1=Math.min(W-1,Math.ceil(cx+r));
-  const y0=Math.max(0,Math.floor(cy-r)),y1=Math.min(H-1,Math.ceil(cy+r));
-  for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++){
-    const d=Math.hypot(i-cx,j-cy);if(d>r)continue;
-    const f=d<=in_?1:(r-d)/(r-in_),id=j*W+i;
-    a[id]=erase?Math.min(a[id],255*(1-f)):Math.max(a[id],255*f);
-  }
-  return [x0,y0,x1+1,y1+1];
-}
-function edBind(){
-  const c=document.getElementById('edc'),wrap=document.getElementById('edwrap'),cur=document.getElementById('edcur');
-  let last=null;
-  const pos=e=>{const r=c.getBoundingClientRect(),k=ED.W/r.width;
-    return {x:(e.clientX-r.left)*k,y:(e.clientY-r.top)*k,r:ED.size/2*k}};
-  const showCur=e=>{const w=wrap.getBoundingClientRect();
-    cur.style.cssText=`display:block;width:${ED.size}px;height:${ED.size}px;left:${e.clientX-w.left}px;top:${e.clientY-w.top}px`};
-  const paint=p=>{
-    const from=last||p,n=Math.max(1,Math.ceil(Math.hypot(p.x-from.x,p.y-from.y)/(p.r*.3)));
-    let bx0=1e9,by0=1e9,bx1=-1,by1=-1;
-    for(let s=1;s<=n;s++){
-      const [a0,b0,a1,b1]=edStamp(from.x+(p.x-from.x)*s/n,from.y+(p.y-from.y)*s/n,p.r);
-      bx0=Math.min(bx0,a0);by0=Math.min(by0,b0);bx1=Math.max(bx1,a1);by1=Math.max(by1,b1);
-    }
-    edDraw(bx0,by0,bx1,by1);last=p;
-  };
-  c.onpointerdown=e=>{
-    e.preventDefault();c.setPointerCapture(e.pointerId);
-    ED.undo.push(ED.a.slice());if(ED.undo.length>20)ED.undo.shift();
-    last=null;showCur(e);paint(pos(e));
-  };
-  c.onpointermove=e=>{showCur(e);if(last)paint(pos(e))};
-  c.onpointerup=c.onpointercancel=e=>{last=null;if(e.pointerType!=='mouse')cur.style.display='none'};
-  c.onpointerleave=()=>{if(!last)cur.style.display='none'};
-}
-function edUndo(){const u=ED.undo.pop();if(!u){toast('沒有可以復原的步驟');return}ED.a.set(u);edDraw()}
-function edReset(){ED.undo.push(ED.a.slice());ED.a.set(ED.orig);edDraw()}
-async function edSave(){
-  const i=S.items.find(x=>x.id===ED.id);if(!i)return;
-  try{
-    i.cutout=await composeSticker(ED.src,ED.a,ED.W,ED.H);
-    i.cutMask=encMask(ED.a,ED.W,ED.H);
-    await save();openItem(i.id);renderCloset();toast('貼圖已更新');
-  }catch(e){toast(e.message)}
-}
 
 /* ============================================================
    8. 搭配工作台
