@@ -200,10 +200,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 .btn.wide{width:100%}
 .btn[disabled]{opacity:.45;pointer-events:none}
 .btn.sm{min-height:36px;padding:7px 14px;font-size:13px;border-radius:11px;letter-spacing:.04em}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:3px 18px;margin:0 -18px 12px;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:3px 18px;margin:0 -18px 12px;scrollbar-width:none;
+  scroll-padding-inline:18px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;cursor:grab}
+.chips::after{content:"";flex:0 0 10px}
+.chips.drag{cursor:grabbing;scroll-behavior:auto}
+.chips.drag .chip{pointer-events:none}
+/* 還有東西可以滑的那一側淡出，提示可以左右滑 */
+.chips.more-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.chips.more-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px);mask-image:linear-gradient(90deg,transparent,#000 44px)}
+.chips.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent)}
 .chips::-webkit-scrollbar{display:none}
 .chip{
-  flex:0 0 auto;min-height:36px;padding:6px 15px;border-radius:999px;scroll-snap-align:start;
+  flex:0 0 auto;min-height:36px;padding:6px 15px;border-radius:999px;
   border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--ink-2);letter-spacing:.04em;
   transition:background .2s,color .2s,border-color .2s,transform .18s var(--ease);
 }
@@ -728,8 +736,25 @@ const CATS=[
  ['圍巾','acc'],['項鍊','acc'],['領結','acc'],['腰帶','acc'],['手套','acc'],['眼鏡','acc'],['翅膀','acc'],['尾巴','acc'],['配件','acc'],
  ['道具',null],['其他',null]
 ];
-const FILTERS=['全部','套裝','上衣','下身','洋裝','外套','帽子','襪子','鞋子','包包','配件'];
-const FMAP={'上衣':['top'],'下身':['bottom'],'洋裝':['dress'],'外套':['outer'],'帽子':['head'],'襪子':['socks'],'鞋子':['shoes'],'包包':['bag'],'配件':['acc']};
+// 衣櫃的類別篩選：每個篩選對應到一組單品類型（可以左右滑，想加類別直接加在這裡）
+const FGROUPS=[
+ ['上衣',['上衣','襯衫','毛衣','背心','T-shirt']],
+ ['裙子',['裙子','吊帶裙']],
+ ['褲子',['褲子','吊帶褲']],
+ ['洋裝',['洋裝','連身衣','爬爬衣']],
+ ['睡衣',['睡衣']],
+ ['外套',['外套','披風','斗篷']],
+ ['帽子',['帽子','耳罩']],
+ ['髮飾',['髮飾','頭帶']],
+ ['襪子',['襪子','長襪','褲襪']],
+ ['鞋子',['鞋子','靴子','拖鞋']],
+ ['包包',['包包','小包']],
+ ['配件',['圍巾','項鍊','領結','腰帶','手套','眼鏡','配件']],
+ ['翅膀尾巴',['翅膀','尾巴']],
+ ['道具',['道具','其他']]
+];
+const FILTERS=['全部','套裝',...FGROUPS.map(g=>g[0])];
+const FMAP=Object.fromEntries(FGROUPS);
 const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','配件'];
 // 娃衣尺寸：預設四種，使用者可以在設定裡增減
 const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
@@ -1389,6 +1414,7 @@ function setName(id){return (S.sets.find(s=>s.id===id)||{}).name||''}
 function img(it){return it.cutout||it.photo||''}
 
 function renderCloset(){
+  const keep=['catchips','viewchips','sizechips'].map(k=>[k,document.getElementById(k).scrollLeft]);
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat='${f}';renderCloset()">${f}</button>`).join('');
   const modes=['全部','從未穿過','超過180天','收藏紀念','最近新增'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';renderCloset()">${f}</button>`).join('');
@@ -1398,8 +1424,9 @@ function renderCloset(){
   const q=(document.getElementById('q').value||'').trim().toLowerCase();
   let list=S.items.slice();
   if(UI.size!=='全部尺寸')list=list.filter(i=>(i.sizes||[]).includes(UI.size));
+  keep.forEach(([k,x])=>{const el=document.getElementById(k);el.scrollLeft=x;chipEdge(el)});
   if(UI.cat==='套裝')list=list.filter(i=>i.category==='套裝');
-  else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(slotOf(i.category)));
+  else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(i.category));
   if(q)list=list.filter(i=>[i.name,i.brand,i.shop,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
   if(UI.mode==='從未穿過')list=list.filter(i=>wearCount(i.id)===0);
   if(UI.mode==='超過180天')list=list.filter(i=>{const l=lastWear(i.id);return !l||days(l)>180});
@@ -2782,6 +2809,37 @@ const Reveal=(()=>{
 })();
 Reveal.watch(document.querySelector('main'));
 Reveal.watch(document.getElementById('sheetBody'));
+// 橫向標籤列：手機用手指滑；電腦可以用滾輪或按住拖曳
+function chipEdge(el){
+  el.classList.toggle('more-l',el.scrollLeft>4);
+  el.classList.toggle('more-r',el.scrollLeft+el.clientWidth<el.scrollWidth-4);
+}
+document.addEventListener('scroll',e=>{if(e.target.classList&&e.target.classList.contains('chips'))chipEdge(e.target)},true);
+addEventListener('resize',()=>document.querySelectorAll('.chips').forEach(chipEdge));
+document.addEventListener('wheel',e=>{
+  const el=e.target.closest&&e.target.closest('.chips');
+  if(!el||el.scrollWidth<=el.clientWidth||Math.abs(e.deltaX)>Math.abs(e.deltaY))return;
+  e.preventDefault();el.scrollLeft+=e.deltaY;
+},{passive:false});
+(function(){
+  let el=null,x0=0,s0=0,moved=false;
+  document.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='mouse'||e.button!==0)return;
+    el=e.target.closest('.chips');if(!el)return;
+    x0=e.clientX;s0=el.scrollLeft;moved=false;
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!el)return;const dx=e.clientX-x0;
+    if(!moved&&Math.abs(dx)>5){moved=true;el.classList.add('drag')}
+    if(moved)el.scrollLeft=s0-dx;
+  });
+  document.addEventListener('pointerup',()=>{
+    if(!el)return;
+    const t=el;el=null;
+    // 拖曳結束時不要順便觸發點擊
+    if(moved)setTimeout(()=>t.classList.remove('drag'),0);
+  });
+})();
 // 抓住抽屜上緣往下拖就能關閉
 (function(){
   const g=document.querySelector('.sheet .grab'),panel=document.querySelector('.sheet .panel');
