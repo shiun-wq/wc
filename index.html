@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F5F0EB">
+<script>
+// 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
+try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
+</script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="娃衣衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -39,6 +43,17 @@
   --blue:#6E7BA8;
   --sage:#7E977F;
   --amber:#B8843F;
+  --hi:#FFFDFB;             /* 漸層裡的亮面 */
+  --blush:#F7ECEC;
+  --idle:#E4D6DA;
+  --sage-soft:#E8EFE7;
+  --blue-soft:#E9EAF2;
+  --on-ink:#FBF7F3;         /* 深色底上的字 */
+  --checker:#EEE7E2;
+  --placeholder:#B5AAAF;
+  --glass:rgba(255,253,251,.88);
+  --glass-nav:rgba(255,253,251,.86);
+  --glass-top:rgba(245,240,235,.82);
 
   /* 陰影 */
   --sh-1:0 1px 2px rgba(47,37,41,.04),0 2px 8px rgba(47,37,41,.04);
@@ -85,7 +100,7 @@ img{display:block;max-width:100%}
 }
 header.top{
   position:sticky;top:0;z-index:40;
-  background:rgba(245,240,235,.82);
+  background:var(--glass-top);
   -webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
   border-bottom:1px solid transparent;
   padding:calc(env(safe-area-inset-top) + 12px) 18px 12px;
@@ -114,7 +129,7 @@ main{padding:16px 18px calc(var(--tab-h) + env(safe-area-inset-bottom) + 32px)}
 nav.tabs{
   position:fixed;bottom:0;left:0;right:0;z-index:50;
   max-width:520px;margin:0 auto;
-  background:rgba(255,253,251,.86);
+  background:var(--glass-nav);
   -webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
   border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(5,1fr);
@@ -161,7 +176,7 @@ select{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23978A90' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px;
 }
-input::placeholder,textarea::placeholder{color:#B5AAAF}
+input::placeholder,textarea::placeholder{color:var(--placeholder)}
 #q{
   padding-left:42px;border-radius:999px;background-color:var(--card);box-shadow:var(--sh-1);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23978A90' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
@@ -193,7 +208,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
   transition:background .2s,color .2s,border-color .2s,transform .18s var(--ease);
 }
 .chip:active{transform:scale(.95)}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#FBF7F3;box-shadow:0 4px 12px -6px rgba(47,37,41,.6)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--on-ink);box-shadow:0 4px 12px -6px rgba(47,37,41,.6)}
 #viewchips .chip{min-height:32px;font-size:12.5px;background:transparent}
 #viewchips .chip.on{background:var(--berry-soft);border-color:transparent;color:var(--berry-deep);box-shadow:none}
 .empty{text-align:center;padding:56px 24px;color:var(--muted);font-size:13.5px;line-height:1.7}
@@ -207,7 +222,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 .toast{
   position:fixed;left:50%;transform:translate(-50%,10px);bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 18px);
   background:rgba(47,37,41,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  color:#FBF7F3;padding:11px 20px;border-radius:999px;font-size:13.5px;letter-spacing:.03em;
+  color:var(--on-ink);padding:11px 20px;border-radius:999px;font-size:13.5px;letter-spacing:.03em;
   z-index:120;opacity:0;transition:opacity .25s,transform .35s var(--spring);pointer-events:none;
   max-width:88vw;text-align:center;box-shadow:0 10px 30px -10px rgba(47,37,41,.5);
 }
@@ -220,18 +235,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 .piece:active{transform:scale(.97)}
 .piece .sw{
   aspect-ratio:1;border-radius:var(--r);overflow:hidden;position:relative;
-  background:radial-gradient(120% 90% at 50% 20%,#FFFDFB 0,var(--swatch) 70%);
-  border:1px solid rgba(230,220,212,.8);
+  background:radial-gradient(120% 90% at 50% 20%,var(--hi) 0,var(--swatch) 70%);
+  border:1px solid var(--line);
   display:grid;place-items:center;box-shadow:var(--sh-1);
   transition:box-shadow .25s;
 }
 .piece .sw img{width:100%;height:100%;object-fit:contain;padding:12px;filter:drop-shadow(0 4px 6px rgba(47,37,41,.10))}
 .piece .tag{
-  position:absolute;left:8px;bottom:8px;background:rgba(255,253,251,.88);
+  position:absolute;left:8px;bottom:8px;background:var(--glass);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   border-radius:999px;padding:2px 9px;font-size:10.5px;color:var(--ink-2);letter-spacing:.04em;
 }
-.piece .keep{position:absolute;right:8px;top:8px;font-size:13px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:rgba(255,253,251,.88)}
+.piece .keep{position:absolute;right:8px;top:8px;font-size:13px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:var(--glass)}
 .piece .nm{font-size:13px;font-weight:500;margin-top:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .piece .mt{font-size:11px;color:var(--muted);margin-top:1px;letter-spacing:.03em}
 .piece.dim .sw img{opacity:.6}
@@ -257,7 +272,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 /* ---------- detail ---------- */
 .hero{
   border-radius:22px;overflow:hidden;aspect-ratio:1;display:grid;place-items:center;margin-bottom:14px;
-  background:radial-gradient(120% 90% at 50% 20%,#FFFDFB 0,var(--swatch) 70%);
+  background:radial-gradient(120% 90% at 50% 20%,var(--hi) 0,var(--swatch) 70%);
   border:1px solid var(--line);box-shadow:var(--sh-2);
 }
 .hero img{width:100%;height:100%;object-fit:contain;padding:20px;filter:drop-shadow(0 8px 14px rgba(47,37,41,.12))}
@@ -279,7 +294,7 @@ dl.meta dd{margin:0}
 /* ---------- intake ---------- */
 .drop{
   border:1.5px dashed var(--line-2);border-radius:22px;padding:34px 20px;text-align:center;
-  background:radial-gradient(100% 120% at 50% 0,#FFFDFB 0,var(--card) 60%);
+  background:radial-gradient(100% 120% at 50% 0,var(--hi) 0,var(--card) 60%);
   transition:border-color .2s,transform .2s var(--ease),background .2s;cursor:pointer;
 }
 .drop::before{
@@ -314,7 +329,7 @@ dl.meta dd{margin:0}
 #canvas{position:relative;width:100%;aspect-ratio:3/4;
   background:
     radial-gradient(circle at 1px 1px,rgba(151,138,144,.28) 1px,transparent 1.4px) 0 0/18px 18px,
-    radial-gradient(120% 80% at 50% 0,#FFFDFB 0,#F8F2EE 100%);
+    radial-gradient(120% 80% at 50% 0,var(--hi) 0,var(--blush) 100%);
   border:1px solid var(--line);border-radius:22px;overflow:hidden;touch-action:none;box-shadow:var(--sh-2)}
 .pc{position:absolute;width:120px;transform-origin:center;touch-action:none;user-select:none;-webkit-user-select:none}
 .pc img{width:100%;pointer-events:none;filter:drop-shadow(0 6px 10px rgba(47,37,41,.16))}
@@ -333,7 +348,7 @@ dl.meta dd{margin:0}
 .pick button img{width:100%;height:100%;object-fit:contain;padding:6px}
 .pick button.on{border-color:var(--berry)}
 .pick button.on::after{content:"✓";position:absolute;right:5px;top:5px;width:20px;height:20px;border-radius:50%;background:var(--berry);color:#fff;font-weight:700;font-size:11px;display:grid;place-items:center;line-height:1}
-.pick .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,253,251,.9);font-size:9.5px;padding:3px 4px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick .cap{position:absolute;left:0;right:0;bottom:0;background:var(--glass);font-size:9.5px;padding:3px 4px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- insight ---------- */
 .stat{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
@@ -343,8 +358,8 @@ dl.meta dd{margin:0}
 }
 .stat div::after{content:"";position:absolute;right:-18px;top:-18px;width:60px;height:60px;border-radius:50%;background:var(--berry-soft);opacity:.7}
 .stat div:nth-child(2)::after{background:var(--gold-soft)}
-.stat div:nth-child(3)::after{background:#E8EFE7}
-.stat div:nth-child(4)::after{background:#E9EAF2}
+.stat div:nth-child(3)::after{background:var(--sage-soft)}
+.stat div:nth-child(4)::after{background:var(--blue-soft)}
 .stat b{font-family:var(--num);font-weight:600;font-size:36px;display:block;line-height:1.05;letter-spacing:.01em;position:relative;z-index:1;font-variant-numeric:lining-nums}
 .stat span{font-size:11.5px;color:var(--muted);letter-spacing:.08em;position:relative;z-index:1}
 .bar{margin-bottom:14px}
@@ -353,14 +368,14 @@ dl.meta dd{margin:0}
 .track{height:10px;border-radius:999px;background:var(--paper-2);overflow:hidden;display:flex}
 .track i{display:block;height:100%;transform-origin:left;transition:transform .9s var(--ease) .15s}
 .track i.worn{background:linear-gradient(90deg,#8FA891,var(--sage))}
-.track i.idle{background:#E4D6DA}
+.track i.idle{background:var(--idle)}
 .rv:not(.in) .track i{transform:scaleX(0)}
 .legend{font-size:11.5px;color:var(--muted);display:flex;gap:14px;margin:-4px 0 14px}
 .legend s{text-decoration:none;display:inline-flex;align-items:center;gap:5px}
 .legend s::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--sage)}
-.legend s.b::before{background:#E4D6DA}
+.legend s.b::before{background:var(--idle)}
 .note{
-  background:linear-gradient(135deg,var(--berry-soft),#F7EEE9);border-radius:var(--r);
+  background:linear-gradient(135deg,var(--berry-soft),var(--blush));border-radius:var(--r);
   padding:14px 16px 14px 18px;font-size:13.5px;line-height:1.75;position:relative;overflow:hidden;
 }
 .note::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--berry)}
@@ -389,12 +404,174 @@ dl.meta dd{margin:0}
 .btn.ghost .spin,.btn.quiet .spin{border-color:rgba(162,77,102,.25);border-top-color:var(--berry)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .edwrap{position:relative;display:flex;justify-content:center;border-radius:20px;overflow:hidden;border:1px solid var(--line);
-  background:repeating-conic-gradient(#EEE7E2 0 25%,#FFFDFB 0 50%) 0 0/18px 18px}
+  background:repeating-conic-gradient(var(--checker) 0 25%,var(--hi) 0 50%) 0 0/18px 18px}
 #edc{display:block;height:auto;max-width:100%;touch-action:none;cursor:crosshair}
 .edcur{position:absolute;display:none;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);
   border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(47,37,41,.55),inset 0 0 0 1px rgba(47,37,41,.25)}
+.buybar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin:0 0 14px;padding:12px 14px;
+  border-radius:var(--r);background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft));border:1px solid rgba(162,77,102,.12);
+  transition:transform .18s var(--ease)}
+.buybar:active{transform:scale(.98)}
+.buybar i{flex:0 0 38px;height:38px;border-radius:12px;background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 7h12l-1 13H7z'/%3E%3Cpath d='M9 7a3 3 0 0 1 6 0'/%3E%3Cpath d='M10 13l1.5 1.5L14.5 11'/%3E%3C/svg%3E") center/20px no-repeat,
+  linear-gradient(135deg,#B8627B,var(--berry-deep))}
+.buybar span{flex:1;min-width:0;font-size:12px;color:var(--ink-2);line-height:1.45}
+.buybar b{display:block;font-family:var(--serif);font-size:15px;font-weight:600;color:var(--ink);letter-spacing:.06em}
+.buybar em{font-style:normal;color:var(--muted);font-size:20px}
+.buyhead{display:flex;gap:12px;align-items:center;margin-top:16px}
+.buyhead .th{width:84px;height:84px;flex:0 0 84px;border-radius:16px;overflow:hidden;background:var(--swatch);border:1px solid var(--line)}
+.buyhead .th img{width:100%;height:100%;object-fit:cover}
+.buyhead b{font-size:15px}
+.bstats{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 16px}
+.bstat{display:grid;grid-template-columns:1fr auto;gap:0 12px;padding:10px 0;border-bottom:1px solid var(--paper-2)}
+.bstat:last-child{border:none}
+.bstat span{font-size:13.5px}
+.bstat b{font-family:var(--num);font-size:24px;font-weight:600;line-height:1;grid-row:span 2;align-self:center}
+.bstat em{font-style:normal;font-size:11.5px;color:var(--muted)}
+.blist{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 14px}
+.spin.dark{border-color:rgba(162,77,102,.25);border-top-color:var(--berry);vertical-align:-2px;margin-right:4px}
+/* ---------- 導覽：返回鍵、中間的建檔鍵、抽屜關閉鍵 ---------- */
+.iconbtn.back{margin:0 -4px 0 -12px}
+.iconbtn[hidden]{display:none}
+header.top.subview h1::before{display:none}
+nav.tabs button.plus svg{width:26px;height:26px;padding:5px;box-sizing:content-box;border-radius:14px;color:#fff;
+  background:linear-gradient(135deg,#B8627B,var(--berry-deep));box-shadow:0 6px 14px -6px rgba(162,77,102,.7)}
+nav.tabs button.plus{gap:1px}
+nav.tabs button.plus::before{display:none}
+nav.tabs button.plus.on{color:var(--berry)}
+.sheet .grab{touch-action:none;cursor:grab}
+.sheet .shx{position:absolute;right:-4px;top:8px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  background:var(--paper-2);color:var(--ink-2);transition:transform .18s var(--ease)}
+.sheet .shx:active{transform:scale(.9)}
+
+/* ---------- 首頁 ---------- */
+.hhero{text-align:center;margin:-4px -18px 18px;padding:6px 18px 20px;position:relative;isolation:isolate}
+.hhero::before{content:"";position:absolute;inset:-40px 0 0;z-index:-1;border-radius:0 0 32px 32px;
+  background:radial-gradient(90% 70% at 50% 45%,var(--hi) 0,var(--blush) 55%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 90px);mask-image:linear-gradient(to bottom,transparent,#000 90px)}
+.stage{position:relative;height:min(56vw,300px);display:flex;align-items:flex-end;justify-content:center;cursor:pointer}
+.stage::before{content:"";position:absolute;left:50%;top:50%;width:min(62vw,300px);aspect-ratio:1;transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(circle,rgba(179,144,96,.16),transparent 65%)}
+.stage img{position:relative;z-index:1;max-height:100%;max-width:78%;object-fit:contain;filter:drop-shadow(0 14px 18px rgba(47,37,41,.18));animation:float 5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px)}}
+.stage .floor{position:absolute;bottom:-4px;left:50%;width:44%;height:14px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(47,37,41,.16),transparent)}
+.ph{color:var(--berry);opacity:.55;display:grid;place-items:center;gap:6px;font-size:12px}
+.stage .ph svg{height:min(44vw,220px);width:auto}
+.ph.sm svg{width:56%;height:auto}
+.hname{margin-top:12px;display:flex;align-items:baseline;justify-content:center;gap:8px}
+.hname b{font-family:var(--serif);font-size:22px;font-weight:700;letter-spacing:.08em}
+.hname span{font-size:11.5px;color:var(--berry-deep);background:var(--berry-soft);padding:2px 9px;border-radius:999px}
+.hgreet{margin:2px 0 6px;color:var(--ink-2);font-size:13.5px;letter-spacing:.04em}
+.dswitch{display:flex;justify-content:center;gap:8px;margin-top:10px}
+.dswitch button{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--card);border:2px solid transparent;box-shadow:var(--sh-1);display:grid;place-items:center;font-size:13px;color:var(--ink-2)}
+.dswitch button.on{border-color:var(--berry)}
+.dswitch img{width:100%;height:100%;object-fit:cover}
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.qa button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 2px 10px;border-radius:var(--r);background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--sh-1);font-size:12px;color:var(--ink-2);letter-spacing:.04em;transition:transform .18s var(--ease)}
+.qa button:active{transform:scale(.95)}
+.qa i{width:40px;height:40px;border-radius:14px;background:var(--berry-soft) center/22px no-repeat}
+.qa .i1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23843B52' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='17' rx='2'/%3E%3Cpath d='M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4'/%3E%3C/svg%3E")}
+.qa .i2{background-color:var(--gold-soft);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A6A3A' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z'/%3E%3C/svg%3E")}
+.qa .i3{background-color:var(--sage-soft);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23587058' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 7h12l-1 13H7z'/%3E%3Cpath d='M9 7a3 3 0 0 1 6 0'/%3E%3Cpath d='M10 13l1.5 1.5L14.5 11'/%3E%3C/svg%3E")}
+.qa .i4{background-color:var(--blue-soft);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23565E8A' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='12' cy='10' r='6'/%3E%3Ccircle cx='7' cy='5' r='2'/%3E%3Ccircle cx='17' cy='5' r='2'/%3E%3Cpath d='M8 16q-1 4 1 5h6q2-1 1-5'/%3E%3C/svg%3E")}
+.hstat{display:flex;align-items:center;width:100%;padding:14px 12px 14px 16px;margin-bottom:12px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1);text-align:left}
+.hstat div{flex:1}
+.hstat b{display:block;font-family:var(--num);font-size:28px;font-weight:600;line-height:1}
+.hstat small{font-size:16px}
+.hstat span{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.hstat em,.hct em{font-style:normal;color:var(--muted);font-size:20px}
+.hcard{padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft));border:1px solid rgba(162,77,102,.12);cursor:pointer}
+.hct{display:flex;align-items:center;gap:8px}
+.hct b{font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:.06em}
+.hct span{flex:1;font-size:12px;color:var(--ink-2)}
+.thumbs{display:flex;gap:8px;margin-top:10px;overflow:hidden}
+.thumbs img{width:54px;height:54px;flex:0 0 54px;border-radius:12px;object-fit:cover;background:var(--card);border:2px solid var(--card)}
+.hsaved{margin:10px 0 0;font-size:12.5px;color:var(--ink-2)}
+.hsaved b{color:var(--berry-deep)}
+.hscroll{display:flex;gap:12px;overflow-x:auto;margin:0 -18px;padding:2px 18px 6px;scrollbar-width:none;scroll-snap-type:x proximity}
+.hscroll::-webkit-scrollbar{display:none}
+.hscroll .piece{flex:0 0 118px;scroll-snap-align:start}
+
+/* ---------- 我的娃娃 ---------- */
+.addcard{border:1.5px dashed var(--line-2)!important;box-shadow:none!important;background:transparent!important}
+.addcard span{font-size:30px;color:var(--muted);font-weight:300}
+.dollhero{cursor:pointer;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%)}
+.dollhero .ph svg{width:120px}
+
+/* ---------- 考慮中 ---------- */
+.wcard{display:flex;gap:12px;padding:12px;margin-bottom:10px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-1)}
+.wcard .th{width:84px;height:84px;flex:0 0 84px;border-radius:14px;overflow:hidden;background:var(--swatch)}
+.wcard .th img{width:100%;height:100%;object-fit:cover}
+.wcard .bd{flex:1;min-width:0;display:flex;flex-direction:column}
+.wcard b{font-size:14.5px}
+.wcard span{font-size:12px;color:var(--muted)}
+.wcard .wl{color:var(--berry-deep)}
+.wcard .wn{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sizetag i{font-style:normal;margin-left:6px;opacity:.7}
+.tip{margin-top:14px;padding:12px 16px;border-radius:var(--r);background:var(--gold-soft);border:1px solid rgba(179,144,96,.25);font-size:13px;line-height:1.7}
+.tip summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px}
+.tip summary::-webkit-details-marker{display:none}
+.tip summary::before{content:"";width:18px;height:18px;flex:0 0 18px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23B39060' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z'/%3E%3C/svg%3E") center/contain no-repeat}
+.tip summary::after{content:"›";margin-left:auto;color:var(--muted);font-size:18px;transition:transform .2s}
+.tip[open] summary::after{transform:rotate(90deg)}
+.tip ul{margin:8px 0 10px;padding-left:20px;color:var(--ink-2)}
+.tip li{margin-bottom:3px}
+.tip b{color:var(--ink);font-weight:600}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
+
+/* ---------- 深色模式 ----------
+   <html data-theme="dark"> 時套用；淺色維持上面的預設值。 */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ink:#F2EAE5;
+  --ink-2:#CDBFBA;
+  --muted:#94878C;
+  --paper:#1C1719;
+  --paper-2:#2A2326;
+  --card:#252022;
+  --line:#3A3135;
+  --line-2:#4B4045;
+  --berry:#C9708A;
+  --berry-deep:#E7A3B6;
+  --berry-soft:#3B2830;
+  --swatch:#2D2629;
+  --gold:#CFAE7C;
+  --gold-soft:#342A1F;
+  --sage:#8FAA90;
+  --amber:#D7A45C;
+  --hi:#342C2F;
+  --blush:#2B2226;
+  --idle:#4A3C42;
+  --sage-soft:#26302A;
+  --blue-soft:#2A2B38;
+  --on-ink:#1C1719;
+  --checker:#2E282B;
+  --placeholder:#76696E;
+  --glass:rgba(37,32,34,.86);
+  --glass-nav:rgba(37,32,34,.88);
+  --glass-top:rgba(28,23,25,.84);
+  --sh-1:0 1px 2px rgba(0,0,0,.25),0 2px 8px rgba(0,0,0,.18);
+  --sh-2:0 2px 6px rgba(0,0,0,.28),0 10px 28px rgba(0,0,0,.32);
+  --sh-3:0 -6px 30px rgba(0,0,0,.5);
+}
+@media (min-width:560px){
+  :root[data-theme="dark"] body{background:radial-gradient(1200px 600px at 10% -10%,#2E1F26 0,transparent 60%),radial-gradient(900px 500px at 110% 110%,#2A2419 0,transparent 60%),#141012}
+}
+:root[data-theme="dark"] .btn{background:linear-gradient(180deg,#B35E78,#98435D);box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 6px 16px -6px rgba(0,0,0,.6)}
+:root[data-theme="dark"] .btn.ghost{background:var(--card)}
+:root[data-theme="dark"] .btn.quiet{background:var(--berry-soft);color:var(--berry-deep)}
+:root[data-theme="dark"] .toast{background:rgba(242,234,229,.94);color:#1C1719}
+:root[data-theme="dark"] .sheet .scrim{background:rgba(0,0,0,.55)}
+:root[data-theme="dark"] .piece .sw img,:root[data-theme="dark"] .hero img{filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+:root[data-theme="dark"] .stage .floor{background:radial-gradient(closest-side,rgba(0,0,0,.45),transparent)}
+:root[data-theme="dark"] header.top.scrolled{box-shadow:0 6px 20px -14px rgba(0,0,0,.8)}
+:root[data-theme="dark"] .qa .i1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E7A3B6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='17' rx='2'/%3E%3Cpath d='M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .qa .i2{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23CFAE7C' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .qa .i3{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238FAA90' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 7h12l-1 13H7z'/%3E%3Cpath d='M9 7a3 3 0 0 1 6 0'/%3E%3Cpath d='M10 13l1.5 1.5L14.5 11'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .qa .i4{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A3AAD6' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='12' cy='10' r='6'/%3E%3Ccircle cx='7' cy='5' r='2'/%3E%3Ccircle cx='17' cy='5' r='2'/%3E%3Cpath d='M8 16q-1 4 1 5h6q2-1 1-5'/%3E%3C/svg%3E")}
+:root[data-theme="dark"] .empty::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E7A3B6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z'/%3E%3C/svg%3E") center/28px no-repeat,var(--berry-soft)}
 
 /* ---------- 捲動淡入 ----------
    JS 會把動態產生的卡片加上 .rv，進入畫面時再加 .in。
@@ -406,6 +583,7 @@ dl.meta dd{margin:0}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .rv{opacity:1;translate:none}
+  .stage img{animation:none}
   .spin{animation-duration:.7s!important;animation-iteration-count:infinite!important}
 }
 </style>
@@ -413,7 +591,10 @@ dl.meta dd{margin:0}
 <body>
 <div id="app">
   <header class="top">
-    <h1>娃衣衣櫃</h1>
+    <button class="iconbtn back" id="backbtn" onclick="navBack()" aria-label="返回" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <h1 id="title">娃衣衣櫃</h1>
     <span class="sub" id="topsub"></span>
     <button class="iconbtn" onclick="openSettings()" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -421,13 +602,26 @@ dl.meta dd{margin:0}
   </header>
 
   <main>
+    <!-- 首頁 -->
+    <section class="view on" id="v-home"><div id="home"></div></section>
+
+    <!-- 考慮中 -->
+    <section class="view" id="v-wish"><div id="wishList"></div></section>
+
+    <!-- 我的娃娃 -->
+    <section class="view" id="v-dolls"><div id="dollList"></div></section>
+
     <!-- 衣櫃 -->
-    <section class="view on" id="v-closet">
+    <section class="view" id="v-closet">
       <div class="row" style="margin-bottom:10px">
         <input type="text" id="q" placeholder="搜尋名稱、品牌、標籤" oninput="renderCloset()">
       </div>
+      <button class="buybar" onclick="openBuyCheck()">
+        <i></i><span><b>買前檢查</b>想買新娃衣？先看看衣櫃裡有沒有類似的</span><em>›</em>
+      </button>
       <div class="chips" id="catchips"></div>
       <div class="chips" id="viewchips"></div>
+      <div class="chips" id="sizechips"></div>
       <div id="closetGrid"></div>
     </section>
 
@@ -438,6 +632,7 @@ dl.meta dd{margin:0}
         <span class="hint">可一次選多張。照片會在你的裝置上壓縮，不會自動上傳。</span>
       </div>
       <input type="file" id="files" accept="image/*" multiple hidden onchange="onFiles(event)">
+      <div id="cutTip"></div>
       <div id="queue"></div>
       <div id="queueActions"></div>
     </section>
@@ -480,7 +675,7 @@ dl.meta dd{margin:0}
   <nav class="tabs" id="tabs"></nav>
 </div>
 
-<div class="sheet" id="sheet"><div class="scrim" onclick="closeSheet()"></div><div class="panel"><div class="grab"><i></i></div><div id="sheetBody"></div></div></div>
+<div class="sheet" id="sheet"><div class="scrim" onclick="closeSheet()"></div><div class="panel"><div class="grab"><i></i><button class="shx" onclick="closeSheet()" aria-label="關閉"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div id="sheetBody"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -531,10 +726,12 @@ const CATS=[
 const FILTERS=['全部','套裝','上衣','下身','洋裝','外套','帽子','襪子','鞋子','包包','配件'];
 const FMAP={'上衣':['top'],'下身':['bottom'],'洋裝':['dress'],'外套':['outer'],'帽子':['head'],'襪子':['socks'],'鞋子':['shoes'],'包包':['bag'],'配件':['acc']};
 const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','配件'];
-const SIZES=['10cm 棉花娃','15cm 棉花娃','20cm 棉花娃','OB11','黏土娃','BJD','其他'];
+// 娃衣尺寸：預設四種，使用者可以在設定裡增減
+const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
+const sizes=()=>S.settings.sizes;
 
-let S={items:[],sets:[],looks:[],wears:[],settings:{}};
-let UI={tab:'closet',cat:'全部',mode:'全部',queue:[],canvas:[],selPc:null,detailImg:'cutout'};
+let S={items:[],sets:[],looks:[],wears:[],dolls:[],wish:[],settings:{}};
+let UI={tab:'home',lastTab:'home',size:'全部尺寸',wishTab:'wait',cat:'全部',mode:'全部',queue:[],canvas:[],selPc:null,detailImg:'cutout'};
 
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
 const today=()=>new Date().toISOString().slice(0,10);
@@ -548,6 +745,14 @@ async function load(){
   if(d) S=Object.assign(S,d);
   S.settings=Object.assign({presets:[],activeId:'',bgMode:'local',bgTol:42,stickerEdge:6,stickerMode:'ai',stickerModel:'',bgUrl:'https://api.remove.bg/v1.0/removebg',bgKey:''},S.settings||{});
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
+  S.dolls=S.dolls||[];S.wish=S.wish||[];
+  if(!Array.isArray(S.settings.sizes)){
+    // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
+    const old={'10cm 棉花娃':'10cm','15cm 棉花娃':'15cm','20cm 棉花娃':'20cm'};
+    const list=DEFAULT_SIZES.slice();
+    S.items.forEach(i=>{i.sizes=(i.sizes||[]).map(z=>old[z]||z);i.sizes.forEach(z=>{if(!list.includes(z))list.push(z)})});
+    S.settings.sizes=list;
+  }
   if(!S.settings.presets.length){
     S.settings.presets=[{id:uid('p'),name:'New Preset',endpoint:'',key:'',model:'',models:[]}];
     S.settings.activeId=S.settings.presets[0].id;
@@ -884,28 +1089,291 @@ box 是那件單品在照片中的位置框，格式 [ymin,xmin,ymax,xmax]，數
    5. 導覽
    ============================================================ */
 const TABS=[
+ ['home','首頁','<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>'],
  ['closet','衣櫃','<path d="M12 3v18M5 3h14v18H5z"/><path d="M9 9h.01M15 9h.01"/>'],
- ['intake','建檔','<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.2"/><path d="M8 6l1.5-2h5L16 6"/>'],
+ ['intake','建檔','<path d="M12 6v12M6 12h12"/>'],
  ['studio','搭配','<path d="M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z"/>'],
- ['wear','紀錄','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4"/>'],
  ['insight','洞察','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
 ];
+// 不在底部分頁裡的子頁面：從首頁進入，左上角有返回
+const TITLES={wear:'穿搭紀錄',wish:'考慮中',dolls:'我的娃娃'};
 function buildTabs(){
+  const cur=UI.tab in TITLES?'home':UI.tab;
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,p])=>
-    `<button class="${UI.tab===k?'on':''}" onclick="go('${k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</button>`).join('');
+    `<button class="${cur===k?'on':''} ${k==='intake'?'plus':''}" onclick="go('${k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${k==='intake'?2:1.6}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>${l}</button>`).join('');
 }
-function go(k){
+function go(k,fromPop){
+  const sub=k in TITLES;
+  if(sub&&!fromPop&&UI.tab!==k){
+    // 關 sheet 的返回動作還沒跑完時，等它跑完再記錄這一頁
+    if(NAV.ignore)NAV.pendingPush=k;else history.pushState({view:k},'');
+  }
+  if(!sub)UI.lastTab=k;
   UI.tab=k;buildTabs();
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+k));
+  document.getElementById('backbtn').hidden=!sub;
+  document.getElementById('title').textContent=sub?TITLES[k]:'娃衣衣櫃';
+  document.querySelector('header.top').classList.toggle('subview',sub);
   window.scrollTo(0,0);
+  if(k==='home')renderHome();
   if(k==='closet')renderCloset();
+  if(k==='intake')renderQueue();
   if(k==='studio'){renderCanvas();renderLooks()}
   if(k==='wear')renderWears();
   if(k==='insight')renderInsight();
+  if(k==='wish')renderWish();
+  if(k==='dolls')renderDolls();
 }
+function navBack(){if(history.state&&history.state.view)history.back();else go(UI.lastTab||'home')}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2200)}
-function openSheet(html){document.getElementById('sheetBody').innerHTML=html;document.getElementById('sheet').classList.add('on')}
-function closeSheet(){document.getElementById('sheet').classList.remove('on')}
+/* 底部抽屜：開啟時記一筆瀏覽紀錄，所以手機的「上一頁」、Esc、右上 ×、往下拖都能關掉 */
+const NAV={open:false,ignore:0,pendingPush:null};
+function openSheet(html){
+  const sh=document.getElementById('sheet');
+  document.getElementById('sheetBody').innerHTML=html;
+  if(!NAV.open){
+    NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;
+    history.pushState({sheet:1},'');
+  }
+}
+function hideSheet(){
+  // 設定畫面沒按「保存」就關掉時，也把填好的內容存起來
+  if(document.getElementById('s_endpoint')){readForm();save()}
+  NAV.open=false;document.getElementById('sheet').classList.remove('on');
+}
+function closeSheet(){
+  if(!NAV.open)return;
+  hideSheet();
+  if(history.state&&history.state.sheet){NAV.ignore++;history.back()}
+}
+addEventListener('popstate',()=>{
+  if(NAV.ignore){
+    NAV.ignore--;
+    if(NAV.pendingPush){history.pushState({view:NAV.pendingPush},'');NAV.pendingPush=null}
+    return;
+  }
+  if(NAV.open){hideSheet();return}
+  if(UI.tab in TITLES)go(UI.lastTab||'home',true);
+});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&NAV.open)closeSheet()});
+
+/* ============================================================
+   0. 首頁
+   ============================================================ */
+function mainDoll(){return S.dolls.find(d=>d.id===S.settings.mainDoll)||S.dolls[0]||null}
+function dollWears(d){return S.wears.filter(w=>w.dollId===d.id||(!w.dollId&&w.dollName&&w.dollName===d.name))}
+const DOLL_SVG=`<svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round">
+  <circle cx="60" cy="50" r="36"/><circle cx="30" cy="22" r="10"/><circle cx="90" cy="22" r="10"/>
+  <path d="M38 84q-6 30 4 44h36q10-14 4-44"/><path d="M36 92q-14 6-16 18M84 92q14 6 16 18"/>
+  <circle cx="47" cy="52" r="2.5" fill="currentColor" stroke="none"/><circle cx="73" cy="52" r="2.5" fill="currentColor" stroke="none"/></svg>`;
+function renderHome(){
+  const el=document.getElementById('home'),d=mainDoll();
+  const items=S.items.filter(i=>i.category!=='套裝');
+  const month=today().slice(0,7),mw=S.wears.filter(w=>(w.date||'').startsWith(month)).length;
+  const used=items.length?Math.round(items.filter(i=>wearCount(i.id)>0).length/items.length*100):0;
+  const wait=S.wish.filter(w=>w.status==='wait'),skip=S.wish.filter(w=>w.status==='skip');
+  const saved=skip.reduce((a,w)=>a+(+w.price||0),0);
+  const cold=items.filter(i=>!i.keepsake&&idle(i)&&img(i))
+    .sort((a,b)=>(lastWear(a.id)||'0').localeCompare(lastWear(b.id)||'0')).slice(0,8);
+  const recent=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+  document.getElementById('topsub').textContent='';
+
+  el.innerHTML=`
+  <section class="hhero">
+    <div class="stage" onclick="${d?`openDoll('${d.id}')`:'openDoll()'}">
+      ${d&&d.photo?`<img src="${d.photo}" alt="${esc(d.name)}">`:`<div class="ph">${DOLL_SVG}</div>`}
+      <i class="floor"></i>
+    </div>
+    ${d?`<div class="hname"><b>${esc(d.name)}</b>${d.size?`<span>${esc(d.size)}</span>`:''}</div>
+      <p class="hgreet">今天要幫 ${esc(d.name)} 穿什麼？</p>`
+      :`<div class="hname"><b>把你的娃娃放在這裡</b></div>
+      <p class="hgreet">新增娃娃後，首頁就會是娃娃的專屬舞台</p>
+      <button class="btn" style="margin-top:4px" onclick="openDoll()">新增我的娃娃</button>`}
+    ${S.dolls.length>1?`<div class="dswitch">${S.dolls.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}">${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</button>`).join('')}</div>`:''}
+  </section>
+
+  <div class="qa">
+    <button onclick="openWear()"><i class="i1"></i>記錄穿搭</button>
+    <button onclick="go('studio')"><i class="i2"></i>開始搭配</button>
+    <button onclick="openBuyCheck()"><i class="i3"></i>買前檢查</button>
+    <button onclick="go('dolls')"><i class="i4"></i>我的娃娃</button>
+  </div>
+
+  <button class="hstat" onclick="go('insight')">
+    <div><b>${items.length}</b><span>件娃衣</span></div>
+    <div><b>${mw}</b><span>本月穿搭</span></div>
+    <div><b>${used}<small>%</small></b><span>衣櫃使用率</span></div>
+    <em>›</em>
+  </button>
+
+  <section class="hcard" onclick="go('wish')">
+    <div class="hct"><b>考慮中</b><span>${wait.length} 件</span><em>›</em></div>
+    ${wait.length?`<div class="thumbs">${wait.slice(0,6).map(w=>`<img src="${w.photo}" alt="">`).join('')}</div>`
+      :`<p class="hint" style="margin:4px 0 0">用「買前檢查」看過但還沒決定的娃衣，可以先放這裡冷靜一下。</p>`}
+    ${skip.length?`<p class="hsaved">已經忍住 <b>${skip.length}</b> 件${saved?`，省下 <b>$${saved.toLocaleString()}</b>`:''}</p>`:''}
+  </section>
+
+  ${cold.length?`<h2 class="sec">好久沒穿的</h2>
+  <p class="hint" style="margin:-4px 0 10px">給它們一點出場機會吧</p>
+  <div class="hscroll">${cold.map(i=>{const l=lastWear(i.id);return `<button class="piece" onclick="openItem('${i.id}')">
+    <div class="sw"><img src="${img(i)}" alt=""><span class="tag">${l?days(l)+' 天':'沒穿過'}</span></div>
+    <div class="nm">${esc(i.name)}</div></button>`}).join('')}</div>`:''}
+
+  <h2 class="sec">最近穿搭</h2>
+  ${recent.length?`<div class="blist">${recent.map(w=>`<div class="rowitem" onclick="go('wear')">
+    <div class="th">${w.photo?`<img src="${w.photo}" style="object-fit:cover;padding:0" alt="">`:(w.itemIds[0]?`<img src="${img(S.items.find(x=>x.id===w.itemIds[0])||{})}" alt="">`:'')}</div>
+    <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b><span>${w.itemIds.map(i=>esc((S.items.find(x=>x.id===i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+    <div class="rt">›</div></div>`).join('')}</div>
+    <button class="btn ghost wide sm" style="margin-top:10px" onclick="go('wear')">全部紀錄</button>`
+  :`<div class="empty"><strong>還沒有穿搭紀錄</strong>幫娃娃換好衣服後，按上面的「記錄穿搭」</div>`}
+  `;
+}
+async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
+
+/* ============================================================
+   0b. 我的娃娃
+   ============================================================ */
+let DD={};
+function renderDolls(){
+  const el=document.getElementById('dollList');
+  el.innerHTML=`<div class="grid">${S.dolls.map(d=>{
+    const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0;
+    return `<button class="piece" onclick="openDoll('${d.id}')">
+      <div class="sw">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}
+        ${d.id===(mainDoll()||{}).id?'<span class="keep">★</span>':''}
+        ${d.size?`<span class="tag">${esc(d.size)}</span>`:''}</div>
+      <div class="nm">${esc(d.name)}</div>
+      <div class="mt">穿搭 ${dollWears(d).length} 次${d.size?`・合身娃衣 ${fit} 件`:''}</div>
+    </button>`}).join('')}
+    <button class="piece" onclick="openDoll()"><div class="sw addcard"><span>＋</span></div><div class="nm">新增娃娃</div></button>
+  </div>`;
+}
+function openDoll(id){
+  const d=id?S.dolls.find(x=>x.id===id):null;
+  DD=d?{...d}:{id:null,name:'',size:(mainDoll()||{}).size||'',photo:null,raw:null,home:'',note:''};
+  DD.isMain=d?d.id===(mainDoll()||{}).id:!S.dolls.length;
+  drawDoll();
+}
+function drawDoll(){
+  const d=DD,saved=d.id?S.dolls.find(x=>x.id===d.id):null;
+  const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0;
+  openSheet(`<h3>${saved?esc(saved.name):'新增娃娃'}</h3>
+    <div class="hero dollhero" onclick="document.getElementById('dphoto').click()">
+      ${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}<span>點這裡放照片</span></div>`}
+    </div>
+    <input type="file" id="dphoto" accept="image/*" hidden onchange="onDollPhoto(event)">
+    ${freeCut()?`<p class="hint" style="margin:-4px 0 12px">小提醒：把娃娃放在素色、跟娃娃顏色差很多的背景前拍，去背會乾淨很多。</p>`:''}
+    ${d.photo?`<div class="row" style="margin:-4px 0 14px">
+      <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
+      ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
+    </div>`:''}
+    ${saved?`<div class="stat" style="margin-bottom:14px">
+      <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
+      <div><b>${fit}</b><span>合身的娃衣</span></div></div>`:''}
+    <label class="f"><span>名字</span><input type="text" id="d_name" value="${esc(d.name)}" placeholder="小白" oninput="DD.name=this.value"></label>
+    <div class="split">
+      <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
+      <label class="f"><span>到家日</span><input type="date" id="d_home" value="${esc(d.home||'')}" onchange="DD.home=this.value"></label>
+    </div>
+    <label class="f"><span>備註</span><textarea id="d_note" placeholder="品牌、作者、個性小設定…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
+    <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button></div></label>
+    <button class="btn wide" onclick="saveDoll()">儲存</button>
+    ${saved?`<button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delDoll('${saved.id}')">刪除這隻娃娃</button>`:''}`);
+}
+async function onDollPhoto(ev){
+  const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  DD.photo=await compress(f);DD.raw=null;drawDoll();
+}
+async function cutDoll(btn){
+  btn.disabled=true;btn.innerHTML='<span class="spin dark"></span> 去背中';
+  try{const src=DD.raw||DD.photo;const r=await cutout(src);DD.raw=src;DD.photo=r.sticker;drawDoll()}
+  catch(e){toast(e.message);btn.disabled=false;btn.textContent='去背'}
+}
+async function saveDoll(){
+  if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
+  const {isMain,...d}=DD;d.name=d.name.trim();
+  if(d.id){const i=S.dolls.findIndex(x=>x.id===d.id);S.dolls[i]=Object.assign(S.dolls[i],d)}
+  else{d.id=uid('d');d.createdAt=Date.now();S.dolls.push(d)}
+  if(isMain)S.settings.mainDoll=d.id;
+  else if(S.settings.mainDoll===d.id)S.settings.mainDoll='';
+  await save();closeSheet();
+  if(UI.tab==='dolls')renderDolls();else renderHome();
+  toast('已儲存');
+}
+async function delDoll(id){
+  const d=S.dolls.find(x=>x.id===id);
+  if(!confirm(`刪除 ${d.name}？穿搭紀錄會保留。`))return;
+  S.dolls=S.dolls.filter(x=>x.id!==id);
+  if(S.settings.mainDoll===id)S.settings.mainDoll='';
+  await save();closeSheet();
+  if(UI.tab==='dolls')renderDolls();else renderHome();
+}
+
+/* ============================================================
+   0c. 考慮中
+   ============================================================ */
+function wishLine(w){
+  const s=w.summary||{};
+  if(s.same)return '衣櫃裡可能已經有了';
+  if(s.recolor)return `有 ${s.recolor} 件同款不同色`;
+  if(s.similar)return `有 ${s.similar} 件風格很像`;
+  return '衣櫃裡沒有類似的';
+}
+function renderWish(){
+  const el=document.getElementById('wishList');
+  const by=k=>S.wish.filter(w=>w.status===k);
+  const skip=by('skip'),saved=skip.reduce((a,w)=>a+(+w.price||0),0);
+  const tabs=[['wait','考慮中'],['bought','買了'],['skip','不買了']];
+  const list=by(UI.wishTab).sort((a,b)=>(b.decidedAt||b.createdAt)-(a.decidedAt||a.createdAt));
+  el.innerHTML=`
+    <div class="stat">
+      <div><b>${by('wait').length}</b><span>考慮中</span></div>
+      <div><b>${skip.length}</b><span>忍住沒買${saved?`・省 $${saved.toLocaleString()}`:''}</span></div>
+    </div>
+    <button class="btn quiet wide" style="margin-bottom:14px" onclick="openBuyCheck()">買前檢查一件新的</button>
+    <div class="chips">${tabs.map(([k,l])=>`<button class="chip ${UI.wishTab===k?'on':''}" onclick="UI.wishTab='${k}';renderWish()">${l} ${by(k).length}</button>`).join('')}</div>
+    ${list.length?list.map(w=>{
+      const age=Math.max(0,Math.floor((Date.now()-w.createdAt)/864e5));
+      return `<div class="wcard">
+        <div class="th"><img src="${w.photo}" alt=""></div>
+        <div class="bd">
+          <b>${esc(w.t.name||'未命名')}</b>
+          <span>${w.price?`$${(+w.price).toLocaleString()}・`:''}${w.status==='wait'?(age?`考慮了 ${age} 天`:'今天加入'):(w.status==='skip'?'決定不買':'已經買了')}</span>
+          <span class="wl">${wishLine(w)}</span>
+          ${w.note?`<span class="wn">${esc(w.note)}</span>`:''}
+          <div class="row" style="margin-top:8px;flex-wrap:wrap">
+            ${w.status==='wait'?`
+              <button class="btn sm ghost" onclick="recheckWish('${w.id}')">再檢查</button>
+              <button class="btn sm ghost" onclick="skipWish('${w.id}')">不買了</button>
+              <button class="btn sm" onclick="boughtWish('${w.id}')">買了</button>`
+            :`<button class="btn sm ghost" onclick="setWish('${w.id}','wait')">移回考慮中</button>
+              <button class="btn sm ghost" style="color:var(--muted)" onclick="delWish('${w.id}')">刪除</button>`}
+          </div>
+        </div></div>`}).join('')
+    :`<div class="empty"><strong>${UI.wishTab==='wait'?'目前沒有考慮中的娃衣':'這裡還是空的'}</strong>${UI.wishTab==='wait'?'在買前檢查的結果頁按「放進考慮中」':''}</div>`}`;
+}
+async function setWish(id,st){const w=S.wish.find(x=>x.id===id);w.status=st;w.decidedAt=st==='wait'?null:Date.now();await save();renderWish()}
+async function skipWish(id){
+  const w=S.wish.find(x=>x.id===id);await setWish(id,'skip');
+  toast(w.price?`忍住了！省下 $${(+w.price).toLocaleString()}`:'忍住了！');
+}
+async function delWish(id){if(!confirm('從清單刪除？'))return;S.wish=S.wish.filter(x=>x.id!==id);await save();renderWish()}
+async function boughtWish(id){
+  const w=S.wish.find(x=>x.id===id);w.status='bought';w.decidedAt=Date.now();await save();
+  queueFromTags(w.photo,w.t,w.price);go('intake');toast('已加入建檔，記得做成貼圖');
+}
+function queueFromTags(photo,t,price){
+  UI.queue.push({qid:uid('q'),photo,cutout:null,name:t.name,category:t.category,isSet:t.isSet,parts:[],sizes:defaultSizes(),
+    colors:t.colors,styles:t.styles,motifs:t.motifs,season:t.season,material:t.material,price:price||'',analyzing:false});
+}
+async function recheckWish(id){
+  const w=S.wish.find(x=>x.id===id);if(!w)return;
+  if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  openBuyCheck();
+  BUY.photo=w.photo;BUY.t=w.t;BUY.wishId=id;
+  BUY.busy=true;
+  try{await buyCompare()}catch(e){toast(e.message)}finally{BUY.busy=false}
+}
 
 /* ============================================================
    6. 衣櫃
@@ -919,8 +1387,12 @@ function renderCloset(){
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat='${f}';renderCloset()">${f}</button>`).join('');
   const modes=['全部','從未穿過','超過180天','收藏紀念','最近新增'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';renderCloset()">${f}</button>`).join('');
+  const sz=['全部尺寸',...sizes()];
+  if(!sz.includes(UI.size))UI.size='全部尺寸';
+  document.getElementById('sizechips').innerHTML=sz.map(f=>`<button class="chip ${UI.size===f?'on':''}" onclick="UI.size=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
   const q=(document.getElementById('q').value||'').trim().toLowerCase();
   let list=S.items.slice();
+  if(UI.size!=='全部尺寸')list=list.filter(i=>(i.sizes||[]).includes(UI.size));
   if(UI.cat==='套裝')list=list.filter(i=>i.category==='套裝');
   else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(slotOf(i.category)));
   if(q)list=list.filter(i=>[i.name,i.brand,i.shop,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
@@ -1027,7 +1499,7 @@ function editItem(id){
       <label class="f"><span>購入日期</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"></label>
       <label class="f"><span>價格</span><input type="number" id="e_price" value="${esc(i.price||'')}"></label>
     </div>
-    <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${SIZES.map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${s}</button>`).join('')}</div></label>
+    <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
     <label class="f"><span>材質</span><input type="text" id="e_mat" value="${esc(i.material||'')}"></label>
     <label class="f"><span>備註</span><textarea id="e_note">${esc(i.note||'')}</textarea></label>
     <label class="f"><span>收藏／紀念品</span>
@@ -1063,13 +1535,14 @@ async function onFiles(ev){
   toast(`處理 ${fs.length} 張照片…`);
   for(const f of fs){
     const photo=await compress(f);
-    UI.queue.push({qid:uid('q'),photo,cutout:null,name:'',category:'上衣',isSet:false,parts:[],colors:[],styles:[],motifs:[],season:'',material:'',analyzing:false});
+    UI.queue.push({qid:uid('q'),photo,cutout:null,name:'',category:'上衣',isSet:false,parts:[],sizes:defaultSizes(),colors:[],styles:[],motifs:[],season:'',material:'',analyzing:false});
     renderQueue();
     await new Promise(r=>setTimeout(r,10));
   }
   toast('照片已就緒');
 }
 function renderQueue(){
+  document.getElementById('cutTip').innerHTML=freeCut()?cutTip():'';
   const el=document.getElementById('queue');
   el.innerHTML=UI.queue.map((q,n)=>`
     <div class="qcard">
@@ -1082,6 +1555,7 @@ function renderQueue(){
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
+        <div class="parts" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           ${q.parts.length?`<div class="partrow">${q.parts.map(pt=>`
@@ -1107,6 +1581,31 @@ function renderQueue(){
       <span class="grow"></span>
       <button class="btn" onclick="commitQueue()">建檔 ${UI.queue.length} 筆</button>
     </div>`:'';
+}
+// 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
+function freeCut(){const m=S.settings.stickerMode||'ai';return m==='local'||(m==='ai'&&!aiReady())}
+function cutTip(){
+  return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
+    <summary>免費去背的拍照小撇步</summary>
+    <ul>
+      <li><b>鋪一張素色的底</b>：白紙、素色桌布、床單都可以，不要有花紋</li>
+      <li><b>底色跟衣服差越多越好</b>：淺色衣服用深色底，深色衣服用淺色底</li>
+      <li><b>光線要均勻</b>：白天靠窗拍，避開強烈的影子</li>
+      <li><b>衣服整件攤開</b>，不要超出照片邊緣，也不要跟其他東西疊在一起</li>
+      <li>還是有沒去乾淨的地方？到單品頁按<b>「修補貼圖」</b>用手指擦掉就好</li>
+    </ul>
+    ${S.settings.tipSeen?'':`<button class="btn sm quiet" onclick="event.preventDefault();S.settings.tipSeen=true;save();renderQueue()">知道了</button>`}
+  </details>`;
+}
+// 新照片預設沿用上一次選的尺寸；沒選過就用首頁主娃的尺寸
+function defaultSizes(){
+  if(UI.lastSizes)return UI.lastSizes.slice();
+  const d=mainDoll();return d&&d.size?[d.size]:[];
+}
+function toggleQSize(n,z){
+  const q=UI.queue[n];q.sizes=q.sizes||[];
+  q.sizes=q.sizes.includes(z)?q.sizes.filter(x=>x!==z):[...q.sizes,z];
+  UI.lastSizes=q.sizes.slice();renderQueue();
 }
 function togglePart(n,p){
   const q=UI.queue[n];
@@ -1158,8 +1657,8 @@ async function commitQueue(){
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   let n=0;
   for(const q of UI.queue){
-    const base={photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
-      season:q.season,material:q.material,sizes:[],brand:'',shop:'',buyDate:'',price:'',note:'',
+    const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
+      season:q.season,material:q.material,sizes:(q.sizes||[]).slice(),brand:'',shop:'',buyDate:'',note:'',
       keepsake:false,keepsakeReason:'',createdAt:Date.now()};
     if(q.isSet){
       const sid=uid('s'),nm=q.name||'未命名套裝';
@@ -1385,16 +1884,19 @@ async function wearLook(id){
    ============================================================ */
 let WEAR={date:today(),doll:'',photo:null,picked:[],cands:null};
 function openWear(){
-  WEAR={date:today(),doll:'',photo:null,picked:[],cands:null};
+  const d=mainDoll();
+  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:[],cands:null};
   drawWearSheet();
 }
 function drawWearSheet(){
   openSheet(`
     <h3>今天的穿搭</h3>
-    <div class="split">
+    ${S.dolls.length?`<label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
+    <label class="f"><span>哪一隻娃</span><div class="parts" style="margin-top:0">${S.dolls.map(d=>`<button type="button" class="${WEAR.dollId===d.id?'on':''}" onclick="WEAR.dollId=WEAR.dollId==='${d.id}'?null:'${d.id}';WEAR.doll=WEAR.dollId?S.dolls.find(x=>x.id===WEAR.dollId).name:'';drawWearSheet()">${esc(d.name)}</button>`).join('')}</div></label>`
+    :`<div class="split">
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
-    </div>
+    </div>`}
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
@@ -1456,8 +1958,8 @@ function togglePick(id){
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
-  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:''});
-  await save();closeSheet();renderWears();toast('已記錄');
+  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:''});
+  await save();closeSheet();if(UI.tab==='home')renderHome();else renderWears();toast('已記錄');
 }
 function renderWears(){
   const el=document.getElementById('wearList');
@@ -1568,12 +2070,233 @@ function renderInsight(){
 }
 
 /* ============================================================
+   10b. 買前檢查
+   貼上想買的娃衣 → AI 分析標籤 → 本機用標籤統計並挑出最像的幾件
+   → 再請 AI 看圖判斷「幾乎一樣／同款不同色／很像」。
+   語氣是提供資訊，不是阻止購買（有人就是喜歡收包色）。
+   ============================================================ */
+const BUY={};
+const COLOR_FAM=[['粉','粉'],['桃','粉'],['紅','紅'],['酒','紅'],['橘','橘'],['橙','橘'],['黃','黃'],['金','黃'],
+  ['綠','綠'],['薄荷','綠'],['藍','藍'],['青','藍'],['紫','紫'],['米','米'],['杏','米'],['奶茶','米'],['卡其','棕'],
+  ['棕','棕'],['咖啡','棕'],['褐','棕'],['駝','棕'],['白','白'],['黑','黑'],['灰','灰'],['銀','灰']];
+const colorFam=c=>{c=String(c||'');for(const [k,f] of COLOR_FAM)if(c.includes(k))return f;return c};
+const famLabel={'粉':'粉色','紅':'紅色','橘':'橘色','黃':'黃色','綠':'綠色','藍':'藍色','紫':'紫色','米':'米色','棕':'棕色','白':'白色','黑':'黑色','灰':'灰色'};
+const idle=i=>{const l=lastWear(i.id);return !l||days(l)>180};
+
+function openBuyCheck(){
+  if(!aiReady()){toast('買前檢查需要先在設定填好 API');return}
+  BUY.photo=null;BUY.wishId=null;
+  openSheet(`<h3>買前檢查</h3>
+    <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。</p>
+    <div id="buyIn"><div class="drop" onclick="document.getElementById('buyFile').click()">
+      <strong>選擇照片</strong><span class="hint">電腦上也可以直接按 Ctrl／⌘ + V 貼上</span>
+    </div>
+    <input type="file" id="buyFile" accept="image/*" hidden onchange="onBuyFile(event)">
+    ${navigator.clipboard&&navigator.clipboard.read?`<button class="btn ghost wide" style="margin-top:10px" onclick="pasteBuy()">從剪貼簿貼上</button>`:''}</div>
+    <div id="buyOut"></div>`);
+}
+document.addEventListener('paste',e=>{
+  if(!document.getElementById('buyOut')||BUY.busy)return;
+  const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));
+  if(f){e.preventDefault();runBuy(f)}
+});
+async function onBuyFile(ev){const f=ev.target.files[0];ev.target.value='';if(f)runBuy(f)}
+async function pasteBuy(){
+  try{
+    for(const it of await navigator.clipboard.read()){
+      const t=it.types.find(t=>t.startsWith('image/'));
+      if(t){runBuy(await it.getType(t));return}
+    }
+    toast('剪貼簿裡沒有圖片');
+  }catch(e){toast('無法讀取剪貼簿，請改用選擇照片')}
+}
+function buyStep(msg){
+  const el=document.getElementById('buyOut');if(!el)return;
+  document.getElementById('buyIn').style.display='none';
+  el.innerHTML=`<div class="buyhead">${BUY.photo?`<div class="th"><img src="${BUY.photo}" alt=""></div>`:''}
+    <div class="grow"><b>${msg}</b><div class="hint"><span class="spin dark"></span> 大約需要 10～30 秒</div></div></div>`;
+}
+// 縮小成 JPEG 送給 AI，透明背景鋪白
+function thumb(src,max){
+  return loadImg(src).then(im=>{
+    const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');
+    c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',.82);
+  });
+}
+async function callAIImgs(prompt,imgs){
+  const c=cfg();
+  const content=[...imgs.map(u=>({type:'image_url',image_url:{url:u}})),{type:'text',text:prompt}];
+  const r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
+    method:'POST',headers:authHead(c.key),
+    body:JSON.stringify({model:c.model,max_tokens:1500,messages:[{role:'user',content}]})
+  });
+  if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
+  const m=(await r.json()).choices?.[0]?.message;
+  return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||'';
+}
+// 本機比對：類型、顏色、風格、圖案重疊越多分數越高
+function buyScore(t,i){
+  let s=0;
+  if(t.category!=='套裝'){
+    if(i.category===t.category)s+=4;else if(slotOf(i.category)&&slotOf(i.category)===slotOf(t.category))s+=2;
+  }
+  const tc=new Set(t.colors.map(colorFam));
+  s+=Math.min(4,(i.colors||[]).filter(c=>tc.has(colorFam(c))).length*2);
+  const ts=new Set(t.styles.map(x=>x.name));
+  s+=(i.styles||[]).filter(x=>ts.has(x.name)).length*1.5;
+  const tm=new Set(t.motifs);
+  s+=(i.motifs||[]).filter(m=>tm.has(m)).length*2;
+  return s;
+}
+async function runBuy(file){
+  if(BUY.busy)return;BUY.busy=true;
+  try{
+    BUY.photo=await compress(file);
+    buyStep('分析這件娃衣…');
+    const r=parseJSON(await callAI(TAG_PROMPT,BUY.photo));
+    const t={name:r.name||'',category:r.isSet?'套裝':(r.category||'其他'),isSet:!!r.isSet,
+      colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
+    BUY.t=t;BUY.wishId=null;
+    await buyCompare();
+  }catch(e){
+    const el=document.getElementById('buyOut');
+    if(el)el.innerHTML=`<div class="note" style="margin-top:14px">分析失敗：${esc(e.message)}</div>
+      <button class="btn ghost wide" style="margin-top:12px" onclick="openBuyCheck()">重新選照片</button>`;
+  }finally{BUY.busy=false}
+}
+async function buyCompare(){
+  const t=BUY.t;
+  const pool=S.items.filter(i=>i.category!=='套裝'||t.isSet);
+  const cands=pool.map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=3&&img(x.i)).sort((a,b)=>b.s-a.s).slice(0,8);
+  let verdict=[];
+  if(cands.length){
+    buyStep(`跟衣櫃裡最像的 ${cands.length} 件比對中…`);
+    const imgs=[await thumb(BUY.photo,512),...await Promise.all(cands.map(x=>thumb(img(x.i),320)))];
+    const prompt=`第 1 張是使用者想買的娃衣，後面第 2 到第 ${cands.length+1} 張是使用者衣櫃裡已經有的（編號 1 到 ${cands.length}）。
+逐一比較想買的這件跟每一件，只回傳 JSON 陣列，不要其他文字：
+[{"n":編號,"level":"same 或 recolor 或 similar 或 different","reason":"15字內的中文理由"}]
+level 定義：
+same：幾乎是同一件（同款式、同顏色）
+recolor：同款式或同設計，但顏色不同
+similar：款式不同，但風格、元素或配色很像
+different：沒什麼關係`;
+    try{
+      const out=parseJSON(await callAIImgs(prompt,imgs));
+      verdict=(Array.isArray(out)?out:[]).map(v=>({...v,it:cands[(+v.n)-1]?.i})).filter(v=>v.it);
+    }catch(e){toast('圖片比對失敗，先只顯示標籤統計')}
+  }
+  BUY.verdict=verdict;BUY.cands=cands;
+  renderBuy();
+}
+function renderBuy(){
+  const el=document.getElementById('buyOut');if(!el)return;
+  const bi=document.getElementById('buyIn');if(bi)bi.style.display='none';
+  const t=BUY.t,items=S.items.filter(i=>i.category!=='套裝');
+  const tag=(label,list)=>{
+    const n=list.length,cold=list.filter(idle).length;
+    return `<div class="bstat"><span>${label}</span><b>${n}</b><em>${n?(cold?`${cold} 件半年以上沒穿`:'都有在穿'):'還沒有'}</em></div>`;
+  };
+  // 統計
+  let st='';
+  const fams=[...new Set(t.colors.map(colorFam))];
+  if(t.category!=='套裝'){
+    const same=items.filter(i=>i.category===t.category);
+    fams.slice(0,2).forEach(f=>{
+      st+=tag(`${famLabel[f]||f}的${t.category}`,same.filter(i=>(i.colors||[]).some(c=>colorFam(c)===f)));
+    });
+    st+=tag(`${t.category}（全部顏色）`,same);
+  }
+  t.styles.slice(0,3).forEach(s=>st+=tag(`${s.name}風格`,items.filter(i=>(i.styles||[]).some(x=>x.name===s.name))));
+  t.motifs.slice(0,3).forEach(m=>st+=tag(`${m}元素`,items.filter(i=>(i.motifs||[]).includes(m))));
+
+  const by=l=>BUY.verdict.filter(v=>v.level===l);
+  const row=v=>`<div class="rowitem" onclick="openItem('${v.it.id}')">
+      <div class="th"><img src="${img(v.it)}" alt=""></div>
+      <div class="tx"><b>${esc(v.it.name)}</b><span>${esc(v.reason||'')}${v.reason?'・':''}穿過 ${wearCount(v.it.id)} 次</span></div>
+      <div class="rt">›</div></div>`;
+  const group=(title,note,list)=>list.length?`<h2 class="sec">${title}</h2>${note?`<div class="note">${note}</div>`:''}<div class="blist">${list.map(row).join('')}</div>`:'';
+  const same=by('same'),recolor=by('recolor');
+  // 沒有經過 AI 看圖時，用標籤分數最高的幾件當「很像」
+  const similar=BUY.verdict.length?by('similar'):BUY.cands.slice(0,4).map(x=>({it:x.i,reason:''}));
+
+  let msg;
+  if(same.length)msg='衣櫃裡好像已經有幾乎一樣的了，下單前可以先翻出來對照看看。';
+  else if(recolor.length)msg='有同款不同色的。如果你在收包色，這件剛好可以補上；如果不是，也可以想想會不會跟它們撞在一起。';
+  else if(similar.length)msg='沒有一樣的，但有幾件風格很接近，可以想想這件能不能帶來新的搭配。';
+  else msg='衣櫃裡沒有類似的，這件會是新面孔。';
+
+  el.innerHTML=`
+    <div class="buyhead">
+      <div class="th"><img src="${BUY.photo}" alt=""></div>
+      <div class="grow"><b>${esc(t.name||'這件娃衣')}</b>
+        <div class="tagline" style="margin:6px 0 0">
+          <span class="tg st">${esc(t.category)}</span>
+          ${t.colors.map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
+          ${t.styles.map(s=>`<span class="tg">${esc(s.name)}</span>`).join('')}
+          ${t.motifs.map(m=>`<span class="tg">${esc(m)}</span>`).join('')}
+        </div></div>
+    </div>
+    <div class="note" style="margin-top:14px">${msg}</div>
+    ${st?`<h2 class="sec">你的衣櫃裡</h2><div class="bstats">${st}</div>`:''}
+    ${group('幾乎一樣','',same)}
+    ${group('同款不同色','',recolor)}
+    ${group(BUY.verdict.length?'風格很像':'可能類似','',similar)}
+    <div id="buyWish">${BUY.wishId?`<div class="note" style="margin-top:18px">這件已經在考慮中清單裡。</div>`:''}</div>
+    <div class="row" style="margin-top:14px">
+      ${BUY.wishId?'':`<button class="btn ghost grow" onclick="buyWishForm()">放進考慮中</button>`}
+      <button class="btn grow" onclick="buyToIntake()">買了，拿去建檔</button>
+    </div>
+    <button class="btn ghost wide sm" style="margin-top:8px;border:none;box-shadow:none;color:var(--muted)" onclick="openBuyCheck()">再查一件</button>`;
+}
+function buyWishForm(){
+  const el=document.getElementById('buyWish');if(!el)return;
+  el.innerHTML=`<div class="card" style="margin-top:16px">
+    <label class="f"><span>價格（選填，決定不買時會算進「省下」）</span><input type="number" id="wp" inputmode="decimal" placeholder="例如 680"></label>
+    <label class="f"><span>備註（選填）</span><input type="text" id="wn" placeholder="店家、連結、預購截止日…"></label>
+    <button class="btn wide" onclick="saveWish()">放進考慮中</button></div>`;
+  el.previousElementSibling&&el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function saveWish(){
+  const v=BUY.verdict||[],n=l=>v.filter(x=>x.level===l).length;
+  const w={id:uid('x'),photo:BUY.photo,t:BUY.t,price:document.getElementById('wp').value,note:document.getElementById('wn').value.trim(),
+    status:'wait',createdAt:Date.now(),decidedAt:null,summary:{same:n('same'),recolor:n('recolor'),similar:n('similar')}};
+  S.wish.push(w);BUY.wishId=w.id;await save();
+  renderBuy();toast('已放進考慮中，冷靜幾天再決定');
+  if(UI.tab==='home')renderHome();if(UI.tab==='wish')renderWish();
+}
+// 買了：帶著已分析好的標籤丟進建檔佇列，不用再分析一次
+function buyToIntake(){
+  const t=BUY.t;if(!t)return;
+  const w=BUY.wishId&&S.wish.find(x=>x.id===BUY.wishId);
+  if(w){w.status='bought';w.decidedAt=Date.now();save()}
+  queueFromTags(BUY.photo,t,w&&w.price);
+  closeSheet();go('intake');toast('已加入建檔，記得做成貼圖');
+}
+// 買了：帶著已分析好的標籤丟進建檔佇列，不用再分析一次
+function buyToIntake(){
+  const t=BUY.t;if(!t)return;
+  UI.queue.push({qid:uid('q'),photo:BUY.photo,cutout:null,name:t.name,category:t.category,isSet:t.isSet,parts:[],
+    colors:t.colors,styles:t.styles,motifs:t.motifs,season:t.season,material:t.material,analyzing:false});
+  closeSheet();go('intake');renderQueue();toast('已加入建檔，記得做成貼圖');
+}
+
+/* ============================================================
    11. 設定 / 備份
    ============================================================ */
 function openSettings(){
   const st=S.settings,c=cfg();
+  const th=st.theme||'light';
   openSheet(`
     <h3>設定</h3>
+
+    <h2 class="sec" style="margin-top:4px">外觀</h2>
+    <div class="swap" id="s_theme">
+      ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
+    </div>
+
+    <h2 class="sec">AI 連線</h2>
 
     <div class="card" style="margin-top:6px">
       <div class="row" style="margin-bottom:9px">
@@ -1608,6 +2331,16 @@ function openSettings(){
     <button class="btn ghost wide" style="margin-top:8px" onclick="diagnose(this)">連不上？跑一次診斷</button>
     <p class="warn" style="margin-top:8px">${window.self!==window.top?'注意：這個頁面目前嵌在別的視窗裡執行。如果是在 Claude 的預覽視窗，對外連線會被沙箱擋掉，必須把 HTML 下載後用瀏覽器開啟。':'密鑰只存在這台裝置。'}</p>
 
+    <h2 class="sec">娃衣尺寸</h2>
+    <div class="card">
+      <div class="parts" id="s_sizes" style="margin-top:0">${sizes().map(z=>`<button type="button" class="on sizetag" onclick="delSize(decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}<i>×</i></button>`).join('')}</div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="s_newsize" class="grow" placeholder="例如 OB11、BJD、30cm" onkeydown="if(event.key==='Enter')addSize()">
+        <button class="btn sm quiet" onclick="addSize()">新增</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">建檔、衣櫃篩選和娃娃資料都會用這份清單。點尺寸可以刪除。</p>
+    </div>
+
     <h2 class="sec">貼圖</h2>
     <div class="card">
       <label class="f"><span>製作方式</span>
@@ -1634,7 +2367,7 @@ function openSettings(){
 
       <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
         <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
-      <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。</p>
+      <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。簡易去背不花錢，但照片要拍在素色背景上，建檔頁有拍照小撇步。</p>
     </div>
 
     <h2 class="sec">備份</h2>
@@ -1650,6 +2383,34 @@ function openSettings(){
     </div>
     <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>
   `);
+}
+function applyTheme(){
+  const t=S.settings.theme||'light';
+  const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  document.querySelector('meta[name=theme-color]').content=dark?'#1C1719':'#F5F0EB';
+  try{localStorage.setItem('theme',t)}catch(e){}
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.settings.theme==='auto')applyTheme()});
+async function setTheme(t){
+  S.settings.theme=t;applyTheme();
+  document.querySelectorAll('#s_theme button').forEach((b,i)=>b.classList.toggle('on',['light','dark','auto'][i]===t));
+  await save();
+}
+async function addSize(){
+  const el=document.getElementById('s_newsize'),z=el.value.trim();
+  if(!z)return;
+  if(sizes().includes(z)){toast('已經有這個尺寸');return}
+  readForm();S.settings.sizes.push(z);await save();openSettings();toast('已新增 '+z);
+}
+async function delSize(z){
+  const used=S.items.filter(i=>(i.sizes||[]).includes(z)).length;
+  if(!confirm(used?`有 ${used} 件娃衣標記為 ${z}，刪除後這些娃衣會拿掉這個尺寸。確定嗎？`:`刪除尺寸 ${z}？`))return;
+  readForm();
+  S.settings.sizes=sizes().filter(x=>x!==z);
+  S.items.forEach(i=>{if(i.sizes)i.sizes=i.sizes.filter(x=>x!==z)});
+  S.dolls.forEach(d=>{if(d.size===z)d.size=''});
+  await save();openSettings();
 }
 function toggleSticker(v){
   document.getElementById('sk_ai').style.display=v==='ai'?'block':'none';
@@ -1750,10 +2511,12 @@ async function diagnose(btn){
     <button class="btn wide" style="margin-top:12px" onclick="openSettings()">回設定</button>`);
 }
 function exportBackup(withImages){
-  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears}));
+  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,sizes:S.settings.sizes}));
   if(!withImages){
     clone.items.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
     clone.wears.forEach(w=>w.photo=null);
+    clone.dolls.forEach(d=>{d.photo=null;d.raw=null});
+    clone.wish.forEach(w=>w.photo=null);
   }
   const out={format:'doll-wardrobe',version:1,exportedAt:new Date().toISOString(),withImages,data:clone};
   const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
@@ -1771,7 +2534,7 @@ async function importBackup(ev){
     if(j.format!=='doll-wardrobe')throw new Error('這不是娃衣衣櫃的備份檔');
     const mode=confirm('按「確定」覆蓋現有資料，按「取消」改成合併加入。');
     const d=j.data;
-    if(mode){S.items=d.items||[];S.sets=d.sets||[];S.looks=d.looks||[];S.wears=d.wears||[]}
+    if(mode){S.items=d.items||[];S.sets=d.sets||[];S.looks=d.looks||[];S.wears=d.wears||[];S.dolls=d.dolls||[];S.wish=d.wish||[]}
     else{
       const has=new Set(S.items.map(i=>i.id));
       S.items=S.items.concat((d.items||[]).filter(i=>!has.has(i.id)));
@@ -1781,15 +2544,20 @@ async function importBackup(ev){
       S.looks=S.looks.concat((d.looks||[]).filter(i=>!hl.has(i.id)));
       const hw=new Set(S.wears.map(i=>i.id));
       S.wears=S.wears.concat((d.wears||[]).filter(i=>!hw.has(i.id)));
+      const hd=new Set(S.dolls.map(i=>i.id));
+      S.dolls=S.dolls.concat((d.dolls||[]).filter(i=>!hd.has(i.id)));
+      const hx=new Set(S.wish.map(i=>i.id));
+      S.wish=S.wish.concat((d.wish||[]).filter(i=>!hx.has(i.id)));
     }
-    await save();closeSheet();go('closet');
+    (d.sizes||[]).forEach(z=>{if(!S.settings.sizes.includes(z))S.settings.sizes.push(z)});
+    await save();closeSheet();go('home');
     toast(`已還原 ${S.items.length} 件`);
   }catch(e){toast('還原失敗：'+e.message)}
 }
 async function wipe(){
-  if(!confirm('這會刪掉所有娃衣、Look 和穿著紀錄。先匯出備份了嗎？'))return;
-  S.items=[];S.sets=[];S.looks=[];S.wears=[];
-  await save();closeSheet();go('closet');toast('已清空');
+  if(!confirm('這會刪掉所有娃衣、娃娃、Look、穿著紀錄和考慮中清單。先匯出備份了嗎？'))return;
+  S.items=[];S.sets=[];S.looks=[];S.wears=[];S.dolls=[];S.wish=[];
+  await save();closeSheet();go('home');toast('已清空');
 }
 
 /* ============================================================
@@ -1798,7 +2566,7 @@ async function wipe(){
    再交給 IntersectionObserver 在進入畫面時淡入。
    ============================================================ */
 const Reveal=(()=>{
-  const SEL='.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#lookList,#wearList';
+  const SEL='.hhero,.qa,.hstat,.hcard,.hscroll,.wcard,.blist,.piece,.card,.rowitem,.note,.stat > div,.bar,h2.sec,.qcard,.empty,.drop,#canvas,.ctrl,.hero,dl.meta,.legend,#lookList,#wearList';
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last={el:null,t:0};
   const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{
@@ -1836,6 +2604,15 @@ const Reveal=(()=>{
 })();
 Reveal.watch(document.querySelector('main'));
 Reveal.watch(document.getElementById('sheetBody'));
+// 抓住抽屜上緣往下拖就能關閉
+(function(){
+  const g=document.querySelector('.sheet .grab'),panel=document.querySelector('.sheet .panel');
+  let y0=null,dy=0;
+  g.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;y0=e.clientY;dy=0;g.setPointerCapture(e.pointerId);panel.style.transition='none'});
+  g.addEventListener('pointermove',e=>{if(y0===null)return;dy=Math.max(0,e.clientY-y0);panel.style.transform=`translateY(${dy}px)`});
+  const end=()=>{if(y0===null)return;y0=null;panel.style.transition='transform .25s ease';panel.style.transform='';if(dy>90)closeSheet()};
+  g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);
+})();
 (function(){
   const h=document.querySelector('header.top');
   const on=()=>h.classList.toggle('scrolled',scrollY>4);
@@ -1848,9 +2625,8 @@ Reveal.watch(document.getElementById('sheetBody'));
 (async function(){
   await DB.init();
   await load();
-  buildTabs();
-  renderCloset();
-  renderQueue();
+  applyTheme();
+  go('home');
 })();
 </script>
 </body>
