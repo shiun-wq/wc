@@ -1,6 +1,6 @@
 // 哇娃衣櫃的離線快取：沒網路也能打開，第一次載入過的字型和去背模型也會留著
-const VER='wc-v4';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png','./icons/mascot.png','./icons/logo.png'];
+const VER='wc-v5';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png','./icons/mascot.png','./icons/logo.png','./privacy.html','./support.html'];
 const RUNTIME=/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|storage\.googleapis\.com)\//;
 
 self.addEventListener('install',e=>{
