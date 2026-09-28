@@ -2398,11 +2398,15 @@ function isPressed(i){
 const MEM_REASONS=['賣掉了','送人了','交換了','壞掉了','遺失了','其他'];
 function anyItem(id){return S.items.find(x=>x.id===id)||S.memory.find(x=>x.id===id)}
 let MV={};
+// 同一套的其他單品（建檔時拆出來的上衣、褲子…）
+const setMates=(i,list)=>i&&i.setId?(list||S.items).filter(x=>x.setId===i.setId&&x.id!==i.id):[];
 function archiveItem(id){
   const i=S.items.find(x=>x.id===id);if(!i)return;
-  MV={id,reason:'賣掉了',date:today(),price:'',memo:''};
+  const mates=setMates(i),isSet=i.category==='套裝';
+  // 整套賣掉時，拆出來的單品預設一起移；只賣其中一件時預設不動其他件
+  MV={id,reason:'賣掉了',date:today(),price:'',memo:'',withSet:isSet&&mates.length>0};
   openSheet(`<h3>移到回憶箱</h3>
-    <div class="row" style="gap:12px;margin-bottom:14px"><div class="th memth"><img src="${img(i)}" alt=""></div>
+    <div class="row" style="gap:12px;margin-bottom:14px"><div class="th memth">${img(i)?`<img src="${img(i)}" alt="">`:""}</div>
       <div><b>${esc(i.name)}</b><div class="hint">穿過 ${wearCount(id)} 次${i.price?`・買 ${fmt$(money(i.price))}`:''}</div></div></div>
     <label class="f"><span>它去哪裡了</span><div class="parts" id="mv_r" style="margin-top:0">${MEM_REASONS.map(r=>`<button type="button" class="${r===MV.reason?'on':''}" onclick="MV.reason='${r}';document.querySelectorAll('#mv_r button').forEach(b=>b.classList.toggle('on',b.textContent==='${r}'));document.getElementById('mv_p').style.display='${r}'==='賣掉了'?'':'none'">${r}</button>`).join('')}</div></label>
     <div class="split">
@@ -2410,21 +2414,41 @@ function archiveItem(id){
       <label class="f" id="mv_p"><span>賣出價格</span><input type="number" inputmode="decimal" placeholder="選填" oninput="MV.price=this.value"></label>
     </div>
     <label class="f"><span>留一句回憶（選填）</span><input type="text" maxlength="60" placeholder="第一次跟團買的洋裝，陪小白去了好多地方" oninput="MV.memo=this.value"></label>
+    ${mates.length?`<div class="note" style="margin:0 0 12px">
+      <label class="remember" style="margin:0"><input type="checkbox" ${MV.withSet?'checked':''} onchange="MV.withSet=this.checked">
+        ${isSet?`連同這套拆出來的 ${mates.length} 件一起移過去`:`整套一起移（「${esc(setName(i.setId)||'這套')}」共 ${mates.length+1} 件）`}</label>
+      <div class="hint" style="margin:6px 0 0 26px">${mates.map(m=>esc(m.category)).join('、')}</div></div>`:''}
     <p class="hint" style="margin:-4px 0 12px">移到回憶箱後，衣櫃、搭配和分析都不會再算它，但穿搭紀錄會保留。之後也可以找回來。</p>
     <button class="btn wide" onclick="saveArchive()">放進回憶箱</button>`);
 }
 async function saveArchive(){
   const k=S.items.findIndex(x=>x.id===MV.id);if(k<0)return;
-  const i=S.items.splice(k,1)[0];
-  Object.assign(i,{archivedAt:MV.date||today(),reason:MV.reason,soldPrice:MV.reason==='賣掉了'?MV.price:'',memo:MV.memo});
-  S.memory.push(i);
-  UI.canvas=UI.canvas.filter(p=>p.itemId!==i.id);
-  await save();closeSheet();renderCloset();toast('已放進回憶箱');
+  const i=S.items[k],mates=MV.withSet?setMates(i):[];
+  // 價格記在使用者按的那一件；整套一起移時，其他件標記屬於哪一筆
+  const move=[i,...mates];
+  move.forEach(x=>{
+    Object.assign(x,{archivedAt:MV.date||today(),reason:MV.reason,soldPrice:x===i&&MV.reason==='賣掉了'?MV.price:'',memo:x===i?MV.memo:'',groupOf:x===i?null:i.id});
+    S.items=S.items.filter(y=>y.id!==x.id);S.memory.push(x);
+  });
+  const gone=new Set(move.map(x=>x.id));
+  UI.canvas=UI.canvas.filter(p=>!gone.has(p.itemId));
+  await save();closeSheet();renderCloset();if(UI.tab==='home')renderHome();
+  toast(move.length>1?`${move.length} 件一起放進回憶箱了`:'已放進回憶箱');
+}
+// 修補舊資料：套裝已經在回憶箱，拆出來的單品還留在衣櫃
+async function moveSetMates(id){
+  const i=S.memory.find(x=>x.id===id);if(!i)return;
+  const mates=setMates(i);if(!mates.length)return;
+  mates.forEach(x=>{Object.assign(x,{archivedAt:i.archivedAt||today(),reason:i.reason,soldPrice:'',memo:'',groupOf:i.id});S.items=S.items.filter(y=>y.id!==x.id);S.memory.push(x)});
+  const gone=new Set(mates.map(x=>x.id));UI.canvas=UI.canvas.filter(p=>!gone.has(p.itemId));
+  await save();renderMemory();toast(`${mates.length} 件一起移進回憶箱了`);
 }
 function renderMemory(){
   const el=document.getElementById('memoryView');
-  const list=S.memory.slice().sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||''));
-  const back=list.reduce((a,i)=>a+money(i.soldPrice),0);
+  const all=S.memory.slice().sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||''));
+  // 跟著套裝一起移進來的單品，收在套裝那張卡片裡
+  const list=all.filter(i=>!(i.groupOf&&S.memory.some(x=>x.id===i.groupOf)));
+  const back=all.reduce((a,i)=>a+money(i.soldPrice),0);
   if(!list.length){el.innerHTML=`<div class="empty"><strong>回憶箱是空的</strong>賣掉、送人或壞掉的娃衣，可以在單品頁按「移到回憶箱」，留下它們的故事</div>`;return}
   el.innerHTML=`<div class="stat">
       <div><b>${list.length}</b><span>件娃衣的回憶</span></div>
@@ -2435,9 +2459,11 @@ function renderMemory(){
       const fav=Object.entries(dl).sort((a,b)=>b[1]-a[1])[0];
       const stay=i.createdAt?Math.max(1,Math.round((new Date(i.archivedAt)-i.createdAt)/864e5)):null;
       return `<div class="memcard">
-        <div class="th memth"><img src="${img(i)}" alt=""></div>
+        <div class="th memth">${img(i)?`<img src="${img(i)}" alt="">`:""}</div>
         <div class="bd"><b>${esc(i.name)}</b>
           <div class="lmeta"><span class="dchip none">${esc(i.reason||'回憶')}</span><span>${esc(i.archivedAt||'')}</span></div>
+          ${(()=>{const g=all.filter(x=>x.groupOf===i.id);return g.length?`<div class="hint" style="margin:2px 0 4px">含 ${g.map(x=>esc(x.category)).join('、')}</div>`:''})()}
+          ${setMates(i).length?`<button class="btn sm quiet" style="margin:4px 0" onclick="moveSetMates('${i.id}')">這套還有 ${setMates(i).length} 件在衣櫃，一起移進來</button>`:''}
           <span>${stay?`陪伴了 ${stay} 天・`:''}穿過 ${ws.length} 次${fav?`・最常穿在 ${esc(fav[0])} 身上`:''}${i.soldPrice?`・賣了 ${fmt$(money(i.soldPrice))}`:''}</span>
           ${i.memo?`<p class="memo">「${esc(i.memo)}」</p>`:''}
           <div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="restoreItem('${i.id}')">找回來</button>
@@ -2588,13 +2614,14 @@ async function sellShare(){
   try{await navigator.share(navigator.canShare&&navigator.canShare({files:fs})?{files:fs,text:SELL.text}:{text:SELL.text})}catch(e){}
 }
 async function restoreItem(id){
-  const k=S.memory.findIndex(x=>x.id===id);if(k<0)return;
-  const i=S.memory.splice(k,1)[0];delete i.archivedAt;delete i.reason;delete i.soldPrice;delete i.memo;
-  S.items.push(i);await save();renderMemory();toast('已放回衣櫃');
+  const i=S.memory.find(x=>x.id===id);if(!i)return;
+  const back=[i,...S.memory.filter(x=>x.groupOf===id)];
+  back.forEach(x=>{delete x.archivedAt;delete x.reason;delete x.soldPrice;delete x.memo;delete x.groupOf;S.memory=S.memory.filter(y=>y.id!==x.id);S.items.push(x)});
+  await save();renderMemory();toast(back.length>1?`${back.length} 件一起放回衣櫃`:'已放回衣櫃');
 }
 async function delMemory(id){
   if(!confirm('永久刪除這件的回憶？'))return;
-  S.memory=S.memory.filter(x=>x.id!==id);await save();renderMemory();
+  S.memory=S.memory.filter(x=>x.id!==id&&x.groupOf!==id);await save();renderMemory();
 }
 
 /* ============================================================
@@ -4255,6 +4282,29 @@ function spendStats(){
     idle:cpw.filter(x=>x.w===0).sort((a,b)=>b.p-a.p).slice(0,3),
     cats:Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5)};
 }
+// 回血：賣掉的娃衣收回多少錢（買價算整套那一筆，一起移進來的單品不重複算）
+function soldStats(){
+  const sold=S.memory.filter(i=>i.reason==='賣掉了'&&!i.groupOf);
+  const back=sold.reduce((a,i)=>a+money(i.soldPrice),0);
+  const withBoth=sold.filter(i=>money(i.price)>0&&money(i.soldPrice)>0);
+  const cost=withBoth.reduce((a,i)=>a+money(i.price),0),got=withBoth.reduce((a,i)=>a+money(i.soldPrice),0);
+  const spentAll=[...S.items,...S.memory].filter(i=>!i.groupOf).reduce((a,i)=>a+money(i.price),0);
+  const y=today().slice(0,4),yearBack=sold.filter(i=>(i.archivedAt||'').startsWith(y)).reduce((a,i)=>a+money(i.soldPrice),0);
+  return {n:sold.length,back,yearBack,rate:cost?got/cost:0,spentAll,net:spentAll-back,
+    list:sold.filter(i=>money(i.soldPrice)>0).sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||'')).slice(0,5)};
+}
+function soldSection(){
+  const r=soldStats();if(!r.n)return `<p class="mh">賣出回血</p><div class="hint">賣掉的娃衣移到回憶箱時填上賣出價格，這裡會算回收了多少。</div>`;
+  const th=it=>`<div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
+  return `<p class="mh">賣出回血</p>
+  <div class="stat">
+    <div><b>${fmt$(r.back)}</b><span>賣出回收・${r.n} 筆</span></div>
+    <div><b>${r.rate?Math.round(r.rate*100)+'%':'—'}</b><span>平均回收買價</span></div>
+    <div><b>${fmt$(r.yearBack)}</b><span>今年回收</span></div>
+    <div><b>${fmt$(Math.max(0,r.net))}</b><span>扣掉回血的淨花費</span></div></div>
+  ${r.list.length?`<div class="blist">${r.list.map(i=>{const p=money(i.price),sp=money(i.soldPrice);return `<div class="rowitem" onclick="go('memory')">${th(i)}
+    <div class="tx"><b>${esc(i.name)}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
+}
 function spendSection(){
   const head=`<h2 class="sec">花費分析 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
@@ -4264,10 +4314,10 @@ function spendSection(){
       <div class="rowitem"><div class="th"></div><div class="tx"><b>買了還沒穿：小熊斗篷</b><span>$780</span></div></div>
     </div>
     <div class="lk-cover"><b>這件衣服，每穿一次花多少錢？</b>
-      <span>每月花費、平均每穿一次的成本、最划算和買了還沒穿的娃衣</span>
+      <span>每月花費、平均每穿一次的成本、最划算和買了還沒穿的娃衣，還有賣掉娃衣回血多少</span>
       <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
   const s=spendStats(),max=Math.max(...s.months.map(m=>m.v),1),tot=s.months.reduce((a,m)=>a+m.v,0);
-  if(!s.priced&&!s.dolls)return head+`<div class="hint">在單品的「編輯」填上價格，或在娃娃資料填金額，這裡就會開始計算。</div>`;
+  if(!s.priced&&!s.dolls&&!soldStats().n)return head+`<div class="hint">在單品的「編輯」填上價格，或在娃娃資料填金額，這裡就會開始計算。</div>`;
   const peak=s.months.reduce((a,m)=>m.v>a.v?m:a,s.months[0]);
   let h=head+`<div class="stat">
     <div><b>${fmt$(s.clothes)}</b><span>娃衣花費・${s.priced} 件有價格</span></div>
@@ -4288,6 +4338,7 @@ function spendSection(){
     <div class="tx"><b>${esc(x.it.name)}</b><span>${fmt$(x.p)}・穿一次就回本一點</span></div><div class="rt">›</div></div>`).join('')}</div>`;
   if(s.cats.length){const cm=s.cats[0][1];h+=`<p class="mh">花最多的類型</p>${s.cats.map(([k,v])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${fmt$(v)}</em></div>
     <div class="track"><i class="worn" style="width:${v/cm*100}%"></i></div></div>`).join('')}`}
+  h+=soldSection();
   return h;
 }
 function mcap(el){
