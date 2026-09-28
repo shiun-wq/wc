@@ -10,13 +10,13 @@
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="娃衣衣櫃">
+<meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/favicon.png">
-<title>娃衣衣櫃</title>
+<title>哇娃衣櫃</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet">
@@ -114,13 +114,14 @@ header.top{
 header.top.scrolled{border-bottom-color:var(--line);box-shadow:0 6px 20px -14px rgba(47,37,41,.25)}
 header.top h1{
   font-family:var(--serif);font-weight:700;font-size:21px;margin:0;letter-spacing:.08em;
-  display:flex;align-items:center;gap:9px;
+  display:flex;align-items:center;gap:0;
 }
 header.top h1::before{
-  content:"";width:9px;height:9px;border-radius:50%;
-  background:linear-gradient(135deg,var(--berry),var(--gold));
-  box-shadow:0 0 0 4px var(--berry-soft);
+  content:"";width:24px;height:32px;flex:0 0 24px;margin-right:9px;
+  background:url(icons/mascot.png) center/contain no-repeat;
 }
+header.top h1 .wa{color:#C9615A}
+.pro{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:6px;color:#fff;-webkit-text-fill-color:#fff;display:inline-block;line-height:1.4;background:linear-gradient(135deg,#2F2529,#5A4650);vertical-align:2px;margin-left:4px}
 header.top .sub{font-size:12px;color:var(--muted);margin-left:auto;letter-spacing:.06em;font-variant-numeric:tabular-nums}
 .iconbtn{width:var(--tap);height:var(--tap);margin-right:-8px;border-radius:14px;display:grid;place-items:center;color:var(--ink-2);transition:background .2s,transform .2s var(--ease)}
 .iconbtn:active{background:var(--berry-soft);transform:scale(.92)}
@@ -907,7 +908,7 @@ nav.tabs button.plus.on{color:var(--berry)}
     <button class="iconbtn back" id="backbtn" onclick="navBack()" aria-label="返回" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <h1 id="title">娃衣衣櫃</h1>
+    <h1 id="title"><span class="wa">哇</span>娃衣櫃</h1>
     <span class="sub" id="topsub"></span>
     <button class="wchip" id="wchip" onclick="go('wallet')" aria-label="錢包"></button>
     <button class="iconbtn" onclick="openSettings()" aria-label="設定">
@@ -937,7 +938,7 @@ nav.tabs button.plus.on{color:var(--berry)}
         <input type="text" id="q" placeholder="搜尋名稱、品牌、標籤" oninput="renderCloset()">
       </div>
       <button class="buybar" onclick="openBuyCheck()">
-        <i></i><span><b>買前檢查 <span class="vip">會員</span></b>想買新娃衣？先看看衣櫃裡、以前賣掉的有沒有類似的</span><em>›</em>
+        <i></i><span><b>買前檢查<span class="pro">PRO</span></b>想買新娃衣？先看看衣櫃裡、以前賣掉的有沒有類似的</span><em>›</em>
       </button>
       <div class="chips" id="catchips"></div>
       <div class="chips" id="viewchips"></div>
@@ -1642,7 +1643,7 @@ function needQuota(k){
 }
 // 會員限定的功能：不給免費額度，也不能用點數
 function memberOnly(k){
-  openSheet(`<h3>${QUOTA[k].name}是會員功能</h3>
+  openSheet(`<h3>${QUOTA[k].name}<span class="pro">PRO</span></h3><p class="hint" style="margin:-6px 0 10px">會員專屬功能</p>
     <div class="note">${k==='buy'?'下單前幫你比對：衣櫃裡有沒有幾乎一樣、同款不同色的，還在路上的訂單，以及<b>以前賣掉的娃衣裡有沒有很像的</b>，避免買了又賣。':''}</div>
     <p class="hint" style="margin:10px 0 0">會員每月可以檢查 ${QUOTA[k].member} 次。</p>
     <button class="btn wide" style="margin-top:14px" onclick="closeSheet();openMember()">了解會員</button>`);
@@ -1945,7 +1946,7 @@ function go(k,fromPop){
   renderMultiBar();
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+k));
   document.getElementById('backbtn').hidden=!sub;
-  document.getElementById('title').textContent=sub?TITLES[k]:'娃衣衣櫃';
+  const tt=document.getElementById('title');if(sub)tt.textContent=TITLES[k];else tt.innerHTML='<span class="wa">哇</span>娃衣櫃';
   document.querySelector('header.top').classList.toggle('subview',sub);
   window.scrollTo(0,0);
   document.getElementById('topsub').textContent='';
@@ -2047,7 +2048,7 @@ function renderHome(){
   <div class="qa">
     <button onclick="openWear()"><i class="i1"></i>記錄穿搭</button>
     <button onclick="go('studio')"><i class="i2"></i>開始搭配</button>
-    <button onclick="openBuyCheck()"><i class="i3"></i>買前檢查</button>
+    <button onclick="openBuyCheck()"><i class="i3"></i>買前檢查<span class="pro">PRO</span></button>
     <button onclick="go('dolls')"><i class="i4"></i>娃娃櫃</button>
   </div>
 
@@ -2140,8 +2141,6 @@ function homeMoreHTML(){
 /* ---- 首頁的提示卡：新手引導、加入主畫面、備份提醒 ---- */
 const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-let INSTALL_EVT=null;
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(UI.tab==='home')renderHome()});
 function homeCards(){
   const st=S.settings,h=[];
   // 0. 到家紀念日
@@ -2215,23 +2214,16 @@ function homeCards(){
     <span>資料只存在這支手機的瀏覽器裡，換手機或被清除就會不見。下載一份備份檔比較安心。</span>
     <div class="row"><button class="btn sm" onclick="exportBackup(true)">完整備份</button><button class="btn sm ghost" onclick="S.settings.backupSnooze=Date.now()+3*864e5;save();renderHome()">過幾天再說</button></div>
   </section>`);
-  // 3. 加入主畫面（還沒安裝時）
-  if(!isStandalone()&&!st.installHide&&(INSTALL_EVT||isIOS())&&location.protocol.startsWith('http'))h.push(`<section class="notice">
-    <b>把娃衣衣櫃加到主畫面</b>
-    <span>${INSTALL_EVT?'像 App 一樣從桌面打開、全螢幕，沒網路也能用。':'用 Safari 按下方的 <b>分享</b> 按鈕 → 選<b>「加入主畫面」</b>。之後從桌面打開像 App 一樣，資料也比較不容易被清掉。'}</span>
-    <div class="row">${INSTALL_EVT?`<button class="btn sm" onclick="doInstall()">安裝</button>`:''}<button class="btn sm ghost" onclick="S.settings.installHide=true;save();renderHome()">不用了</button></div>
-  </section>`);
   return h.join('');
 }
-async function doInstall(){if(!INSTALL_EVT)return;INSTALL_EVT.prompt();await INSTALL_EVT.userChoice.catch(()=>{});INSTALL_EVT=null;renderHome()}
 function openWelcome(){
   openSheet(`<div class="welcome">
-    <img src="icons/icon-192.png" alt="" width="72" height="72">
-    <h3>歡迎來到娃衣衣櫃</h3>
+    <img src="icons/logo.png" alt="哇娃衣櫃" width="140" height="165" style="box-shadow:none;border-radius:0;background:none;margin:0 auto 4px">
+    <h3>歡迎來到哇娃衣櫃</h3>
     <p class="hint">幫你的棉花娃整理衣櫃、搭配、記錄每天穿什麼</p>
     <div class="wrow"><i>📸</i><span><b>拍照建檔</b>點一下衣服就能去背，做成像貼紙一樣的圖</span></div>
     <div class="wrow"><i>👗</i><span><b>搭配和紀錄</b>把衣服拖到娃娃身上試穿，做成小卡分享</span></div>
-    <div class="wrow"><i>🛍️</i><span><b>買前檢查</b>想買新娃衣前，先看看衣櫃裡有沒有類似的</span></div>
+    <div class="wrow"><i>🛍️</i><span><b>買前檢查<span class="pro">PRO</span></b>想買新娃衣前，先看看衣櫃裡有沒有類似的</span></div>
     <p class="hint" style="margin-top:14px">資料只存在這台裝置上，記得偶爾到設定「完整備份」。</p>
     <button class="btn wide" onclick="S.settings.welcomed=true;save();closeSheet()">開始使用</button>
   </div>`,()=>{S.settings.welcomed=true;save()});
@@ -2252,7 +2244,7 @@ const canNotify=()=>'Notification' in window;
 async function setHomeCountry(c){S.settings.homeCountry=c;await save();openSettings('region');if(UI.tab==='insight')renderInsight();toast(`已設定：住在${c}`)}
 async function setNotify(on){
   if(on){
-    if(!canNotify()){toast(isIOS()&&!isStandalone()?'iPhone 要先把娃衣衣櫃加到主畫面，從主畫面打開才能開通知':'這個瀏覽器不支援通知');return}
+    if(!canNotify()){toast(isIOS()&&!isStandalone()?'iPhone 要先把哇娃衣櫃加到主畫面，從主畫面打開才能開通知':'這個瀏覽器不支援通知');return}
     const p=await Notification.requestPermission().catch(()=>'denied');
     if(p!=='granted'){toast('通知權限被拒絕了，要到手機的設定裡打開');return}
   }
@@ -2607,7 +2599,7 @@ function renderWish(){
       <div><b>${pendingOrders().length}</b><span>購買中${pendingOrders().reduce((a,o)=>a+money(o.price),0)?`・$${pendingOrders().reduce((a,o)=>a+money(o.price),0).toLocaleString()}`:''}</span></div>
       <div><b>${skip.length}</b><span>忍住沒買${saved?`・省 $${saved.toLocaleString()}`:''}</span></div>
     </div>
-    <div class="row" style="margin-bottom:14px"><button class="btn quiet grow" onclick="openBuyCheck()">買前檢查一件新的</button><button class="btn ghost grow" onclick="openOrder()">＋ 已經買了，在等貨</button></div>
+    <div class="row" style="margin-bottom:14px"><button class="btn quiet grow" onclick="openBuyCheck()">買前檢查一件新的<span class="pro">PRO</span></button><button class="btn ghost grow" onclick="openOrder()">＋ 已經買了，在等貨</button></div>
     <div class="chips">${tabs.map(([k,l])=>`<button class="chip ${UI.wishTab===k?'on':''}" onclick="UI.wishTab='${k}';renderWish()">${l} ${cnt(k)}</button>`).join('')}</div>
     ${UI.wishTab==='order'?ordersHTML():list.length?list.map(w=>{
       const age=Math.max(0,Math.floor((Date.now()-w.createdAt)/864e5));
@@ -2982,9 +2974,9 @@ async function drawSellCard(list){
   // 一定要有的提醒
   const fy=H-footH+6;
   x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
-  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「娃衣衣櫃」App 以建檔時的照片製作',P+26,fy+42);
+  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「哇娃衣櫃」App 以建檔時的照片製作',P+26,fy+42);
   x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
-  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('哇娃衣櫃',W-P,H-P+8);x.textAlign='left';
   return c;
 }
 // 每件一張大圖：貼圖放大、下面是名稱、價格、衣況、尺寸，最下面一樣有衣況提醒
@@ -3010,9 +3002,9 @@ async function drawSellBig(i){
   if(f.fragile){y+=50;x.fillStyle=T.accent;x.font=`600 28px ${sans}`;x.fillText('⚠ 裝飾容易掉，拿取請小心',P,y)}
   const fy=H-P-120;
   x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
-  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「娃衣衣櫃」App 以建檔時的照片製作',P+26,fy+42);
+  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「哇娃衣櫃」App 以建檔時的照片製作',P+26,fy+42);
   x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
-  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('哇娃衣櫃',W-P,H-P+8);x.textAlign='left';
   return c;
 }
 function sellBlob(c){return new Promise(r=>c.toBlob(r,'image/png'))}
@@ -4715,8 +4707,8 @@ async function scFooter(x,T,P,W,fy,serif,sans){
     x.fillStyle=T.ink;x.font=`700 30px ${serif}`;x.fillText(SC.doll.name,tx,fy-2);
     if(SC.doll.size){const w=x.measureText(SC.doll.name).width;x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(SC.doll.size,tx+w+14,fy-2)}
   }
-  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,fy-2);
-  x.fillStyle=T.accent;x.beginPath();x.arc(W-P-x.measureText('娃衣衣櫃').width-20,fy-11,7,0,7);x.fill();
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('哇娃衣櫃',W-P,fy-2);
+  x.fillStyle=T.accent;x.beginPath();x.arc(W-P-x.measureText('哇娃衣櫃').width-20,fy-11,7,0,7);x.fill();
   x.textAlign='left';
 }
 function scPills(x,T,X,Y,maxW,sans,lines){
@@ -5527,7 +5519,7 @@ function openSettings(page){
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">手機通知</b><div class="hint">${on?'已開啟':'建議開啟，才不會錯過娃娃的生日和到家紀念日'}</div></span>
         <button class="btn sm ${st.notify?'ghost':''}" onclick="setNotify(${!st.notify})">${st.notify?'關閉':'開啟'}</button></div>
-      ${!canNotify()&&isIOS()?`<p class="hint" style="margin:8px 0 0">要先把娃衣衣櫃加到主畫面，從主畫面打開才能開通知。</p>`:''}
+      ${!canNotify()&&isIOS()?`<p class="hint" style="margin:8px 0 0">要先把哇娃衣櫃加到主畫面，從主畫面打開才能開通知。</p>`:''}
     </div>
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">🎂 紀念日提醒</b><div class="hint">到家日、生日、自己設定的紀念日<br>前 7 天、前一天和當天提醒</div></span>
@@ -5633,6 +5625,10 @@ function openSettings(page){
         ${[['backend','走後台'],['direct','直接連 API']].map(([k,l])=>`<button class="${(st.aiRoute||'backend')===k?'on':''}" onclick="readForm();S.settings.aiRoute='${k}';save().then(()=>openSettings('dev'))">${l}</button>`).join('')}
       </div>
       <p class="hint" style="margin:8px 0 0">後台網址留空 = 用程式裡寫好的正式後台。「直接連 API」只給自己測試，用下面這組設定。</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:13.5px">測試用：重置本月 AI 次數</b><div class="hint">App 裡每月的額度歸零。後台每天的上限（Cloudflare 的 DAILY_LIMIT）要到 Cloudflare 改。</div></span>
+        <button class="btn sm quiet" onclick="S.usage={month:today().slice(0,7)};save().then(()=>{updateWalletChip();toast('本月次數已重置')})">重置</button></div>
     </div>
 
     <div class="card">
@@ -5867,7 +5863,7 @@ function exportBackup(withImages){
   const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`娃衣衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
+  a.download=`哇娃衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
   if(withImages){S.settings.lastBackup=Date.now();save();if(UI.tab==='home')renderHome()}
   a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   toast('備份檔已下載');
@@ -5877,7 +5873,7 @@ async function importBackup(ev){
   if(!f)return;
   try{
     const j=JSON.parse(await f.text());
-    if(j.format!=='doll-wardrobe')throw new Error('這不是娃衣衣櫃的備份檔');
+    if(j.format!=='doll-wardrobe')throw new Error('這不是哇娃衣櫃的備份檔');
     const mode=confirm('按「確定」覆蓋現有資料，按「取消」改成合併加入。');
     const d=j.data;
     if(mode){S.items=d.items||[];S.sets=d.sets||[];S.looks=d.looks||[];S.wears=d.wears||[];S.dolls=d.dolls||[];S.wish=d.wish||[];S.memory=d.memory||[];S.orders=d.orders||[]}
