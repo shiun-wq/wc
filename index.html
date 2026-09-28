@@ -466,6 +466,7 @@ details.help[open] summary em{transform:rotate(90deg)}
 .hsteps small{font-size:10.5px;color:var(--ink-2);line-height:1.3}
 .hsteps>i{font-style:normal;color:var(--muted);margin-top:14px}
 details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink-2);line-height:1.7}
+.accsel{width:auto;padding:4px 8px;font-size:12px;border-radius:10px;height:auto}
 .setmember{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border:1px solid rgba(179,144,96,.25);margin:4px 0 14px}
 .setmember i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:#B39060;font-size:20px;box-shadow:var(--sh-1)}
 .setmember span,.setrow span{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -2081,13 +2082,16 @@ function todayPickHTML(){
 // 首頁：購買中、待處理、一年前的今天
 function homeMoreHTML(){
   const h=[];
-  const po=pendingOrders();
+  const po=S.orders.filter(o=>!o.filed);
   if(po.length){
     const soon=po.filter(o=>o.eta).sort((a,b)=>a.eta.localeCompare(b.eta))[0];
     h.push(`<section class="hcard" onclick="UI.wishTab='order';go('wish')">
       <div class="hct"><b>📦 購買中</b><span>${po.length} 件${soon?'・'+orderEta(soon):''}</span><em>›</em></div>
-      <div class="ostrip">${po.slice(0,4).map(o=>`<div><b>${esc(o.name)}</b><small>${esc(o.stage)}</small></div>`).join('')}</div></section>`);
+      <div class="ostrip">${po.slice(0,4).map(o=>`<div><b>${o.kind==='doll'?'🧸 ':''}${esc(o.name)}</b><small>${o.kind==='doll'?'等待到家・':''}${esc(o.stage)}</small></div>`).join('')}</div></section>`);
   }
+  const dcare=S.dolls.flatMap(d=>dollOpen(d).map(c=>({d,c})));
+  if(dcare.length){const away=dcare.filter(x=>x.c.status==='處理中');
+    h.push(`<button class="hstat memlink" onclick="go('dolls')"><span>🧸 娃娃整理</span><b>${dcare.length}</b><small>${away.length?`${esc(away[0].d.name)} 在手作娘那裡（${esc(away[0].c.type)}）`:dcare.slice(0,2).map(x=>esc(x.d.name)+' '+esc(x.c.type)).join('、')}</small><em>›</em></button>`)}
   const bad=S.items.filter(i=>openIssues(i).length);
   if(bad.length){
     const types=[...new Set(bad.flatMap(i=>openIssues(i).map(c=>c.type)))];
@@ -2347,13 +2351,18 @@ function renderDolls(){
       ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
         const n=rank.indexOf(d.id);
         return `<button class="dcell" onclick="openDoll('${d.id}')">
-          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}
+          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}${dollOpen(d).some(c=>c.status==='處理中')?'<span class="pin" style="left:6px;right:auto" title="在手作娘那裡">🪡</span>':dollOpen(d).length?'<span class="pin" style="left:6px;right:auto" title="有要處理的">⚠️</span>':''}
             ${n>=0&&srt==='out'?`<span class="rank r${n+1}">${n+1}</span>`:''}</div>
           <b>${esc(d.name)}</b>
           <span>${srt==='wear'?`換裝 ${dollWears(d).length} 次`:srt==='price'&&d.price?`$${(+d.price).toLocaleString()}`:`出門 ${outCount(d)} 次`}</span>
           ${d.attr==='has'&&d.work?`<em>${esc(d.work)}</em>`:d.src?`<em class="src">${esc(d.src)}</em>`:''}
         </button>`}).join('')}${ri===rows.length-1?`<button class="dcell add" onclick="openDoll()"><div class="dstand"><span>＋</span></div><b>新增娃娃</b></button>`:''}</div>`).join('')}
-    </div>`;
+    </div>
+    ${(()=>{const w=S.orders.filter(o=>o.kind==='doll'&&!o.filed);return `<h2 class="sec">等待到家</h2>
+      ${w.length?`<div class="blist">${w.map(o=>`<div class="rowitem" onclick="openOrder('${o.id}')"><div class="th">${o.photo?`<img src="${o.photo}" alt="">`:'<span class="oph">🧸</span>'}</div>
+        <div class="tx"><b>${esc(o.name)}</b><span>${esc(o.stage)}${orderEta(o)?'・'+orderEta(o):''}</span><div class="ostage">${ORDER_STAGES.map((st,i)=>`<i class="${i<=ORDER_STAGES.indexOf(o.stage)?'on':''}"></i>`).join('')}</div></div>
+        <div class="rt">${o.stage==='已到貨'?`<button class="btn sm" onclick="event.stopPropagation();orderWelcome('${o.id}')">迎接到家</button>`:`<button class="btn sm ghost" onclick="event.stopPropagation();orderNext('${o.id}');renderDolls()">下一步</button>`}</div></div>`).join('')}</div>`:''}
+      <button class="btn ghost wide" style="margin-top:10px" onclick="UI.orderKind='doll';openOrder();UI.orderKind=''">＋ 已經下單，在等娃娃到家</button>`})()}`;
 }
 async function dollOut(){
   const d=S.dolls.find(x=>x.id===DD.id);if(!d)return;
@@ -2389,6 +2398,7 @@ function drawDoll(){
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
       <div><b>${fit}</b><span>合身娃衣</span></div></div>
       <button class="btn ${(saved.outs||[]).includes(today())?'ghost':'quiet'} wide" style="margin-bottom:16px" onclick="dollOut()">${(saved.outs||[]).includes(today())?'今天已經帶出門了 ✓':`今天帶 ${esc(saved.name)} 出門`}</button>`:''}
+    ${saved?dollCareBlock(saved)+dollAccBlock(saved):''}
     <label class="f"><span>名字</span><input type="text" id="d_name" value="${esc(d.name)}" placeholder="小白" oninput="DD.name=this.value"></label>
     <div class="split">
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
@@ -2447,6 +2457,71 @@ function togglePinDD(btn){
   if(!DD.pin&&S.dolls.filter(x=>x.pin&&x.id!==DD.id).length>=PIN_MAX){toast(`首頁最多釘選 ${PIN_MAX} 隻，先到其他娃娃取消釘選`);return}
   DD.pin=!DD.pin;btn.classList.toggle('on',DD.pin);
 }
+/* ---- 娃娃的狀況與整理：弄髒、裝骨架、換棉花…，自己處理或交給手作娘 ---- */
+const DCARE_ISSUES=[['弄髒','🟤'],['棉花塌了','☁️'],['脫線破損','🧵'],['掉毛','🧶'],['其他問題','❗']];
+const DCARE_MODS=[['裝骨架','🦴'],['換骨架','🔁'],['裝磁鐵','🧲'],['拆磁鐵','🧲'],['換棉花','☁️'],['清洗','🧼']];
+const dcIcon=t=>([...DCARE_ISSUES,...DCARE_MODS].find(x=>x[0]===t)||[])[1]||'📝';
+const dollOpen=d=>(d.care||[]).filter(c=>c.status!=='完成');
+function setDollField(id,f,v){const d=S.dolls.find(x=>x.id===id);if(d)d[f]=v;if(DD&&DD.id===id)DD[f]=v}
+function dollCareBlock(d){
+  const list=(d.care||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const open=dollOpen(d);
+  return `<div class="care">
+    <div class="row" style="margin-bottom:6px"><b class="grow">狀況與整理</b><button class="btn sm quiet" onclick="openDollCare('${d.id}')">＋ 記錄</button></div>
+    <div class="carebadges">${open.length?open.map(c=>`<span class="cb warn">${dcIcon(c.type)} ${esc(c.type)}${c.who==='手作娘'?(c.status==='處理中'?'・在手作娘那裡':'・要交給手作娘'):'・待處理'}</span>`).join(''):'<span class="cb ok">✓ 目前沒有要處理的</span>'}</div>
+    ${list.length?`<div class="carelist">${list.slice(0,6).map(c=>`<div class="ci ${c.status==='完成'?'done':''}"><span>${dcIcon(c.type)}</span>
+      <div class="grow"><b>${esc(c.type)}</b><small>${c.who==='手作娘'?`交給手作娘${c.maker?'「'+esc(c.maker)+'」':''}`:'自己處理'}${c.note?'・'+esc(c.note):''}</small>
+        <small>${esc(c.date||'')}・${c.status==='完成'?`${esc(c.doneDate||'')} 完成`:c.status==='處理中'?`處理中${c.eta?'・預計 '+esc(c.eta)+' 回來':''}`:'還沒處理'}</small></div>
+      ${c.status!=='完成'?`<button class="btn sm ghost" onclick="dollCareNext('${d.id}','${c.id}')">${c.who==='手作娘'&&c.status==='待處理'?'送出了':'完成'}</button>`:''}
+      <button class="btn sm ghost" style="color:var(--muted);padding:4px 8px" onclick="dollCareDel('${d.id}','${c.id}')" aria-label="刪除">×</button></div>`).join('')}</div>`:''}
+  </div>`;
+}
+let DC={};
+function openDollCare(id){
+  const d=S.dolls.find(x=>x.id===id);DC={id,type:'弄髒',date:today(),note:'',who:'自己',maker:'',eta:''};
+  const chip=([t,ic])=>`<button type="button" data-k="${t}" class="${DC.type===t?'on':''}" onclick="DC.type='${t}';document.querySelectorAll('#dc_t button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${t}'))">${ic} ${t}</button>`;
+  openSheet(`<div class="sethead"><button onclick="drawDoll()">‹ ${esc(d.name)}</button></div><h3>狀況與整理</h3>
+    <div id="dc_t"><p class="mh" style="margin-top:0">發現問題</p><div class="parts" style="margin-top:0">${DCARE_ISSUES.map(chip).join('')}</div>
+    <p class="mh">要整理的</p><div class="parts" style="margin-top:0">${DCARE_MODS.map(chip).join('')}</div></div>
+    <label class="f" style="margin-top:12px"><span>誰來處理</span><div class="swap" id="dc_w" style="margin:0">${[['自己','自己處理'],['手作娘','交給手作娘']].map(([k,l])=>`<button type="button" data-k="${k}" class="${DC.who===k?'on':''}" onclick="DC.who='${k}';document.querySelectorAll('#dc_w button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'));document.getElementById('dc_m').hidden=${k==='自己'}">${l}</button>`).join('')}</div></label>
+    <div id="dc_m" hidden>
+      <div class="split"><label class="f"><span>手作娘</span><input type="text" maxlength="20" placeholder="名字或帳號" oninput="DC.maker=this.value"></label>
+      <label class="f"><span>預計多久回來</span><input type="date" onchange="DC.eta=this.value"></label></div>
+      <div class="parts" style="margin:-4px 0 12px">${[2,4,8].map(w=>`<button type="button" onclick="const x=new Date();x.setDate(x.getDate()+${w*7});DC.eta=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');this.parentNode.previousElementSibling.querySelector('input[type=date]').value=DC.eta">${w} 週</button>`).join('')}</div>
+    </div>
+    <label class="f"><span>日期</span><input type="date" value="${DC.date}" max="${today()}" onchange="DC.date=this.value"></label>
+    <label class="f"><span>說明（選填）</span><input type="text" maxlength="40" placeholder="例如 到貨發現左手棉花比較少" oninput="DC.note=this.value"></label>
+    <button class="btn wide" onclick="saveDollCare()">儲存</button>`);
+}
+async function saveDollCare(){
+  const d=S.dolls.find(x=>x.id===DC.id);if(!d)return;
+  const c={id:uid('c'),type:DC.type,date:DC.date||today(),note:DC.note.trim(),who:DC.who,maker:DC.maker.trim(),eta:DC.eta,status:'待處理'};
+  setDollField(d.id,'care',[...(d.care||[]),c]);await save();drawDoll();toast('已記錄');
+}
+async function dollCareNext(id,cid){
+  const d=S.dolls.find(x=>x.id===id),c=(d.care||[]).find(x=>x.id===cid);if(!c)return;
+  if(c.who==='手作娘'&&c.status==='待處理'){c.status='處理中';c.sentDate=today();toast(`已送到手作娘那裡`)}
+  else{c.status='完成';c.doneDate=today();toast(c.who==='手作娘'?`${d.name} 回家了！`:'處理好了 ✓')}
+  setDollField(id,'care',d.care);await save();drawDoll();
+}
+async function dollCareDel(id,cid){const d=S.dolls.find(x=>x.id===id);setDollField(id,'care',(d.care||[]).filter(x=>x.id!==cid));await save();drawDoll()}
+/* ---- 娃娃的配件：尾巴、耳朵、頭飾…還在不在 ---- */
+const ACC_PRESET=['尾巴','耳朵','頭飾','帽子','眼鏡','髮夾','翅膀','項圈'];
+const ACC_STATE=[['在身上','✓'],['收起來','📦'],['壞了','⚠️'],['不見了','❓']];
+function dollAccBlock(d){
+  const acc=d.acc||[];
+  return `<div class="care">
+    <div class="row" style="margin-bottom:6px"><b class="grow">附的配件</b><span class="hint">${acc.length?`${acc.filter(a=>a.state==='不見了').length?'有 '+acc.filter(a=>a.state==='不見了').length+' 件不見了':'都還在'}`:''}</span></div>
+    ${acc.length?`<div class="carelist">${acc.map(a=>`<div class="ci ${a.state==='不見了'?'done':''}"><span>${(ACC_STATE.find(x=>x[0]===a.state)||[])[1]||'✓'}</span>
+      <div class="grow"><b>${esc(a.name)}</b><small>${esc(a.state)}${a.note?'・'+esc(a.note):''}</small></div>
+      <select class="accsel" onchange="setAcc('${d.id}','${a.id}',this.value)">${ACC_STATE.map(([s])=>`<option ${s===a.state?'selected':''}>${s}</option>`).join('')}</select>
+      <button class="btn sm ghost" style="color:var(--muted);padding:4px 8px" onclick="delAcc('${d.id}','${a.id}')" aria-label="刪除">×</button></div>`).join('')}</div>`:'<p class="hint" style="margin:0">娃娃來的時候有附尾巴、耳朵、頭飾嗎？記下來比較不會弄丟。</p>'}
+    <div class="parts" style="margin-top:8px">${ACC_PRESET.map(n=>`<button type="button" onclick="addAcc('${d.id}','${n}')">＋ ${n}</button>`).join('')}<button type="button" onclick="const n=prompt('配件名稱');if(n)addAcc('${d.id}',n)">＋ 其他</button></div>
+  </div>`;
+}
+async function addAcc(id,name){const d=S.dolls.find(x=>x.id===id);setDollField(id,'acc',[...(d.acc||[]),{id:uid('a'),name:String(name).trim().slice(0,20),state:'在身上',note:''}]);await save();drawDoll()}
+async function setAcc(id,aid,st){const d=S.dolls.find(x=>x.id===id),a=(d.acc||[]).find(x=>x.id===aid);if(a)a.state=st;setDollField(id,'acc',d.acc);await save();drawDoll();if(st==='不見了')toast('記下來了，找到再改回來')}
+async function delAcc(id,aid){const d=S.dolls.find(x=>x.id===id);setDollField(id,'acc',(d.acc||[]).filter(x=>x.id!==aid));await save();drawDoll()}
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
   const {isMain,...d}=DD;d.name=d.name.trim();
@@ -2524,39 +2599,42 @@ function orderEta(o){
 function ordersHTML(){
   const list=S.orders.filter(o=>!o.filed).sort((a,b)=>ORDER_STAGES.indexOf(a.stage)-ORDER_STAGES.indexOf(b.stage)||(a.eta||'9').localeCompare(b.eta||'9'));
   if(!list.length)return `<div class="empty"><strong>沒有在等的娃衣</strong>已經下單、在等預購或運送的，可以記在這裡，進度一目了然，買新的之前也會提醒你</div>`;
-  return list.map(o=>{const k=ORDER_STAGES.indexOf(o.stage);return `<div class="wcard">
-    <div class="th">${o.photo?`<img src="${o.photo}" alt="">`:`<span class="oph">${esc((o.category||'?').slice(0,2))}</span>`}</div>
-    <div class="bd"><b>${esc(o.name||'未命名')}</b>
-      <span>${[o.category,o.price?'$'+money(o.price).toLocaleString():'',o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
+  return list.map(o=>{const k=ORDER_STAGES.indexOf(o.stage),dl=o.kind==='doll';return `<div class="wcard">
+    <div class="th">${o.photo?`<img src="${o.photo}" alt="">`:`<span class="oph">${dl?'🧸':esc((o.category||'?').slice(0,2))}</span>`}</div>
+    <div class="bd"><b>${dl?'🧸 ':''}${esc(o.name||'未命名')}${dl?'<small style="color:var(--muted);font-weight:400">　等待到家</small>':''}</b>
+      <span>${[dl?o.size:o.category,o.price?'$'+money(o.price).toLocaleString():'',o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
       <div class="ostage">${ORDER_STAGES.map((st,i)=>`<i class="${i<=k?'on':''}" title="${st}"></i>`).join('')}</div>
       <span class="wl">${esc(o.stage)}${orderEta(o)?'・'+orderEta(o):''}</span>
       ${o.note?`<span class="wn">${esc(o.note)}</span>`:''}
       <div class="row" style="margin-top:8px;flex-wrap:wrap">
-        ${o.stage==='已到貨'?`<button class="btn sm" onclick="orderToIntake('${o.id}')">拿去建檔</button>`:`<button class="btn sm" onclick="orderNext('${o.id}')">進度 → ${ORDER_STAGES[k+1]}</button>`}
+        ${o.stage==='已到貨'?(dl?`<button class="btn sm" onclick="orderWelcome('${o.id}')">🎉 迎接到家</button>`:`<button class="btn sm" onclick="orderToIntake('${o.id}')">拿去建檔</button>`):`<button class="btn sm" onclick="orderNext('${o.id}')">進度 → ${ORDER_STAGES[k+1]}</button>`}
         <button class="btn sm ghost" onclick="openOrder('${o.id}')">編輯</button>
       </div></div></div>`}).join('');
 }
 let OD={};
 function openOrder(id){
   const o=id?S.orders.find(x=>x.id===id):null;
-  OD=o?{...o}:{id:null,name:'',category:'',price:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
+  OD=o?{...o}:{id:null,kind:UI.orderKind||'item',name:'',category:'',price:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
   drawOrder();
 }
 function drawOrder(){
   const d=OD;
-  openSheet(`<h3>${d.id?'編輯購買中的娃衣':'記錄購買中的娃衣'}</h3>
-    <p class="hint" style="margin:-6px 0 12px">已經下單、在等預購或運送的娃衣。不用拍照也可以記，有商品圖的話放上來，買前檢查比對會更準。</p>
+  const isDoll=d.kind==='doll';
+  openSheet(`<h3>${d.id?'編輯':'記錄'}${isDoll?'等待到家的娃娃':'購買中的娃衣'}</h3>
+    ${d.id?'':`<div class="swap" id="o_kind" style="margin:-4px 0 12px">${[['item','👗 娃衣'],['doll','🧸 娃娃']].map(([k,l])=>`<button type="button" class="${d.kind===k?'on':''}" onclick="OD.kind='${k}';drawOrder()">${l}</button>`).join('')}</div>`}
+    <p class="hint" style="margin:-6px 0 12px">${isDoll?'已經下單、在等預購或運送的娃娃。到家那天按「迎接到家」，就會放進娃娃櫃。':'已經下單、在等預購或運送的娃衣。不用拍照也可以記，有商品圖的話放上來，買前檢查比對會更準。'}</p>
     <div class="row" style="gap:12px;align-items:center;margin-bottom:12px">
       <div class="th memth" onclick="document.getElementById('o_ph').click()" style="cursor:pointer">${d.photo?`<img src="${d.photo}" alt="">`:'<span class="oph">＋圖</span>'}</div>
       <input type="file" id="o_ph" accept="image/*" hidden onchange="orderPhoto(event)">
-      <label class="f grow" style="margin:0"><span>名稱</span><input type="text" value="${esc(d.name)}" placeholder="例如 草莓蕾絲洋裝" oninput="OD.name=this.value"></label>
+      <label class="f grow" style="margin:0"><span>${isDoll?'娃娃名字':'名稱'}</span><input type="text" value="${esc(d.name)}" placeholder="${isDoll?'例如 小白':'例如 草莓蕾絲洋裝'}" oninput="OD.name=this.value"></label>
     </div>
     <div class="split">
-      <label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${allCats().map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+      ${isDoll?`<label class="f"><span>尺寸</span><select onchange="OD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>`
+      :`<label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${allCats().map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`}
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price)}" placeholder="例如 680" oninput="OD.price=this.value"></label>
     </div>
     <div class="split">
-      <label class="f"><span>店家／團主</span><input type="text" value="${esc(d.shop)}" oninput="OD.shop=this.value"></label>
+      <label class="f"><span>${isDoll?'團主／作者／娃媽':'店家／團主'}</span><input type="text" value="${esc(d.shop)}" oninput="OD.shop=this.value"></label>
       <label class="f"><span>產地</span><input type="text" list="originDL2" value="${esc(d.origin)}" oninput="OD.origin=this.value"><datalist id="originDL2">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
     </div>
     <label class="f"><span>目前進度</span><div class="swap" id="o_st" style="margin:0;flex-wrap:wrap">${ORDER_STAGES.map(st=>`<button type="button" data-k="${st}" class="${d.stage===st?'on':''}" onclick="OD.stage='${st}';document.querySelectorAll('#o_st button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${st}'))">${st}</button>`).join('')}</div></label>
@@ -2573,13 +2651,23 @@ async function saveOrder(){
   const o={...OD,name:OD.name.trim()};
   if(o.id){const k=S.orders.findIndex(x=>x.id===o.id);S.orders[k]=Object.assign(S.orders[k],o)}
   else{o.id=uid('o');o.createdAt=Date.now();S.orders.push(o)}
-  await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');if(UI.tab==='home')renderHome();toast('已記錄');
+  await save();closeSheet();UI.wishTab='order';
+  if(UI.tab==='dolls')renderDolls();else if(UI.tab==='wish')renderWish();else go('wish');toast('已記錄');
 }
 async function orderNext(id){
   const o=S.orders.find(x=>x.id===id);const k=ORDER_STAGES.indexOf(o.stage);o.stage=ORDER_STAGES[Math.min(k+1,ORDER_STAGES.length-1)];
-  await save();renderWish();toast(o.stage==='已到貨'?'到貨了！可以拿去建檔':'進度更新：'+o.stage);
+  await save();if(UI.tab==='wish')renderWish();if(UI.tab==='dolls')renderDolls();if(UI.tab==='home')renderHome();
+  toast(o.stage==='已到貨'?(o.kind==='doll'?'到貨了！可以迎接回家了':'到貨了！可以拿去建檔'):'進度更新：'+o.stage);
 }
-async function delOrder(id){if(!confirm('刪除這筆？'))return;S.orders=S.orders.filter(x=>x.id!==id);await save();closeSheet();renderWish()}
+async function delOrder(id){if(!confirm('刪除這筆？'))return;S.orders=S.orders.filter(x=>x.id!==id);await save();closeSheet();if(UI.tab==='dolls')renderDolls();else renderWish()}
+// 娃娃到家：放進娃娃櫃，到家日是今天，打開娃娃資料讓使用者補照片
+async function orderWelcome(id){
+  const o=S.orders.find(x=>x.id===id);if(!o)return;
+  o.filed=true;
+  const d={id:uid('d'),name:o.name,size:o.size||'',photo:o.photo||null,raw:null,home:today(),note:o.note||'',src:'',attr:'none',work:'',chara:'',price:o.price||'',from:o.shop||'',createdAt:Date.now()};
+  S.dolls.push(d);await save();
+  toast(`歡迎 ${d.name} 回家！`);go('dolls');setTimeout(()=>openDoll(d.id),300);
+}
 // 到貨拿去建檔：建檔一定要有照片，沒有商品圖就先請使用者拍一張
 function orderToIntake(id){
   const o=S.orders.find(x=>x.id===id);if(!o)return;
@@ -4766,7 +4854,7 @@ function renderBuy(){
 // 還在等的娃衣（預購、運送中）也拿來比：同類型、名稱裡有同樣的顏色
 function buyOrdersHTML(t){
   const fams=new Set(t.colors.map(colorFam));
-  const hits=pendingOrders().map(o=>{
+  const hits=pendingOrders().filter(o=>o.kind!=='doll').map(o=>{
     let sc=0;const why=[];
     if(o.category&&o.category===t.category){sc+=2;why.push('同類型')}
     else if(o.category&&slotOf(o.category)&&slotOf(o.category)===slotOf(t.category)){sc+=1;why.push('同部位')}
@@ -4774,7 +4862,7 @@ function buyOrdersHTML(t){
     if(f.length){sc+=1;why.push(f.map(x=>famLabel[x]).join('、'))}
     return {o,sc,why};
   }).filter(x=>x.sc>=2).sort((a,b)=>b.sc-a.sc);
-  const all=pendingOrders();
+  const all=pendingOrders().filter(o=>o.kind!=='doll');
   if(!all.length)return '';
   return `<h2 class="sec">還在等的娃衣</h2>
     <div class="note">${hits.length?`你還有 <strong>${hits.length} 件類似的</strong>在路上，也許等它們到了再決定？`:`你還有 ${all.length} 件娃衣在等（${all.reduce((a,o)=>a+money(o.price),0)?'共 $'+all.reduce((a,o)=>a+money(o.price),0).toLocaleString():'預購／運送中'}），沒有跟這件很像的。`}</div>
@@ -4948,7 +5036,9 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
     ['在家換裝也算，不一定要出門。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
-    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。']],
+    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。']],
+  ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
+    ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
     ['會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','到貨後按「拿去建檔」就好。']],
   ['📦','壓箱底・狀況・出售',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
