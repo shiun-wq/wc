@@ -2128,7 +2128,9 @@ function renderHome(){
   const used=items.length?Math.round(items.filter(i=>wearCount(i.id)>0).length/items.length*100):0;
   const wait=S.wish.filter(w=>w.status==='wait'),skip=S.wish.filter(w=>w.status==='skip');
   const saved=skip.reduce((a,w)=>a+(+w.price||0),0);
-  const cold=items.filter(i=>isPressed(i)&&img(i))
+  // 整套都壓箱底就顯示套裝，不再一件件列出它的單品
+  const setsP=S.items.filter(i=>i.category==='套裝'&&setMates(i).length&&isPressed(i)),pset=new Set(setsP.map(i=>i.setId));
+  const cold=[...setsP,...items.filter(i=>!pset.has(i.setId))].filter(i=>isPressed(i)&&img(i))
     .sort((a,b)=>(lastWear(a.id)||'0').localeCompare(lastWear(b.id)||'0')).slice(0,8);
   const recent=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
   document.getElementById('topsub').textContent='';
@@ -2884,7 +2886,9 @@ function nextHoliday(n){
 }
 function isPressed(i){
   if(i.press==='on')return true;
-  if(i.press==='off'||i.keepsake||i.category==='套裝')return false;
+  if(i.press==='off'||i.keepsake)return false;
+  // 套裝：拆出來的單品全部都壓箱底，整套就算壓箱底
+  if(i.category==='套裝'){const m=setMates(i);if(m.length)return m.every(isPressed)}
   const l=lastWear(i.id);
   if(l)return days(l)>=(i.holiday?HOL_DAYS:PRESS_IDLE);
   return (Date.now()-pressStart(i))/864e5>=(i.holiday?HOL_DAYS:PRESS_NEW);
@@ -2896,8 +2900,12 @@ function pressStart(i){
 }
 async function setPress(id,v){
   const i=S.items.find(x=>x.id===id);if(!i)return;
-  i.press=v;await save();openItem(id);renderCloset();if(UI.tab==='home')renderHome();
-  toast(v==='on'?'已放進壓箱底 📦':v==='off'?'已從壓箱底拿出來':'改回自動判斷');
+  // 套裝放進／拿出來，拆出來的單品一起動
+  const mates=i.category==='套裝'?setMates(i):[];
+  [i,...mates].forEach(x=>x.press=v);
+  await save();openItem(id);renderCloset();if(UI.tab==='home')renderHome();
+  const w=mates.length?`（連同 ${mates.length} 件單品）`:'';
+  toast(v==='on'?'已放進壓箱底 📦'+w:v==='off'?'已從壓箱底拿出來'+w:'改回自動判斷'+w);
 }
 const MEM_REASONS=['賣掉了','送人了','交換了','壞掉了','遺失了','其他'];
 function anyItem(id){return S.items.find(x=>x.id===id)||S.memory.find(x=>x.id===id)}
@@ -3485,7 +3493,7 @@ function openItem(id){
       ${i.material?`<dt>材質</dt><dd>${esc(i.material)}</dd>`:''}
       ${i.season?`<dt>季節</dt><dd>${esc(i.season)}</dd>`:''}
       ${i.keepsake?`<dt>收藏紀念</dt><dd>${esc(i.keepsakeReason||'已標記')}</dd>`:''}
-      ${i.category!=='套裝'?`<dt>壓箱底</dt><dd>${isPressed(i)?'📦 是':'否'}${i.press?'（手動）':'（自動）'}
+      ${i.category!=='套裝'||setMates(i).length?`<dt>壓箱底</dt><dd>${isPressed(i)?'📦 是':'否'}${i.press?'（手動）':i.category==='套裝'?'（單品全部壓箱底就算）':'（自動）'}
         <button class="btn sm ghost" style="margin-left:6px;padding:4px 10px" onclick="setPress('${id}',${isPressed(i)?"'off'":"'on'"})">${isPressed(i)?'拿出來':'放進去'}</button>
         ${i.press?`<button class="btn sm ghost" style="padding:4px 10px" onclick="setPress('${id}',null)">改回自動</button>`:''}</dd>`:''}
       ${i.note?`<dt>備註</dt><dd>${esc(i.note)}</dd>`:''}
@@ -3547,7 +3555,7 @@ function editItem(id){
     </label>
     <label class="f"><span>紀念原因</span><input type="text" id="e_kr" value="${esc(i.keepsakeReason||'')}" placeholder="第一套娃衣、朋友送的、活動限定…"></label>
     ${i.category==='套裝'&&setMates(i).length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" id="e_sync" checked> 同步到這套拆出來的 ${setMates(i).length} 件（${setMates(i).map(m=>esc(m.category)).join('、')}）
-      <small class="hint" style="display:block;margin-left:26px">品牌、店家、購入日期、產地、節日、季節、尺寸、標籤有改到的會一起改</small></label>`:''}
+      <small class="hint" style="display:block;margin-left:26px">名稱、品牌、店家、購入日期、產地、節日、季節、尺寸、標籤有改到的會一起改</small></label>`:''}
     <button class="btn wide" onclick="saveEdit('${id}')">儲存變更</button>
   `);
 }
@@ -3567,14 +3575,21 @@ function syncToMates(i,before){
 }
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
-  const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]]))));
+  const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]])))),oldName=i.name;
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.brand=v('e_brand');i.shop=v('e_shop');
   i.buyDate=v('e_buy');i.origin=v('e_origin').trim();i.holiday=v('e_hol');i.tags=parseTags(v('e_tags'));i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
   i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>b.textContent);
   i.keepsake=document.getElementById('e_keep').classList.contains('on');
   i.keepsakeReason=v('e_kr');
   const sync=document.getElementById('e_sync');
-  const n=i.category==='套裝'&&(!sync||sync.checked)?syncToMates(i,before):0;
+  const doSync=i.category==='套裝'&&(!sync||sync.checked);
+  let n=doSync?syncToMates(i,before):0;
+  // 改套裝名稱：單品是「套裝名－上衣」，前面的套裝名一起換
+  if(doSync&&i.name.trim()&&i.name!==oldName){
+    const st=S.sets.find(x=>x.id===i.setId);if(st)st.name=i.name;
+    setMates(i).forEach(m=>{if(oldName&&m.name.startsWith(oldName+'－'))m.name=i.name+m.name.slice(oldName.length)});
+    n=setMates(i).length;
+  }
   await save();closeSheet();renderCloset();toast(n?`已儲存，也同步到這套的 ${n} 件單品`:'已儲存');
 }
 async function delItem(id){
