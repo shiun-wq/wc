@@ -1,6 +1,6 @@
-// 娃衣衣櫃的離線快取：沒網路也能打開，第一次載入過的字型和去背模型也會留著
-const VER='wc-v2';
-const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png'];
+// 哇娃衣櫃的離線快取：沒網路也能打開，第一次載入過的字型和去背模型也會留著
+const VER='wc-v4';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png','./icons/mascot.png','./icons/logo.png'];
 const RUNTIME=/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|storage\.googleapis\.com)\//;
 
 self.addEventListener('install',e=>{
@@ -28,7 +28,7 @@ self.addEventListener('fetch',e=>{
   }
 });
 
-// 點通知就打開（或切回）娃衣衣櫃
+// 點通知就打開（或切回）哇娃衣櫃
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
   e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(ws=>{
