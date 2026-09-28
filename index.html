@@ -409,6 +409,8 @@ dl.meta dd{margin:0}
 .needtip{color:var(--berry-deep);margin:4px 0 0;font-size:12px}
 @keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 .qsize.shake{animation:shake .45s}
+.sellstrip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -4px;padding:0 4px 6px}
+.sellstrip .scwrap{flex:0 0 86%;scroll-snap-align:center}
 .cfam{display:flex;flex-wrap:wrap;gap:7px}
 .cfam span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
 .cfam i{width:12px;height:12px;border-radius:50%;border:1px solid var(--line-2)}
@@ -500,9 +502,9 @@ nav.tabs button.plus.on{color:var(--berry)}
 .hgreet{margin:2px 0 6px;color:var(--ink-2);font-size:13.5px;letter-spacing:.04em}
 .dswitch{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .dswitch button{display:flex;flex-direction:column;align-items:center;gap:4px;width:48px;flex:0 1 48px;min-width:0;background:none;border:0;padding:0}
-.dswitch i{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--card);border:2px solid transparent;box-shadow:var(--sh-1);display:grid;place-items:center;font-size:13px;font-style:normal;color:var(--ink-2)}
+.dswitch i{position:relative;display:block;width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--card);border:2px solid transparent;box-shadow:var(--sh-1);font-size:13px;font-style:normal;color:var(--ink-2);line-height:36px;text-align:center}
 .dswitch button.on i{border-color:var(--berry)}
-.dswitch img{width:100%;height:100%;object-fit:cover}
+.dswitch img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
 .dswitch small{font-size:10.5px;color:var(--muted);max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dswitch button.on small{color:var(--berry-deep);font-weight:600}
 .notice.party{background:linear-gradient(135deg,var(--berry-soft,#F4E7E8),var(--gold-soft));border-color:rgba(162,77,102,.25)}
@@ -1954,7 +1956,7 @@ function renderHome(){
 
   ${S.memory.length?`<button class="hstat memlink" onclick="go('memory')"><span>回憶箱</span><b>${S.memory.length}</b><small>件娃衣的故事</small><em>›</em></button>`:''}
   ${cold.length?`<h2 class="sec">壓箱底的娃衣</h2>
-  <p class="hint" style="margin:-4px 0 10px">給它們一點出場機會吧</p>
+  <p class="hint" style="margin:-4px 0 10px">給它們一點出場機會吧，或是 <a href="javascript:void 0" onclick="openSell()" style="color:var(--berry-deep);font-weight:600">做成出售貼文</a> 讓它們找新主人</p>
   <div class="hscroll">${cold.map(i=>{const l=lastWear(i.id);return `<button class="piece" onclick="openItem('${i.id}')">
     <div class="sw"><img src="${img(i)}" alt=""><span class="tag">${l?days(l)+' 天':'沒穿過'}</span></div>
     <div class="nm">${esc(i.name)}</div></button>`}).join('')}</div>`:''}
@@ -1995,6 +1997,16 @@ function homeCards(){
       <span>${a.date?`${+a.date.slice(5,7)} 月 ${+a.date.slice(8)} 日。`:''}可以先想想那天要穿什麼、去哪裡拍照。</span>
     </section>`);
   });
+  // 0b. 很久沒出門（最多顯示一張，列出其他隻）
+  const idle=idleDolls().filter(x=>!st.annHide['idle:'+x.d.id+':'+x.last]);
+  if(idle.length){
+    const x=idle[0],nm=esc(x.d.name);
+    h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['idle:${x.d.id}:${x.last}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>🌿 ${nm} 已經 ${x.n} 天沒出門了</b>
+      <span>${idle.length>1?`還有 ${idle.slice(1,4).map(y=>esc(y.d.name)).join('、')}${idle.length>4?' 等':''}也好久沒出門。`:''}天氣好的話，帶 ${nm} 出去走走吧。</span>
+      <div class="row"><button class="btn sm" onclick="dollOutId('${x.d.id}')">今天帶 ${nm} 出門</button></div>
+    </section>`);
+  }
   // 1. 新手引導
   const steps=[
     [S.dolls.length>0,'放上你的娃娃','首頁中間會是娃娃的舞台',"openDoll()"],
@@ -2054,7 +2066,7 @@ async function setNotify(on){
     if(p!=='granted'){toast('通知權限被拒絕了，要到手機的設定裡打開');return}
   }
   S.settings.notify=on;await save();openSettings();
-  if(on){toast('已開啟紀念日通知');notifyAnniv(true)}
+  if(on){toast('已開啟通知');notifyAnniv(true)}
 }
 async function notifyAnniv(test){
   if(!S.settings.notify||!canNotify()||Notification.permission!=='granted')return;
@@ -2064,7 +2076,12 @@ async function notifyAnniv(test){
     try{new Notification(title,{body,tag,icon:'icons/icon-192.png'})}catch(e){}
   };
   let n=0;
-  for(const a of dollAnniv()){
+  if(S.settings.notifyOut!==false)for(const x of idleDolls()){
+    const k='idle:'+x.d.id+':'+x.last+':'+outRemind();if(done[k])continue;
+    await show(`🌿 ${x.d.name} 已經 ${x.n} 天沒出門了`,`帶 ${x.d.name} 出去走走吧，順便記錄今天的穿搭`,k);
+    done[k]=Date.now();n++;
+  }
+  if(S.settings.notifyAnn!==false)for(const a of dollAnniv()){
     const k=annKey(a)+':'+annStage(a);if(done[k])continue;
     const nm=a.d.name,what=annWhat(a);
     if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`今天帶 ${nm} 出去看看吧，也可以做一張紀念小卡`,k);
@@ -2072,9 +2089,21 @@ async function notifyAnniv(test){
     done[k]=Date.now();n++;
   }
   if(n)save();
-  else if(test===true)show('紀念日通知已開啟','娃娃的到家日、生日前 7 天、前一天和當天會提醒你','wc-test');
+  else if(test===true)show('通知已開啟','紀念日和很久沒出門的娃娃，會在這裡提醒你','wc-test');
 }
 /* ---- 到家紀念日 ---- */
+// 很久沒出門：最後一次出門或穿搭紀錄（都沒有就從建立那天算）超過設定天數
+const outRemind=()=>S.settings.outRemind===undefined?30:+S.settings.outRemind;
+function lastActive(d){
+  const ds=[...(d.outs||[]),...dollWears(d).map(w=>w.date)].filter(Boolean).sort();
+  if(ds.length)return ds[ds.length-1];
+  if(d.home)return d.home;
+  const c=new Date(d.createdAt||Date.now());return c.getFullYear()+'-'+String(c.getMonth()+1).padStart(2,'0')+'-'+String(c.getDate()).padStart(2,'0');
+}
+function idleDolls(){
+  const lim=outRemind();if(!lim)return [];
+  return S.dolls.map(d=>({d,last:lastActive(d),n:dayNum(today())-dayNum(lastActive(d))})).filter(x=>x.n>=lim).sort((a,b)=>b.n-a.n);
+}
 const annKey=a=>a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4);
 const annStage=a=>a.left===0?'today':a.left===1?'tomorrow':'week';
 function annWhat(a){
@@ -2085,7 +2114,7 @@ function annWhat(a){
 // 紀念小卡：沿用分享小卡的主題、比例、一句話和下載
 function openAnnCard(key){
   let a=dollAnniv().find(x=>annKey(x)===key);
-  if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d)a={d,kind:'day',n:homeDays(d)+1,left:0}}
+  if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d&&d.home&&homeDays(d)>=0)a={d,kind:'day',n:homeDays(d)+1,left:0}}
   if(!a)return;
   const nm=a.d.name;
   SC.ann={
@@ -2158,7 +2187,7 @@ function renderDolls(){
   const rows=[];for(let i=0;i<list.length+1;i+=3)rows.push(list.slice(i,i+3));
   el.innerHTML=`
     <div class="stat">
-      <div><b>${S.dolls.length}</b><span>隻娃娃${S.dolls.length?`・有屬性 ${cnt(d=>d.attr==='has')}`:''}</span></div>
+      <div><b>${S.dolls.length}</b><span>隻娃娃</span></div>
       <div><b>${total?'$'+total.toLocaleString():'—'}</b><span>娃娃總花費</span></div>
     </div>
     ${dsz.length>1?`<div class="chips">${['全部尺寸',...dsz].map(z=>`<button class="chip ${fsz===z?'on':''}" onclick="UI.dollSize=decodeURIComponent('${encodeURIComponent(z)}');renderDolls()">${esc(z)}</button>`).join('')}</div>`:''}
@@ -2202,7 +2231,8 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
-    ${saved&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`:''}
+    ${saved&&saved.home&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`
+      :saved?`<span class="dhome" style="color:var(--muted)">填上「到家日」，就會幫 ${esc(saved.name)} 記住來家裡幾天、每年慶祝</span>`:''}
     ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
       <div><b>${outCount(saved)}</b><span>出門次數</span></div>
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
@@ -2217,7 +2247,7 @@ function drawDoll(){
       <label class="f"><span>來源</span><select onchange="DD.src=this.value"><option value="">未設定</option>${DOLL_SRC.map(x=>`<option ${x===d.src?'selected':''}>${x}</option>`).join('')}</select></label>
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price||'')}" placeholder="例如 450" oninput="DD.price=this.value"></label>
     </div>
-    <label class="f"><span>團主／作者／店家（選填）</span><input type="text" value="${esc(d.from||'')}" placeholder="例如 ○○團、作者名" oninput="DD.from=this.value"></label>
+    <label class="f"><span>團主／作者／娃媽（選填）</span><input type="text" value="${esc(d.from||'')}" placeholder="例如 ○○團、作者名" oninput="DD.from=this.value"></label>
     <label class="f"><span>屬性</span><div class="parts" style="margin-top:0">
       <button type="button" class="${d.attr!=='has'?'on':''}" onclick="DD.attr='none';drawDoll()">無屬性</button>
       <button type="button" class="${d.attr==='has'?'on':''}" onclick="DD.attr='has';drawDoll()">有屬性</button></div></label>
@@ -2414,6 +2444,149 @@ function renderMemory(){
             <button class="btn sm ghost" style="color:var(--muted)" onclick="delMemory('${i.id}')">刪除</button></div>
         </div></div>`}).join('')}`;
 }
+/* ---- 出售貼文：壓箱底的娃衣一鍵做成出售圖 + 可以直接貼的文字 ----
+   圖一定會附註「App 建檔時的圖，實際衣況以賣家說明為準」，因為衣況一定跟建檔時不一樣 */
+const SELL_COND=['全新未拆','近全新','良好','有使用痕跡','有小瑕疵'];
+let SELL={};
+function openSell(ids){
+  const pressed=S.items.filter(isPressed).map(i=>i.id);
+  const pool=[...new Set([...(ids||[]),...pressed])];
+  if(!pool.length){toast('目前沒有壓箱底的娃衣');return}
+  SELL={pool,sel:new Set(ids&&ids.length?ids:pressed.slice(0,1)),info:SELL.info||{},showWear:SELL.showWear||false,showSet:SELL.showSet!==false,lay:SELL.lay||'grid'};
+  drawSell();
+}
+function sellInfo(id){return SELL.info[id]=SELL.info[id]||{price:'',cond:'良好',note:''}}
+function drawSell(){
+  const items=SELL.pool.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  openSheet(`<h3>出售貼文</h3>
+    <p class="hint" style="margin:-6px 0 12px">勾選要賣的娃衣，填價格和現在的衣況，就會做出一張出售圖和可以直接貼的文字。</p>
+    <div class="blist">${items.map(i=>{const on=SELL.sel.has(i.id),f=sellInfo(i.id),c=wearCount(i.id);
+      return `<div class="rowitem" style="display:block">
+        <label class="row" style="gap:10px;align-items:center;cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="sellToggle('${i.id}',this.checked)">
+          <div class="th" style="width:44px;height:44px;flex:0 0 44px">${img(i)?`<img src="${img(i)}" alt="">`:''}</div>
+          <div class="tx"><b>${esc(i.name)}</b><span>${esc(i.category)}${(i.sizes||[]).length?'・'+i.sizes.map(esc).join('/'):''}・穿過 ${c} 次${isPressed(i)?'・📦':''}</span></div></label>
+        ${on?`<div class="split" style="margin-top:10px">
+          <label class="f" style="margin:0"><span>價格</span><input type="number" inputmode="decimal" placeholder="例如 350" value="${esc(f.price)}" oninput="sellInfo('${i.id}').price=this.value"></label>
+          <label class="f" style="margin:0"><span>衣況</span><select onchange="sellInfo('${i.id}').cond=this.value">${SELL_COND.map(x=>`<option ${x===f.cond?'selected':''}>${x}</option>`).join('')}</select></label></div>
+          <input type="text" style="margin-top:8px" maxlength="40" placeholder="衣況補充（選填），例如 領口有一點起毛球" value="${esc(f.note)}" oninput="sellInfo('${i.id}').note=this.value">`:''}
+      </div>`}).join('')}</div>
+    <div class="f" style="margin:14px 0 0"><span>圖片樣式</span>
+      <div class="swap" id="sellLay">${[['grid','多件放一張'],['single','每件一張大圖']].map(([k,l])=>`<button data-k="${k}" class="${SELL.lay===k?'on':''}" onclick="SELL.lay='${k}';document.querySelectorAll('#sellLay button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div>
+      <small class="hint">多件放一張適合一次po很多件；每件一張大圖看得比較清楚，適合讓買家參考細節。</small></div>
+    <label class="remember" style="margin:12px 0 0"><input type="checkbox" ${SELL.showWear?'checked':''} onchange="SELL.showWear=this.checked"> 讓買家知道穿過幾次</label>
+    <label class="remember" style="margin:6px 0 0"><input type="checkbox" ${SELL.showSet?'checked':''} onchange="SELL.showSet=this.checked"> 標出是哪一套的（有的話）</label>
+    <div class="note" style="margin-top:12px">出售圖用的是建檔時的貼圖，圖上會註明「實際衣況請以賣家說明為準」。賣之前建議再拍一張現在的實拍一起放。</div>
+    <button class="btn wide" style="margin-top:12px" onclick="makeSell()">做出售圖和文字</button>`);
+}
+function sellToggle(id,on){if(on)SELL.sel.add(id);else SELL.sel.delete(id);drawSell()}
+function sellList(){return [...SELL.sel].map(id=>S.items.find(x=>x.id===id)).filter(Boolean)}
+function sellText(list){
+  const lines=['【出售｜娃衣】',''];
+  list.forEach((i,k)=>{const f=sellInfo(i.id),sn=SELL.showSet&&i.setId?setName(i.setId):'';
+    lines.push(`${list.length>1?(k+1)+'. ':''}${i.name}`);
+    if((i.sizes||[]).length)lines.push(`　尺寸：${i.sizes.join(' / ')}`);
+    if(sn&&!i.name.startsWith(sn))lines.push(`　套裝：${sn}`);
+    lines.push(`　價格：${f.price?'$'+money(f.price).toLocaleString():'私訊詢問'}`);
+    lines.push(`　衣況：${f.cond}${SELL.showWear?`（穿過 ${wearCount(i.id)} 次）`:''}${f.note?`，${f.note}`:''}`);
+    lines.push('');
+  });
+  lines.push('※ 圖片為 App 建檔時的照片，實際衣況以私訊確認、實拍為準，歡迎詢問。');
+  return lines.join('\n');
+}
+async function makeSell(){
+  const list=sellList();if(!list.length){toast('先勾選要賣的娃衣');return}
+  prog('製作出售圖中…');
+  SELL.canvases=SELL.lay==='single'?await Promise.all(list.map(i=>drawSellBig(i))):[await drawSellCard(list)];
+  SELL.text=sellText(list);
+  const many=SELL.canvases.length>1;
+  openSheet(`<h3>出售圖和文字</h3>
+    ${many?`<p class="hint" style="margin:-6px 0 8px">共 ${SELL.canvases.length} 張，左右滑動看</p>`:''}
+    <div class="${many?'sellstrip':''}">${SELL.canvases.map((c,k)=>`<div class="scwrap"><img src="${c.toDataURL('image/png')}" alt="出售圖 ${k+1}"></div>`).join('')}</div>
+    <label class="f" style="margin-top:12px"><span>貼文文字（可以直接改）</span><textarea id="sellTxt" rows="8" oninput="SELL.text=this.value">${esc(SELL.text)}</textarea></label>
+    <div class="row">
+      <button class="btn ghost grow" onclick="sellDownload()">下載${many?' '+SELL.canvases.length+' 張':'圖片'}</button>
+      <button class="btn ghost grow" onclick="sellCopy()">複製文字</button>
+      ${navigator.share?`<button class="btn grow" onclick="sellShare()">分享</button>`:''}
+    </div>
+    <button class="btn ghost wide sm" style="margin-top:8px" onclick="drawSell()">回去修改</button>
+    <p class="hint" style="margin:12px 0 6px">賣掉了嗎？移到回憶箱，會記下賣出價格。</p>
+    <div class="parts" style="margin-top:0">${list.map(i=>`<button type="button" onclick="archiveItem('${i.id}');setTimeout(()=>{MV.price=sellInfo('${i.id}').price;const e=document.querySelector('#mv_p input');if(e)e.value=MV.price},50)">${esc(i.name)} 賣掉了</button>`).join('')}</div>`);
+  document.getElementById('toast').classList.remove('on');
+}
+async function drawSellCard(list){
+  const T=CARD_THEMES.cream,W=1080,n=Math.min(list.length,9),cols=n===1?1:n<=4?2:3,rows=Math.ceil(n/cols);
+  const P=64,headH=236,footH=200,cellW=(W-P*2-(cols-1)*24)/cols,imgH=cols===1?620:cols===2?330:230,cellH=imgH+(cols===1?190:170);
+  const H=Math.max(1350,headH+rows*cellH+(rows-1)*24+footH+P);
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const serif='"Noto Serif TC","Songti TC",serif',num='"Cormorant Garamond","Noto Serif TC",serif',sans=getComputedStyle(document.body).fontFamily;
+  try{await document.fonts.ready}catch(e){}
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText('FOR SALE',P,P+34);x.letterSpacing='0px';
+  x.fillStyle=T.ink;x.font=`700 76px ${serif}`;x.fillText(n>1?`娃衣出售 ${n} 件`:'娃衣出售',P,P+124);
+  const ims=await Promise.all(list.slice(0,n).map(i=>img(i)?loadImg(img(i)).catch(()=>null):null));
+  list.slice(0,n).forEach((i,k)=>{
+    const f=sellInfo(i.id),cx=P+(k%cols)*(cellW+24),cy=headH+Math.floor(k/cols)*(cellH+24);
+    x.save();x.shadowColor='rgba(0,0,0,.08)';x.shadowBlur=24;x.shadowOffsetY=8;x.fillStyle=T.card;rrect(x,cx,cy,cellW,cellH,28);x.fill();x.restore();
+    const im=ims[k];
+    if(im){const s=Math.min((cellW-40)/im.width,(imgH-20)/im.height);x.drawImage(im,cx+(cellW-im.width*s)/2,cy+14+(imgH-im.height*s)/2,im.width*s,im.height*s)}
+    let ty=cy+imgH+(cols===1?64:48);
+    x.fillStyle=T.ink;x.font=`600 ${cols===3?26:32}px ${sans}`;x.fillText(fitText(x,i.name,cellW-36),cx+18,ty);
+    ty+=cols===3?40:48;
+    x.fillStyle=T.accent;x.font=`700 ${cols===3?36:46}px ${num}`;const pr=f.price?'$'+money(f.price).toLocaleString():'私訊';x.fillText(pr,cx+18,ty);
+    const pw=x.measureText(pr).width;
+    x.font=`500 ${cols===3?20:24}px ${sans}`;const tag=f.cond+(SELL.showWear?`・穿 ${wearCount(i.id)} 次`:'');const tw=Math.min(x.measureText(tag).width+28,cellW-pw-52);
+    if(tw>40){x.fillStyle=T.soft;rrect(x,cx+30+pw,ty-(cols===3?26:32),tw,cols===3?34:42,17);x.fill();x.fillStyle=T.accent;x.fillText(fitText(x,tag,tw-28),cx+44+pw,ty-(cols===3?3:4))}
+    if((i.sizes||[]).length){ty+=cols===3?34:40;x.fillStyle=T.sub;x.font=`500 ${cols===3?20:24}px ${sans}`;x.fillText(fitText(x,i.sizes.join(' / ')+(SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'・'+setName(i.setId):''),cellW-36),cx+18,ty)}
+  });
+  // 一定要有的提醒
+  const fy=H-footH+6;
+  x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
+  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「娃衣衣櫃」App 以建檔時的照片製作',P+26,fy+42);
+  x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
+  return c;
+}
+// 每件一張大圖：貼圖放大、下面是名稱、價格、衣況、尺寸，最下面一樣有衣況提醒
+async function drawSellBig(i){
+  const T=CARD_THEMES.cream,W=1080,H=1350,P=64,f=sellInfo(i.id);
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const serif='"Noto Serif TC","Songti TC",serif',num='"Cormorant Garamond","Noto Serif TC",serif',sans=getComputedStyle(document.body).fontFamily;
+  try{await document.fonts.ready}catch(e){}
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText('FOR SALE',P,P+34);x.letterSpacing='0px';
+  // 大圖
+  const AY=P+70,AH=720;
+  x.save();x.shadowColor='rgba(0,0,0,.08)';x.shadowBlur=30;x.shadowOffsetY=10;x.fillStyle=T.card;rrect(x,P,AY,W-P*2,AH,36);x.fill();x.restore();
+  const im=img(i)?await loadImg(img(i)).catch(()=>null):null;
+  if(im){const s=Math.min((W-P*2-80)/im.width,(AH-80)/im.height);x.drawImage(im,(W-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s)}
+  let y=AY+AH+86;
+  x.fillStyle=T.ink;x.font=`700 54px ${serif}`;x.fillText(fitText(x,i.name,W-P*2),P,y);
+  y+=84;x.fillStyle=T.accent;x.font=`700 72px ${num}`;const pr=f.price?'$'+money(f.price).toLocaleString():'私訊詢價';x.fillText(pr,P,y);
+  const pw=x.measureText(pr).width;x.font=`500 30px ${sans}`;const tag=f.cond+(SELL.showWear?`・穿過 ${wearCount(i.id)} 次`:'');const tw=x.measureText(tag).width+40;
+  x.fillStyle=T.soft;rrect(x,P+pw+24,y-42,tw,52,26);x.fill();x.fillStyle=T.accent;x.fillText(tag,P+pw+44,y-6);
+  const meta=[(i.sizes||[]).length?'尺寸 '+i.sizes.join(' / '):'',SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'套裝 '+setName(i.setId):'',f.note].filter(Boolean).join('・');
+  if(meta){y+=56;x.fillStyle=T.sub;x.font=`500 30px ${sans}`;x.fillText(fitText(x,meta,W-P*2),P,y)}
+  const fy=H-P-120;
+  x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
+  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「娃衣衣櫃」App 以建檔時的照片製作',P+26,fy+42);
+  x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
+  return c;
+}
+function sellBlob(c){return new Promise(r=>c.toBlob(r,'image/png'))}
+const sellName=k=>`娃衣出售-${today()}${SELL.canvases.length>1?'-'+(k+1):''}.png`;
+async function sellDownload(){
+  for(let k=0;k<SELL.canvases.length;k++){
+    const a=document.createElement('a');a.href=URL.createObjectURL(await sellBlob(SELL.canvases[k]));a.download=sellName(k);a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);await new Promise(r=>setTimeout(r,350));
+  }
+  toast(SELL.canvases.length>1?`已下載 ${SELL.canvases.length} 張`:'圖片已下載');
+}
+async function sellCopy(){try{await navigator.clipboard.writeText(SELL.text);toast('文字已複製')}catch(e){const t=document.getElementById('sellTxt');t.select();document.execCommand('copy');toast('文字已複製')}}
+async function sellShare(){
+  const fs=await Promise.all(SELL.canvases.map(async(c,k)=>new File([await sellBlob(c)],sellName(k),{type:'image/png'})));
+  try{await navigator.share(navigator.canShare&&navigator.canShare({files:fs})?{files:fs,text:SELL.text}:{text:SELL.text})}catch(e){}
+}
 async function restoreItem(id){
   const k=S.memory.findIndex(x=>x.id===id);if(k<0)return;
   const i=S.memory.splice(k,1)[0];delete i.archivedAt;delete i.reason;delete i.soldPrice;delete i.memo;
@@ -2471,7 +2644,7 @@ function renderCloset(){
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  el.innerHTML=`<div class="grid">`+list.map(i=>{
+  el.innerHTML=(UI.mode==='壓箱底'?`<button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
     return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
       <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}
@@ -2528,9 +2701,10 @@ function openItem(id){
       <button class="btn ghost grow" onclick="editItem('${id}')">編輯</button>
     </div>
     <div class="row" style="margin-top:8px">
+      <button class="btn ghost grow" onclick="openSell(['${id}'])">做出售貼文</button>
       <button class="btn ghost grow" onclick="archiveItem('${id}')">移到回憶箱</button>
-      <button class="btn ghost grow" style="color:var(--muted)" onclick="delItem('${id}')">刪除這件</button>
     </div>
+    <button class="btn ghost wide sm" style="margin-top:8px;color:var(--muted);border:none;box-shadow:none" onclick="delItem('${id}')">刪除這件</button>
   `);
 }
 function dlSticker(id){
@@ -4139,9 +4313,13 @@ function openSettings(){
 
     <h2 class="sec">提醒</h2>
     <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">紀念日通知 ${st.notify&&canNotify()&&Notification.permission==='granted'?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
+      <div class="row"><span class="grow" style="font-size:13.5px">手機通知 ${st.notify&&canNotify()&&Notification.permission==='granted'?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
         <button class="btn sm ${st.notify?'ghost':'quiet'}" onclick="readForm();setNotify(${!st.notify})">${st.notify?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 0">到家日、生日這些紀念日的前 7 天、前一天和當天，會跳手機通知。網頁版是在打開娃衣衣櫃時檢查${isIOS()?'，iPhone 要先加到主畫面才能開':''}；之後做成 App 會改成準時提醒。</p>
+      ${st.notify?`<label class="remember" style="margin:10px 0 0"><input type="checkbox" ${st.notifyAnn!==false?'checked':''} onchange="S.settings.notifyAnn=this.checked;save()"> 紀念日（前 7 天、前一天、當天）</label>
+      <label class="remember" style="margin:6px 0 0"><input type="checkbox" ${st.notifyOut!==false?'checked':''} onchange="S.settings.notifyOut=this.checked;save()"> 很久沒帶娃娃出門</label>`:''}
+      <div class="f" style="margin:12px 0 0"><span>多久沒出門要提醒</span>
+        <div class="swap">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="readForm();S.settings.outRemind=${v};save().then(openSettings)">${l}</button>`).join('')}</div></div>
+      <p class="hint" style="margin:8px 0 0">首頁一定會顯示提醒卡片；開了手機通知才會另外跳通知。網頁版是在打開娃衣衣櫃時檢查${isIOS()?'，iPhone 要先加到主畫面才能開通知':''}；之後做成 App 會改成準時提醒。</p>
     </div>
 
     <h2 class="sec">AI 服務</h2>
