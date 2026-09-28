@@ -2847,7 +2847,7 @@ async function recheckWish(id){
   openBuyCheck();
   BUY.photo=w.photo;BUY.t=w.t;BUY.wishId=id;
   BUY.busy=true;
-  try{await buyCompare();spendQuota('buy')}catch(e){toast(e.message)}finally{BUY.busy=false}
+  try{if(await buyCompare())spendQuota('buy');else toast('圖片比對沒有成功，這次不扣次數')}catch(e){toast(e.message)}finally{BUY.busy=false}
 }
 
 /* ============================================================
@@ -5394,6 +5394,13 @@ function buyScore(t,i){
   s+=(i.motifs||[]).filter(m=>tm.has(m)).length*2;
   return s;
 }
+// 比對失敗後重試：成功才扣一次
+async function buyRetry(){
+  if(BUY.busy||!BUY.t)return;
+  if(!needQuota('buy'))return;
+  BUY.busy=true;
+  try{if(await buyCompare())spendQuota('buy');else toast('還是沒有成功，這次一樣不扣次數，可以晚一點再試')}catch(e){toast(e.message)}finally{BUY.busy=false}
+}
 async function runBuy(file){
   if(BUY.busy)return;
   if(!needQuota('buy'))return;
@@ -5405,8 +5412,8 @@ async function runBuy(file){
     const t={name:r.name||'',category:r.isSet?'套裝':(r.category||'其他'),isSet:!!r.isSet,
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',holiday:(typeof HOL_NAMES!=='undefined'&&HOL_NAMES.includes(r.holiday))?r.holiday:'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
-    await buyCompare();
-    spendQuota('buy');
+    if(await buyCompare())spendQuota('buy');
+    else toast('圖片比對沒有成功，這次不扣次數');
   }catch(e){
     const el=document.getElementById('buyOut');
     if(el)el.innerHTML=`<div class="note" style="margin-top:14px">分析失敗：${esc(e.message)}</div>
@@ -5441,8 +5448,33 @@ async function buyCompare(){
   const all=[...cands,...sold];
   if(all.length){
     buyStep(`跟衣櫃裡${sold.length?'和以前賣掉的':''}最像的 ${all.length} 件比對中…`);
-    const imgs=[await thumb(BUY.photo,512),...await Promise.all(all.map(x=>thumb(img(x.i),320)))];
-    const prompt=`第 1 張是使用者想買的娃衣，後面第 2 到第 ${all.length+1} 張是使用者有過的娃衣（編號 1 到 ${all.length}）。
+    // 一次送太多張容易失敗：失敗就自動少送幾張再試一次
+    const run=async(list,big,small)=>{
+      const imgs=[await thumb(BUY.photo,big),...await Promise.all(list.map(x=>thumb(img(x.i),small)))];
+      const out=parseJSON(await callAIImgs('buy',buyPrompt(list.length),imgs));
+      const arr=Array.isArray(out)?out:(Object.values(out||{}).find(Array.isArray)||[]);
+      if(!arr.length)throw new Error('AI 沒有回傳比對結果');
+      return arr;
+    };
+    BUY.cmpErr='';
+    try{
+      const arr=await run(all,512,320);
+      verdict=arr.map(v=>({...v,it:all[(+v.n)-1]?.i,sold:(+v.n)>cands.length})).filter(v=>v.it);
+    }catch(e){
+      try{
+        const few=[...cands.slice(0,5),...sold.slice(0,1)];
+        buyStep(`再試一次，這次只比最像的 ${few.length} 件…`);
+        const arr=await run(few,448,256),nc=Math.min(cands.length,5);
+        verdict=arr.map(v=>({...v,it:few[(+v.n)-1]?.i,sold:(+v.n)>nc})).filter(v=>v.it);
+      }catch(e2){BUY.cmpErr=e2.message||e.message||'未知錯誤'}
+    }
+  }
+  BUY.verdict=verdict.filter(v=>!v.sold);BUY.soldV=verdict.filter(v=>v.sold);BUY.cands=cands;BUY.sold=sold;
+  renderBuy();
+  // 比對失敗就不扣次數（上面還是會先顯示標籤算出來的結果）
+  return !BUY.cmpErr;
+}
+const buyPrompt=n=>`第 1 張是使用者想買的娃衣，後面第 2 到第 ${n+1} 張是使用者有過的娃衣（編號 1 到 ${n}）。
 逐一比較想買的這件跟每一件，只回傳 JSON 陣列，不要其他文字：
 [{"n":編號,"level":"same 或 recolor 或 similar 或 different","reason":"15字內的中文理由"}]
 level 定義：
@@ -5450,14 +5482,6 @@ same：幾乎是同一件（同款式、同顏色）
 recolor：同款式或同設計，但顏色不同
 similar：款式不同，但風格、元素或配色很像
 different：沒什麼關係`;
-    try{
-      const out=parseJSON(await callAIImgs('buy',prompt,imgs));
-      verdict=(Array.isArray(out)?out:[]).map(v=>({...v,it:all[(+v.n)-1]?.i,sold:(+v.n)>cands.length})).filter(v=>v.it);
-    }catch(e){toast('圖片比對失敗，先只顯示標籤統計')}
-  }
-  BUY.verdict=verdict.filter(v=>!v.sold);BUY.soldV=verdict.filter(v=>v.sold);BUY.cands=cands;BUY.sold=sold;
-  renderBuy();
-}
 function renderBuy(){
   const el=document.getElementById('buyOut');if(!el)return;
   const bi=document.getElementById('buyIn');if(bi)bi.style.display='none';
@@ -5494,7 +5518,8 @@ function renderBuy(){
 
   let msg;
   const soldStrong=(BUY.soldV||[]).some(v=>v.level==='same'||v.level==='recolor');
-  if(soldStrong&&!same.length)msg='你以前賣掉過很像的一件，先看看下面「以前賣掉的」，想想當時為什麼賣掉。';
+  if(BUY.cmpErr)msg='這次只用名稱和標籤找了一輪，還沒有看圖確認是不是一樣。';
+  else if(soldStrong&&!same.length)msg='你以前賣掉過很像的一件，先看看下面「以前賣掉的」，想想當時為什麼賣掉。';
   else if(same.length)msg='衣櫃裡好像已經有幾乎一樣的了，下單前可以先翻出來對照看看。';
   else if(recolor.length)msg='有同款不同色的。如果你在收包色，這件剛好可以補上；如果不是，也可以想想會不會跟它們撞在一起。';
   else if(similar.length)msg='沒有一樣的，但有幾件風格很接近，可以想想這件能不能帶來新的搭配。';
@@ -5512,6 +5537,8 @@ function renderBuy(){
         </div></div>
     </div>
     <div class="note" style="margin-top:14px">${msg}</div>
+    ${BUY.cmpErr?`<div class="note warnnote" style="margin-top:10px">圖片比對沒有成功（${esc(BUY.cmpErr)}），<b>這次不扣次數</b>。下面先列出用名稱和標籤找到的，可能不準。
+      <button class="btn sm" style="margin-top:8px" onclick="buyRetry()">再比對一次</button></div>`:''}
     ${group('幾乎一樣','',same)}
     ${group('同款不同色','',recolor)}
     ${group(BUY.verdict.length?'風格很像':'可能類似','',similar)}
