@@ -1,5 +1,5 @@
 // 哇娃衣櫃的離線快取：沒網路也能打開，第一次載入過的字型和去背模型也會留著
-const VER='wc-v4';
+const VER='wc-v5';
 const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png','./icons/mascot.png','./icons/logo.png'];
 const RUNTIME=/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|storage\.googleapis\.com)\//;
 
@@ -14,8 +14,11 @@ self.addEventListener('fetch',e=>{
   if(r.method!=='GET')return;                 // AI 呼叫等 POST 請求不經過快取
   const u=new URL(r.url);
   // 頁面本身：先拿網路上的最新版，沒網路才用快取
+  // 版本檔一定要問網路，才知道有沒有新版
+  if(u.origin===location.origin&&u.pathname.endsWith('/version.json'))return;
   if(r.mode==='navigate'){
-    e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(VER).then(c=>c.put('./index.html',cp));return res})
+    // 不用手機瀏覽器的快取，直接問伺服器最新的頁面
+    e.respondWith(fetch(new Request(r.url,{cache:'no-cache',credentials:'same-origin'})).then(res=>{const cp=res.clone();caches.open(VER).then(c=>c.put('./index.html',cp));return res})
       .catch(()=>caches.match('./index.html')));
     return;
   }
