@@ -3555,12 +3555,12 @@ function editItem(id){
     </label>
     <label class="f"><span>紀念原因</span><input type="text" id="e_kr" value="${esc(i.keepsakeReason||'')}" placeholder="第一套娃衣、朋友送的、活動限定…"></label>
     ${i.category==='套裝'&&setMates(i).length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" id="e_sync" checked> 同步到這套拆出來的 ${setMates(i).length} 件（${setMates(i).map(m=>esc(m.category)).join('、')}）
-      <small class="hint" style="display:block;margin-left:26px">名稱、品牌、店家、購入日期、產地、節日、季節、尺寸、標籤有改到的會一起改</small></label>`:''}
+      <small class="hint" style="display:block;margin-left:26px">名稱、品牌、店家、購入日期、產地、節日、季節、尺寸、標籤、收藏紀念有改到的會一起改</small></label>`:''}
     <button class="btn wide" onclick="saveEdit('${id}')">儲存變更</button>
   `);
 }
 // 套裝和拆出來的單品共用的欄位：改套裝時，改了哪幾個就同步到單品（單品自己不一樣的欄位不會被蓋掉）
-const SET_SHARED=['brand','shop','buyDate','origin','holiday','season','sizes','tags'];
+const SET_SHARED=['brand','shop','buyDate','origin','holiday','season','sizes','tags','keepsake','keepsakeReason'];
 function syncToMates(i,before){
   const mates=setMates(i);if(!mates.length)return 0;
   SET_SHARED.forEach(f=>{
