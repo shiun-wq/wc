@@ -268,6 +268,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 .sheet.on{display:block}
 .sheet .scrim{position:absolute;inset:0;background:rgba(47,37,41,.38);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade .25s ease}
 @keyframes fade{from{opacity:0}}
+.sheet .scrim{touch-action:none}
 .sheet .panel{
   position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;
   background:var(--paper);border-radius:26px 26px 0 0;max-height:92vh;max-height:92dvh;overflow-y:auto;
@@ -276,6 +277,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
   box-shadow:var(--sh-3);
   animation:up .42s var(--ease);
 }
+/* 內容會一直變的畫面（例如挑衣服）固定高度，切換類別時視窗才不會跳 */
+.sheet .panel.full{height:92vh;height:92dvh}
 @keyframes up{from{transform:translateY(100%)}}
 .sheet .grab{position:sticky;top:0;background:var(--paper);padding:10px 0 10px;z-index:2}
 .sheet .grab i{display:block;width:40px;height:5px;border-radius:3px;background:var(--line-2);margin:0 auto}
@@ -353,7 +356,12 @@ dl.meta dd{margin:0}
 .pc .rh::after{content:"";position:absolute;inset:-10px}
 .ctrl{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;box-shadow:var(--sh-1)}
 .ctrl input[type=range]{width:100%;accent-color:var(--berry);height:28px}
-.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:220px;overflow-y:auto;margin-top:10px}
+.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.drawer:not(.dolls) button{aspect-ratio:auto;display:flex;flex-direction:column}
+.drawer:not(.dolls) button img{aspect-ratio:1;height:auto}
+.drawer .cap{display:block;font-size:10px;padding:0 4px 4px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drawer button.on{border:2px solid var(--berry);background:var(--berry-soft)}
+.drawer.dolls{max-height:none}
 .drawer button{aspect-ratio:1;border-radius:12px;background:var(--swatch);overflow:hidden;border:1px solid var(--line);transition:transform .18s var(--ease)}
 .drawer button:active{transform:scale(.94)}
 .drawer button img{width:100%;height:100%;object-fit:contain;padding:5px}
@@ -416,6 +424,13 @@ dl.meta dd{margin:0}
 .wpicked img{width:100%;height:100%;object-fit:contain;padding:3px}
 .wpicked i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--berry);color:#fff;font-size:12px;line-height:18px;font-style:normal}
 .wchips{margin:0 -2px 2px;flex-wrap:nowrap;overflow-x:auto}
+#multiBar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto;
+  display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+#multiBar span{flex:1;font-size:13.5px;color:var(--ink-2)}
+.piece.msel .sw{outline:2px solid transparent;outline-offset:-2px;border-radius:inherit}
+.piece.msel.on .sw{outline-color:var(--berry)}
+.mchk{position:absolute;left:8px;top:8px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(47,37,41,.25);color:#fff;font-size:14px;line-height:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.piece.on .mchk{background:var(--berry)}
 .setmember{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border:1px solid rgba(179,144,96,.25);margin:4px 0 14px}
 .setmember i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:#B39060;font-size:20px;box-shadow:var(--sh-1)}
 .setmember span,.setrow span{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -868,6 +883,7 @@ nav.tabs button.plus.on{color:var(--berry)}
       <div class="chips" id="catchips"></div>
       <div class="chips" id="viewchips"></div>
       <div class="chips" id="sizechips"></div>
+      <div class="chips" id="tagchips"></div>
       <div id="closetGrid"></div>
     </section>
 
@@ -1822,7 +1838,7 @@ function parseJSON(txt){
   catch(e){throw new Error('AI 回傳的內容不完整，請再試一次')}
 }
 const tagPrompt=()=>`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
-{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","material":"材質推測"}
+{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","holiday":"節日主題，看得出來才填，沒有就空字串：聖誕節、新年、過年、萬聖節、情人節、中秋節、生日、復活節","material":"材質推測"}
 
 parts 規則很重要：
 如果照片裡有多件可以分開穿的單品（例如整套娃衣攤開拍），isSet 設 true，並在 parts 裡逐一列出每一件。
@@ -1857,6 +1873,8 @@ function go(k,fromPop){
   }
   if(!sub)UI.lastTab=k;
   UI.tab=k;buildTabs();
+  if(k!=='closet'&&UI.multi){UI.multi=false;UI.msel=new Set()}
+  renderMultiBar();
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+k));
   document.getElementById('backbtn').hidden=!sub;
   document.getElementById('title').textContent=sub?TITLES[k]:'娃衣衣櫃';
@@ -1884,16 +1902,23 @@ function openSheet(html,onClose){
   // 換內容時，先通知上一個畫面它被關掉了（例如點選去背還在等結果）
   const prev=NAV.onClose;NAV.onClose=onClose||null;if(prev&&prev!==onClose)prev();
   document.getElementById('sheetBody').innerHTML=html;
+  sh.querySelector('.panel').classList.remove('full');
   if(!NAV.open){
-    NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;
+    NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;lockScroll(true);
     history.pushState({sheet:1},'');
   }
 }
+// 視窗打開時把背後的頁面鎖住：手指滑動只會捲視窗，不會捲到後面（iPhone 要用 position:fixed 才鎖得住）
+function lockScroll(on){
+  const b=document.body;
+  if(on){if(b.dataset.lock)return;const y=window.scrollY;b.dataset.lock=y;b.style.position='fixed';b.style.top=-y+'px';b.style.left='0';b.style.right='0';b.style.overflow='hidden'}
+  else{if(!b.dataset.lock)return;const y=+b.dataset.lock;delete b.dataset.lock;b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.overflow='';window.scrollTo(0,y)}
+}
 function hideSheet(){
   // 設定畫面沒按「保存」就關掉時，也把填好的內容存起來
-  const wasSettings=!!document.getElementById('s_endpoint');
+  const wasSettings=!!document.querySelector('#sheetBody .setrow,#sheetBody .sethead,#s_endpoint');
   if(wasSettings){readForm();save()}
-  NAV.open=false;document.getElementById('sheet').classList.remove('on');
+  NAV.open=false;document.getElementById('sheet').classList.remove('on');lockScroll(false);
   const cb=NAV.onClose;NAV.onClose=null;if(cb)cb();
   // 設定改了類別、尺寸等，關掉後讓目前的頁面重畫
   if(wasSettings){const k=UI.tab;if(k==='closet')renderCloset();else if(k==='intake')renderQueue();else if(k==='home')renderHome()}
@@ -2013,6 +2038,17 @@ function homeCards(){
     else h.push(`<section class="notice">${hide}
       <b>🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}</b>
       <span>${a.date?`${+a.date.slice(5,7)} 月 ${+a.date.slice(8)} 日。`:''}可以先想想那天要穿什麼、去哪裡拍照。</span>
+    </section>`);
+  });
+  // 0a. 節日快到了，衣櫃裡有這個節日的娃衣
+  HOL_NAMES.forEach(n=>{
+    const its=S.items.filter(i=>i.holiday===n&&i.category!=='套裝');if(!its.length)return;
+    const nh=nextHoliday(n);if(!nh||nh.left>21)return;
+    const key='hol:'+n+':'+nh.year;if(st.annHide[key])return;
+    h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['${key}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>${holIcon(n)} ${nh.left===0?`今天是${n}！`:`${n}還有 ${nh.left} 天`}</b>
+      <span>衣櫃裡有 ${its.length} 件${n}主題的娃衣，${nh.left===0?'今天就讓它們出場吧':'可以先想想要怎麼搭'}。</span>
+      <div class="row"><button class="btn sm" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
     </section>`);
   });
   // 0b. 很久沒出門（最多顯示一張，列出其他隻）
@@ -2390,7 +2426,7 @@ async function boughtWish(id){
 }
 function queueFromTags(photo,t,price){
   UI.queue.push({qid:uid('q'),photo,cutout:null,name:t.name,category:t.category,isSet:t.isSet,parts:[],sizes:defaultSizes(),
-    colors:t.colors,styles:t.styles,motifs:t.motifs,season:t.season,material:t.material,price:price||'',analyzing:false});
+    colors:t.colors,styles:t.styles,motifs:t.motifs,season:t.season,holiday:t.holiday||'',material:t.material,price:price||'',analyzing:false});
 }
 async function recheckWish(id){
   const w=S.wish.find(x=>x.id===id);if(!w)return;
@@ -2404,14 +2440,38 @@ async function recheckWish(id){
 
 /* ============================================================
    0d. 壓箱底 + 回憶箱
-   壓箱底：自動判斷（建檔 60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
+   壓箱底：自動判斷（從購入日期、沒填就從建檔日算，60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
    回憶箱：賣掉、送人、壞掉的娃衣移到 S.memory，衣櫃和分析都不再算它們
    ============================================================ */
+// 用手機今天的日期算。使用者也可以手動放進去（press:'on'）或拿出來（press:'off'），手動的優先
+const PRESS_NEW=60,PRESS_IDLE=180;
+// 節日服：一年才穿一次，壓箱底改成超過 13 個月才算；節日前 3 週首頁提醒
+const HOLIDAYS=[['聖誕節','🎄','12-25'],['新年','🎆','01-01'],['過年','🧧',{2026:'02-17',2027:'02-06',2028:'01-26',2029:'02-13',2030:'02-03',2031:'01-23'}],
+  ['萬聖節','🎃','10-31'],['情人節','💝','02-14'],['中秋節','🥮',{2026:'09-25',2027:'09-15',2028:'10-03',2029:'09-22',2030:'09-12',2031:'10-01'}],['生日','🎂',null],['復活節','🐣',null]];
+const HOL_NAMES=HOLIDAYS.map(h=>h[0]),holIcon=n=>(HOLIDAYS.find(h=>h[0]===n)||[])[1]||'🎉';
+const HOL_DAYS=400;
+function nextHoliday(n){
+  const h=HOLIDAYS.find(x=>x[0]===n);if(!h||!h[2])return null;
+  const ty=+today().slice(0,4);
+  for(const y of [ty,ty+1]){const md=typeof h[2]==='string'?h[2]:h[2][y];if(!md)continue;const left=dayNum(y+'-'+md)-dayNum(today());if(left>=0)return {date:y+'-'+md,left,year:y}}
+  return null;
+}
 function isPressed(i){
-  if(i.keepsake||i.category==='套裝')return false;
+  if(i.press==='on')return true;
+  if(i.press==='off'||i.keepsake||i.category==='套裝')return false;
   const l=lastWear(i.id);
-  if(l)return days(l)>=180;
-  return (Date.now()-(i.createdAt||Date.now()))/864e5>=60;
+  if(l)return days(l)>=(i.holiday?HOL_DAYS:PRESS_IDLE);
+  return (Date.now()-pressStart(i))/864e5>=(i.holiday?HOL_DAYS:PRESS_NEW);
+}
+// 從哪天開始算「買來都沒穿」：有填購入日期就用購入日期（很多娃衣早在用 App 之前就買了），沒有才用建檔日
+function pressStart(i){
+  if(/^\d{4}-\d\d-\d\d$/.test(i.buyDate||'')){const t=Date.UTC(...i.buyDate.split('-').map((v,k)=>k===1?v-1:+v));if(t<=Date.now())return t-8*3600e3}
+  return i.createdAt||Date.now();
+}
+async function setPress(id,v){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  i.press=v;await save();openItem(id);renderCloset();if(UI.tab==='home')renderHome();
+  toast(v==='on'?'已放進壓箱底 📦':v==='off'?'已從壓箱底拿出來':'改回自動判斷');
 }
 const MEM_REASONS=['賣掉了','送人了','交換了','壞掉了','遺失了','其他'];
 function anyItem(id){return S.items.find(x=>x.id===id)||S.memory.find(x=>x.id===id)}
@@ -2659,40 +2719,54 @@ function wearThumb(w){
 }
 
 function renderCloset(){
-  const keep=['catchips','viewchips','sizechips'].map(k=>[k,document.getElementById(k).scrollLeft]);
+  const keep=['catchips','viewchips','sizechips','tagchips'].map(k=>[k,document.getElementById(k).scrollLeft]);
   const FILTERS=visibleFilters(),FMAP=fmap();
   if(!FILTERS.includes(UI.cat))UI.cat='全部';
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
-  const modes=['全部','壓箱底','從未穿過','收藏紀念','最近新增'];
-  document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';renderCloset()">${f}</button>`).join('');
+  const modes=['全部','壓箱底','從未穿過','收藏紀念','節日服','最近新增'];
+  document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';UI.hol='';renderCloset()">${f}</button>`).join('');
   const sz=['全部尺寸',...sizes()];
   if(!sz.includes(UI.size))UI.size='全部尺寸';
   document.getElementById('sizechips').innerHTML=sz.map(f=>`<button class="chip ${UI.size===f?'on':''}" onclick="UI.size=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
+  const tags=allTags();
+  if(UI.tag&&!tags.includes(UI.tag))UI.tag='';
+  document.getElementById('tagchips').innerHTML=tags.length?['',...tags].map(t=>`<button class="chip ${(UI.tag||'')===t?'on':''}" onclick="UI.tag=decodeURIComponent('${encodeURIComponent(t)}');renderCloset()">${t?'#'+esc(t):'全部標籤'}</button>`).join(''):'';
   const q=(document.getElementById('q').value||'').trim().toLowerCase();
   let list=S.items.slice();
+  if(UI.tag)list=list.filter(i=>(i.tags||[]).includes(UI.tag));
   if(UI.size!=='全部尺寸')list=list.filter(i=>(i.sizes||[]).includes(UI.size));
   keep.forEach(([k,x])=>{const el=document.getElementById(k);el.scrollLeft=x;chipEdge(el)});
   if(UI.cat==='套裝')list=list.filter(i=>i.category==='套裝');
   else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(i.category));
-  if(q)list=list.filter(i=>[i.name,i.brand,i.shop,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
+  if(q)list=list.filter(i=>[i.name,i.brand,i.shop,i.origin,i.season,i.holiday,(i.tags||[]).join(' '),setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
   if(UI.mode==='從未穿過')list=list.filter(i=>wearCount(i.id)===0);
   if(UI.mode==='壓箱底')list=list.filter(isPressed);
   if(UI.mode==='收藏紀念')list=list.filter(i=>i.keepsake);
+  if(UI.mode==='節日服'){list=list.filter(i=>i.holiday);if(UI.hol)list=list.filter(i=>i.holiday===UI.hol)}
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
 
   document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${S.items.length} 件`:'';
   const el=document.getElementById('closetGrid');
+  UI.closetList=list.map(i=>i.id);UI.msel=UI.msel||new Set();
+  renderMultiBar();
   if(!list.length){
     el.innerHTML=S.items.length
       ? `<div class="empty"><strong>沒有符合的娃衣</strong>換個篩選條件看看</div>`
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  el.innerHTML=(UI.mode==='壓箱底'?`<button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
+  const top=`<div class="row" style="margin:0 0 10px"><span class="hint grow">${list.length} 件</span>
+    <button class="btn sm ${UI.multi?'':'ghost'}" onclick="toggleMulti()">${UI.multi?'完成選取':'☑ 多選'}</button></div>`;
+  el.style.paddingBottom=UI.multi?'70px':'';
+  const holBar=UI.mode==='節日服'?`<div class="chips wchips" style="margin:0 0 10px">${['',...HOL_NAMES.filter(n=>S.items.some(i=>i.holiday===n))].map(n=>`<button class="chip ${(UI.hol||'')===n?'on':''}" onclick="UI.hol='${n}';renderCloset()">${n?holIcon(n)+' '+n:'全部節日'}</button>`).join('')}</div>
+    <p class="hint" style="margin:0 0 10px">節日服一年穿一次，超過 13 個月沒穿才會算壓箱底。</p>`:'';
+  el.innerHTML=top+holBar+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+    <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
-    return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
-      <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}
+    const sel=UI.multi&&UI.msel.has(i.id);
+    return `<button class="piece ${(!c)?'dim':''} ${UI.multi?'msel':''} ${sel?'on':''}" data-id="${i.id}" onclick="${UI.multi?`toggleMsel('${i.id}')`:`openItem('${i.id}')`}">
+      <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}${UI.multi?`<span class="mchk">${sel?'✓':''}</span>`:''}
         <span class="tag">${c?`穿過 ${c} 次`:'未穿過'}</span>
         ${i.keepsake?'<span class="keep">🎀</span>':isPressed(i)?'<span class="keep press" title="壓箱底">📦</span>':''}
       </div>
@@ -2702,6 +2776,102 @@ function renderCloset(){
   }).join('')+`</div>`;
 }
 
+/* ---- 衣櫃多選：批次改產地、購入日期 ---- */
+const ORIGINS=['中國','台灣','日本','韓國','泰國','越南'];
+const allTags=()=>[...new Set(S.items.flatMap(i=>i.tags||[]))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+const parseTags=v=>[...new Set(String(v||'').split(/[,，、#\s]+/).map(t=>t.trim()).filter(Boolean))].slice(0,12);
+const originList=()=>[...new Set([...ORIGINS,...S.items.map(i=>(i.origin||'').trim()).filter(Boolean)])];
+function toggleMulti(){UI.multi=!UI.multi;if(!UI.multi)UI.msel=new Set();renderCloset()}
+function toggleMsel(id){
+  UI.msel.has(id)?UI.msel.delete(id):UI.msel.add(id);
+  const b=document.querySelector(`#closetGrid .piece[data-id="${id}"]`);
+  if(b){b.classList.toggle('on',UI.msel.has(id));const k=b.querySelector('.mchk');if(k)k.textContent=UI.msel.has(id)?'✓':''}
+  renderMultiBar();
+}
+function renderMultiBar(){
+  let bar=document.getElementById('multiBar');
+  if(!UI.multi||UI.tab!=='closet'){if(bar)bar.remove();return}
+  if(!bar){bar=document.createElement('div');bar.id='multiBar';document.body.appendChild(bar)}
+  const n=UI.msel.size,all=UI.closetList&&UI.closetList.length&&UI.closetList.every(id=>UI.msel.has(id));
+  bar.innerHTML=`<span><b>${n}</b> 件已選</span>
+    <button class="btn sm ghost" onclick="${all?'UI.msel=new Set()':'UI.msel=new Set(UI.closetList)'};renderCloset()">${all?'全不選':'全選'}</button>
+    <button class="btn sm" ${n?'':'disabled'} onclick="openBatchMenu()">批次修改</button>`;
+}
+function openBatchMenu(){
+  const n=UI.msel.size;if(!n)return;
+  const row=(k,ico,t,sub)=>`<button class="setrow" onclick="openBatch('${k}')"><i>${ico}</i><span><b>${t}</b><small>${sub}</small></span><em>›</em></button>`;
+  openSheet(`<h3>批次修改 ${n} 件</h3>
+    <div class="setgroup">
+      ${row('tag','🏷️','加標籤','例如 戀與深空、日卡、同人')}
+      ${row('untag','✂️','移除標籤','把選到的娃衣拿掉某個標籤')}
+      ${row('holiday','🎄','節日主題','聖誕節、新年、萬聖節…')}
+      ${row('cat','🗂️','類型','上衣、裙子、自訂類別…')}
+    </div>
+    <div class="setgroup" style="margin-top:10px">
+      ${row('brand','🏷','品牌','')}
+      ${row('origin','🌏','產地','')}
+      ${row('buy','📅','購入日期','壓箱底會從購入日期開始算')}
+    </div>`);
+}
+const BATCH={brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
+function openBatch(kind){
+  const ids=[...UI.msel];if(!ids.length)return;
+  if(!['origin','buy'].includes(kind))return openBatch2(kind,ids);
+  const cur=ids.map(id=>(S.items.find(x=>x.id===id)||{})[kind==='origin'?'origin':'buyDate']||'');
+  const same=cur.every(v=>v===cur[0])?cur[0]:'';
+  openSheet(kind==='origin'?`<h3>批次改產地</h3>
+    <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的產地。</p>
+    <label class="f"><span>產地</span><input type="text" id="b_val" value="${esc(same)}" placeholder="例如 中國" maxlength="20"></label>
+    <div class="parts" style="margin:-4px 0 12px">${originList().map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatch('origin',true)">清空產地</button><button class="btn grow" onclick="applyBatch('origin')">套用到 ${ids.length} 件</button></div>`
+  :`<h3>批次改購入日期</h3>
+    <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的購入日期。壓箱底會從購入日期開始算。</p>
+    <label class="f"><span>購入日期</span><input type="date" id="b_val" value="${esc(same)}" max="${today()}"></label>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatch('buy',true)">清空日期</button><button class="btn grow" onclick="applyBatch('buy')">套用到 ${ids.length} 件</button></div>`);
+}
+function openBatch2(kind,ids){
+  const its=ids.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  const back=`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div>`;
+  const apply=(clear)=>`<div class="row"><button class="btn ghost grow" onclick="applyBatch('${kind}',true)">${clear}</button><button class="btn grow" onclick="applyBatch('${kind}')">套用到 ${ids.length} 件</button></div>`;
+  let h='';
+  if(kind==='brand'){const brands=[...new Set(S.items.map(i=>(i.brand||'').trim()).filter(Boolean))];
+    h=`<h3>批次改品牌</h3><label class="f"><span>品牌</span><input type="text" id="b_val" maxlength="30" placeholder="例如 某某娃衣屋"></label>
+    ${brands.length?`<div class="parts" style="margin:-4px 0 12px">${brands.map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>`:''}${apply('清空品牌')}`}
+  if(kind==='cat')h=`<h3>批次改類型</h3><p class="hint" style="margin:-6px 0 12px">想要新的類型（例如 日卡套裝、和服），先到 設定 → 衣櫃類別 新增。</p>
+    <label class="f"><span>類型</span><select id="b_val">${allCats().filter(c=>c!=='套裝').map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>${apply('取消').replace(`applyBatch('cat',true)`,'openBatchMenu()')}`;
+  if(kind==='holiday')h=`<h3>批次設定節日主題</h3><p class="hint" style="margin:-6px 0 12px">節日服一年才穿一次，壓箱底會放寬到 13 個月；節日前 3 週首頁會提醒你。</p>
+    <label class="f"><span>節日</span><select id="b_val">${HOL_NAMES.map(n=>`<option>${n}</option>`).join('')}</select></label>${apply('拿掉節日主題')}`;
+  if(kind==='tag'){const tags=allTags();
+    h=`<h3>加標籤</h3><p class="hint" style="margin:-6px 0 12px">標籤可以放作品、系列、活動，例如「戀與深空」「日卡」。一件可以有很多個標籤，衣櫃上方可以用標籤篩選。</p>
+    <label class="f"><span>標籤（多個用逗號分開）</span><input type="text" id="b_val" placeholder="例如 戀與深空、日卡"></label>
+    ${tags.length?`<div class="parts" style="margin:-4px 0 12px">${tags.map(o=>`<button type="button" onclick="const e=document.getElementById('b_val');e.value=(e.value?e.value+'、':'')+this.textContent">${esc(o)}</button>`).join('')}</div>`:''}
+    <button class="btn wide" onclick="applyBatch('tag')">加到 ${ids.length} 件</button>`}
+  if(kind==='untag'){const tags=[...new Set(its.flatMap(i=>i.tags||[]))];
+    h=`<h3>移除標籤</h3>${tags.length?`<p class="hint" style="margin:-6px 0 12px">點要從這 ${ids.length} 件拿掉的標籤。</p><div class="parts">${tags.map(t=>`<button type="button" onclick="applyBatch('untag',false,decodeURIComponent('${encodeURIComponent(t)}'))">#${esc(t)} ×</button>`).join('')}</div>`:'<p class="hint">選到的娃衣都還沒有標籤。</p>'}`}
+  openSheet(back+h);
+}
+async function applyBatch(kind,clear,arg){
+  if(['brand','cat','holiday','tag','untag'].includes(kind)){
+    const ids=[...UI.msel],v=arg||(clear?'':(document.getElementById('b_val')||{}).value||'').trim();
+    if(!clear&&!v&&kind!=='untag'){toast('先填內容');return}
+    ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i)return;
+      if(kind==='brand')i.brand=v;
+      if(kind==='cat'&&v)i.category=v;
+      if(kind==='holiday')i.holiday=clear?'':v;
+      if(kind==='tag')i.tags=[...new Set([...(i.tags||[]),...parseTags(v)])];
+      if(kind==='untag')i.tags=(i.tags||[]).filter(t=>t!==v);
+    });
+    await save();closeSheet();renderCloset();
+    toast(kind==='untag'?`已從 ${ids.length} 件拿掉 #${v}`:`已${clear?'清空':'更新'} ${ids.length} 件的${BATCH[kind][0]}`);return;
+  }
+  const v=clear?'':document.getElementById('b_val').value.trim();
+  if(!clear&&!v){toast(kind==='origin'?'先填產地':'先選日期');return}
+  if(kind==='buy'&&v>today()){toast('購入日期不能是未來');return}
+  const ids=[...UI.msel];
+  ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(i){if(kind==='origin')i.origin=v;else i.buyDate=v}});
+  await save();closeSheet();renderCloset();
+  toast(`已${clear?'清空':'更新'} ${ids.length} 件的${kind==='origin'?'產地':'購入日期'}`);
+}
 function openItem(id){
   const i=S.items.find(x=>x.id===id);if(!i)return;
   const c=wearCount(id),l=lastWear(id);
@@ -2732,12 +2902,18 @@ function openItem(id){
       ${top.length?`<dt>最常搭配</dt><dd>${top.map(([k])=>esc((S.items.find(x=>x.id===k)||{}).name||'')).join('、')}</dd>`:''}
       ${i.brand?`<dt>品牌</dt><dd>${esc(i.brand)}</dd>`:''}
       ${i.shop?`<dt>店家</dt><dd>${esc(i.shop)}</dd>`:''}
+      ${i.holiday?`<dt>節日主題</dt><dd>${holIcon(i.holiday)} ${esc(i.holiday)}</dd>`:''}
+      ${(i.tags||[]).length?`<dt>標籤</dt><dd>${i.tags.map(t=>'#'+esc(t)).join(' ')}</dd>`:''}
+      ${i.origin?`<dt>產地</dt><dd>${esc(i.origin)}</dd>`:''}
       ${i.buyDate?`<dt>購入日期</dt><dd>${esc(i.buyDate)}</dd>`:''}
       ${i.price?`<dt>購入價格</dt><dd>${esc(i.price)}</dd>`:''}
       ${(i.sizes||[]).length?`<dt>適用尺寸</dt><dd>${i.sizes.map(esc).join('、')}</dd>`:''}
       ${i.material?`<dt>材質</dt><dd>${esc(i.material)}</dd>`:''}
       ${i.season?`<dt>季節</dt><dd>${esc(i.season)}</dd>`:''}
       ${i.keepsake?`<dt>收藏紀念</dt><dd>${esc(i.keepsakeReason||'已標記')}</dd>`:''}
+      ${i.category!=='套裝'?`<dt>壓箱底</dt><dd>${isPressed(i)?'📦 是':'否'}${i.press?'（手動）':'（自動）'}
+        <button class="btn sm ghost" style="margin-left:6px;padding:4px 10px" onclick="setPress('${id}',${isPressed(i)?"'off'":"'on'"})">${isPressed(i)?'拿出來':'放進去'}</button>
+        ${i.press?`<button class="btn sm ghost" style="padding:4px 10px" onclick="setPress('${id}',null)">改回自動</button>`:''}</dd>`:''}
       ${i.note?`<dt>備註</dt><dd>${esc(i.note)}</dd>`:''}
     </dl>
     <div class="divider"></div>
@@ -2780,9 +2956,15 @@ function editItem(id){
       <label class="f"><span>店家</span><input type="text" id="e_shop" value="${esc(i.shop||'')}"></label>
     </div>
     <div class="split">
-      <label class="f"><span>購入日期</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"></label>
+      <label class="f"><span>購入日期（選填）</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"><small class="hint">填了之後，壓箱底會從這天開始算，不填就從建檔日算。</small></label>
       <label class="f"><span>價格</span><input type="number" id="e_price" value="${esc(i.price||'')}"></label>
     </div>
+    <div class="split">
+      <label class="f"><span>節日主題</span><select id="e_hol"><option value="">沒有</option>${HOL_NAMES.map(n=>`<option ${n===i.holiday?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label class="f"><span>標籤</span><input type="text" id="e_tags" list="tagDL" value="${esc((i.tags||[]).join('、'))}" placeholder="例如 戀與深空、日卡"><datalist id="tagDL">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label>
+    </div>
+    <label class="f"><span>產地（選填）</span><input type="text" id="e_origin" list="originDL" value="${esc(i.origin||'')}" placeholder="例如 中國、台灣、日本" maxlength="20">
+      <datalist id="originDL">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
     <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
     <label class="f"><span>材質</span><input type="text" id="e_mat" value="${esc(i.material||'')}"></label>
     <label class="f"><span>備註</span><textarea id="e_note">${esc(i.note||'')}</textarea></label>
@@ -2796,7 +2978,7 @@ function editItem(id){
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.brand=v('e_brand');i.shop=v('e_shop');
-  i.buyDate=v('e_buy');i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
+  i.buyDate=v('e_buy');i.origin=v('e_origin').trim();i.holiday=v('e_hol');i.tags=parseTags(v('e_tags'));i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
   i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>b.textContent);
   i.keepsake=document.getElementById('e_keep').classList.contains('on');
   i.keepsakeReason=v('e_kr');
@@ -3021,7 +3203,7 @@ async function analyze(n){
     q.parts=(r.parts||[]).map(x=>typeof x==='string'?{name:x,box:null}:{name:x.name,box:x.box||null})
       .filter(x=>x.name).map(x=>({name:x.name,box:x.box,img:null,crop:null}));
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
-    q.season=r.season||'';q.material=r.material||'';
+    q.season=r.season||'';q.material=r.material||'';q.holiday=HOL_NAMES.includes(r.holiday)?r.holiday:'';
   }catch(e){toast('分析失敗：'+e.message)}
   q.analyzing=false;renderQueue();return true;
 }
@@ -3042,7 +3224,7 @@ async function commitQueue(){
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
-      season:q.season,material:q.material,sizes:(q.sizes||[]).slice(),brand:'',shop:'',buyDate:'',note:'',
+      season:q.season,holiday:q.holiday||'',material:q.material,sizes:(q.sizes||[]).slice(),brand:'',shop:'',buyDate:'',note:'',
       keepsake:false,keepsakeReason:'',createdAt:Date.now()};
     if(q.isSet){
       const sid=uid('s'),nm=q.name||'未命名套裝';
@@ -3191,23 +3373,48 @@ function layerPiece(d){
 }
 function removePiece(){UI.canvas.splice(UI.selPc,1);UI.selPc=null;renderCanvas()}
 function clearCanvas(){UI.canvas=[];UI.selPc=null;renderCanvas()}
+// 搭配頁「加入娃衣」：上面控制列畫一次，切換只換下面的清單；清單不再有自己的捲軸，整個視窗一起捲
+const DR={cat:'全部',sort:'new',q:''};
 function openDrawer(){
   const sets=S.sets.filter(s=>S.items.some(i=>i.setId===s.id&&i.category!=='套裝'));
-  let list=S.items.filter(i=>i.category!=='套裝');
-  if(UI.pressFirst)list=list.slice().sort((a,b)=>isPressed(b)-isPressed(a));
+  const cats=visibleFilters().filter(f=>f!=='套裝');
   openSheet(`
     <h3>加入娃衣</h3>
     ${S.dolls.some(d=>d.photo)?`<div class="hint" style="margin-bottom:6px">放上娃娃（會在最底層，衣服可以直接拖到身上）：</div>
       <div class="drawer dolls" style="margin:0 0 12px">${S.dolls.filter(d=>d.photo).map(d=>`<button onclick="addDollToCanvas('${d.id}');closeSheet()" class="${canvasDoll()===d.id?'on':''}"><img src="${d.photo}" alt=""><i class="dn">${esc(d.name)}</i></button>`).join('')}</div>`
       :`<p class="hint" style="margin:0 0 12px">到娃娃櫃幫娃娃放一張去背照片，就可以把娃娃放上畫布試穿。</p>`}
-    <label class="remember" style="margin:0 0 10px"><input type="checkbox" ${UI.pressFirst?'checked':''} onchange="UI.pressFirst=this.checked;openDrawer()"> 壓箱底的娃衣排前面，給它們一點出場機會 📦</label>
     ${sets.length?`<div class="hint" style="margin-bottom:8px">整套加入：</div>
-      <div class="chips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}')">${esc(s.name)}</button>`).join('')}</div>`:''}
-    <div class="hint" style="margin:6px 0">單件加入（點一下就放上畫布）：</div>
-    <div class="drawer">${list.map(i=>
-      `<button onclick="addToCanvas('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="">${isPressed(i)?'<i class="pbadge">📦</i>':''}</button>`).join('')}</div>
-    <button class="btn wide" style="margin-top:12px" onclick="closeSheet()">完成</button>
+      <div class="chips wchips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}');drawerRedraw()">${esc(s.name)}</button>`).join('')}</div>`:''}
+    <div class="hint" style="margin:10px 0 6px">單件加入（點一下放上畫布，再點一下拿掉）：</div>
+    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(DR.q)}" oninput="DR.q=this.value;clearTimeout(DR.t);DR.t=setTimeout(drawerRedraw,200)" style="margin-bottom:8px">
+    <div class="chips wchips" id="dcats">${cats.map(c=>`<button class="chip ${DR.cat===c?'on':''}" data-k="${esc(c)}" onclick="DR.cat=this.dataset.k;drawerRedraw()">${esc(c)}</button>`).join('')}</div>
+    <div class="swap" id="dsort" style="margin:6px 0 10px">${[['new','最新入櫃'],['worn','最常穿'],['press','壓箱底優先 📦']].map(([k,l])=>`<button data-k="${k}" class="${DR.sort===k?'on':''}" onclick="DR.sort='${k}';drawerRedraw()">${l}</button>`).join('')}</div>
+    <div id="dlist">${drawerListHTML()}</div>
+    <button class="btn wide" style="margin-top:12px;position:sticky;bottom:0" onclick="closeSheet()">完成</button>
   `);
+  document.querySelector('#sheet .panel').classList.add('full');
+}
+function drawerListHTML(){
+  const FM=fmap(),on=new Set(canvasItemIds());
+  let list=S.items.filter(i=>i.category!=='套裝');
+  if(DR.cat!=='全部'&&FM[DR.cat])list=list.filter(i=>FM[DR.cat].includes(i.category));
+  const q=DR.q.trim().toLowerCase();
+  if(q)list=list.filter(i=>[i.name,setName(i.setId),(i.colors||[]).join(),i.category].join(' ').toLowerCase().includes(q));
+  const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),worn:(a,b)=>wearCount(b.id)-wearCount(a.id),press:(a,b)=>isPressed(b)-isPressed(a)||(b.createdAt||0)-(a.createdAt||0)}[DR.sort];
+  list.sort(srt);
+  if(!list.length)return `<div class="hint" style="padding:18px 0;text-align:center">沒有符合的娃衣</div>`;
+  return `<div class="drawer">${list.map(i=>`<button data-id="${i.id}" class="${on.has(i.id)?'on':''}" onclick="drawerPick('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="" loading="lazy">${isPressed(i)?'<i class="pbadge">📦</i>':''}<span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`;
+}
+function drawerRedraw(){
+  document.querySelectorAll('#dcats button').forEach(b=>b.classList.toggle('on',b.dataset.k===DR.cat));
+  document.querySelectorAll('#dsort button').forEach(b=>b.classList.toggle('on',b.dataset.k===DR.sort));
+  const el=document.getElementById('dlist');if(el)el.innerHTML=drawerListHTML();
+}
+function drawerPick(id){
+  if(UI.canvas.find(p=>p.itemId===id)){UI.canvas=UI.canvas.filter(p=>p.itemId!==id);renderCanvas()}
+  else addToCanvas(id);
+  const on=!!UI.canvas.find(p=>p.itemId===id);
+  document.querySelectorAll(`#dlist button[data-id="${id}"]`).forEach(b=>b.classList.toggle('on',on));
 }
 function addSet(sid){
   S.items.filter(i=>i.setId===sid&&i.category!=='套裝').forEach(i=>addToCanvas(i.id));
@@ -3501,6 +3708,7 @@ function drawWearSheet(){
     <div id="wpick">${wearPickHTML()}</div>
     <button class="btn wide" style="margin-top:14px" onclick="commitWear()">存入穿著紀錄</button>
   `);
+  document.querySelector('#sheet .panel').classList.add('full');
 }
 function renderCands(){
   return `<div class="card" style="margin-bottom:12px">
@@ -3545,10 +3753,10 @@ ${cat}
     toast(WEAR.cands.length?'請確認辨識結果':'沒有找到相符的娃衣');
   }catch(e){toast('辨識失敗：'+e.message)}
 }
-// 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋；只重畫這一塊，不會跳回最上面
-function wearPickHTML(){
+// 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋
+// 上面的控制列只畫一次；切換時只換下面的清單，視窗不會跳、按鈕列也不會閃
+function wearFiltered(){
   const d=S.dolls.find(x=>x.id===WEAR.dollId),FM=fmap();
-  const cats=visibleFilters().filter(f=>f!=='套裝');
   let list=S.items.filter(i=>i.category!=='套裝');
   const fitOn=!!(d&&d.size&&WEAR.fit);
   if(fitOn)list=list.filter(i=>(i.sizes||[]).includes(d.size));
@@ -3556,25 +3764,44 @@ function wearPickHTML(){
   const q=(WEAR.q||'').trim().toLowerCase();
   if(q)list=list.filter(i=>[i.name,setName(i.setId),(i.colors||[]).join(),i.category].join(' ').toLowerCase().includes(q));
   const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),name:(a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant'),worn:(a,b)=>wearCount(b.id)-wearCount(a.id)}[WEAR.sort]||(()=>0);
-  list.sort(srt);
+  return {list:list.sort(srt),d,fitOn};
+}
+function wearListHTML(){
+  const {list,d,fitOn}=wearFiltered();
+  return list.length?`<div class="pick">${list.map(i=>
+      `<button data-id="${i.id}" class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
+        <img src="${img(i)}" alt="" loading="lazy"><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
+    :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`;
+}
+function wearPickedHTML(){
   const picked=WEAR.picked.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
-  return `<div class="row" style="margin:4px 0 8px"><b class="grow" style="font-size:13.5px">手動勾選</b><span class="hint">${picked.length} 件已選</span></div>
-    ${picked.length?`<div class="wpicked">${picked.map(i=>`<button onclick="togglePick('${i.id}')" title="取消"><img src="${img(i)}" alt=""><i>×</i></button>`).join('')}</div>`:''}
-    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(WEAR.q||'')}" oninput="WEAR.q=this.value;clearTimeout(WEAR.t);WEAR.t=setTimeout(()=>{const p=this.selectionStart;document.getElementById('wpick').innerHTML=wearPickHTML();const e=document.querySelector('#wpick input[enterkeyhint]');e.focus();e.setSelectionRange(p,p)},250)" style="margin-bottom:8px">
-    <div class="chips wchips">${cats.map(c=>`<button class="chip ${WEAR.cat===c?'on':''}" onclick="WEAR.cat=decodeURIComponent('${encodeURIComponent(c)}');wearPickRedraw()">${esc(c)}</button>`).join('')}</div>
+  return picked.length?`<div class="wpicked">${picked.map(i=>`<button onclick="togglePick('${i.id}')" title="取消"><img src="${img(i)}" alt=""><i>×</i></button>`).join('')}</div>`:'';
+}
+function wearPickHTML(){
+  const d=S.dolls.find(x=>x.id===WEAR.dollId);
+  const cats=visibleFilters().filter(f=>f!=='套裝');
+  return `<div class="row" style="margin:4px 0 8px"><b class="grow" style="font-size:13.5px">手動勾選</b><span class="hint" id="wcount">${WEAR.picked.length} 件已選</span></div>
+    <div id="wpicked">${wearPickedHTML()}</div>
+    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(WEAR.q||'')}" oninput="WEAR.q=this.value;clearTimeout(WEAR.t);WEAR.t=setTimeout(wearListRedraw,200)" style="margin-bottom:8px">
+    <div class="chips wchips" id="wcats">${cats.map(c=>`<button class="chip ${WEAR.cat===c?'on':''}" data-k="${esc(c)}" onclick="WEAR.cat=this.dataset.k;wearListRedraw()">${esc(c)}</button>`).join('')}</div>
     <div class="row" style="gap:8px;margin:6px 0 10px;flex-wrap:wrap">
-      <div class="swap" style="margin:0;flex:1;min-width:220px">${[['new','最新入櫃'],['name','名稱'],['worn','最常穿']].map(([k,l])=>`<button class="${WEAR.sort===k?'on':''}" onclick="WEAR.sort='${k}';wearPickRedraw()">${l}</button>`).join('')}</div>
-      ${d&&d.size?`<label class="remember" style="margin:0"><input type="checkbox" ${WEAR.fit?'checked':''} onchange="WEAR.fit=this.checked;wearPickRedraw()"> 只看 ${esc(d.size)}</label>`:''}
+      <div class="swap" id="wsort" style="margin:0;flex:1;min-width:220px">${[['new','最新入櫃'],['name','名稱'],['worn','最常穿']].map(([k,l])=>`<button data-k="${k}" class="${WEAR.sort===k?'on':''}" onclick="WEAR.sort='${k}';wearListRedraw()">${l}</button>`).join('')}</div>
+      ${d&&d.size?`<label class="remember" style="margin:0"><input type="checkbox" ${WEAR.fit?'checked':''} onchange="WEAR.fit=this.checked;wearListRedraw()"> 只看 ${esc(d.size)}</label>`:''}
     </div>
-    ${list.length?`<div class="pick">${list.map(i=>
-      `<button class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
-        <img src="${img(i)}" alt=""><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
-      :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`}`;
+    <div id="wlist">${wearListHTML()}</div>`;
+}
+function wearListRedraw(){
+  document.querySelectorAll('#wcats button').forEach(b=>b.classList.toggle('on',b.dataset.k===WEAR.cat));
+  document.querySelectorAll('#wsort button').forEach(b=>b.classList.toggle('on',b.dataset.k===WEAR.sort));
+  const el=document.getElementById('wlist');if(el)el.innerHTML=wearListHTML();
 }
 function wearPickRedraw(){const el=document.getElementById('wpick');if(el)el.innerHTML=wearPickHTML()}
 function togglePick(id){
   WEAR.picked=WEAR.picked.includes(id)?WEAR.picked.filter(x=>x!==id):[...WEAR.picked,id];
-  if(WEAR.cands)drawWearSheet();else wearPickRedraw();
+  if(WEAR.cands){drawWearSheet();return}
+  document.querySelectorAll(`#wlist button[data-id="${id}"]`).forEach(b=>b.classList.toggle('on',WEAR.picked.includes(id)));
+  const p=document.getElementById('wpicked');if(p)p.innerHTML=wearPickedHTML();
+  const c=document.getElementById('wcount');if(c)c.textContent=WEAR.picked.length+' 件已選';
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
@@ -4139,7 +4366,7 @@ async function runBuy(file){
     buyStep('分析這件娃衣…');
     const r=parseJSON(await callAI('buy',tagPrompt(),BUY.photo));
     const t={name:r.name||'',category:r.isSet?'套裝':(r.category||'其他'),isSet:!!r.isSet,
-      colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',material:r.material||''};
+      colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',holiday:(typeof HOL_NAMES!=='undefined'&&HOL_NAMES.includes(r.holiday))?r.holiday:'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
     await buyCompare();
     spendQuota('buy');
