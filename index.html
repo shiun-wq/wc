@@ -1974,11 +1974,11 @@ function homeCards(){
   // 0. 到家紀念日
   st.annHide=st.annHide||{};
   dollAnniv().forEach(a=>{
-    const key=a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4),nm=esc(a.d.name);
-    if(st.annHide[key])return;
+    const key=annKey(a),nm=esc(a.d.name);
+    if(st.annHide[key+':'+annStage(a)])return;
     const what=annWhat(a);
     const out=(a.d.outs||[]).includes(today());
-    const hide=`<button class="x" onclick="S.settings.annHide['${key}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
+    const hide=`<button class="x" onclick="S.settings.annHide['${key}:${annStage(a)}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
       <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年，今天帶 ${nm} 出去看看吧，拍張照留下紀念。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，出去走走吧。`}</span>
@@ -1987,7 +1987,7 @@ function homeCards(){
         <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄穿搭</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
-      <b>🎈 再 ${a.left} 天就是 ${nm} ${what}</b>
+      <b>🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}</b>
       <span>${a.date?`${+a.date.slice(5,7)} 月 ${+a.date.slice(8)} 日。`:''}可以先想想那天要穿什麼、去哪裡拍照。</span>
     </section>`);
   });
@@ -2039,7 +2039,40 @@ function homeDolls(cur){
   if(cur&&!list.includes(cur))list=[cur,...list.slice(0,PIN_MAX-1)];
   return list;
 }
+/* ---- 紀念日通知 ----
+   網頁版沒有自己的伺服器推播，所以是「打開 App（或切回來）時」檢查，到了提醒點就跳系統通知。
+   iPhone 要先加到主畫面（iOS 16.4 以上）才能開通知。做成 App 後會改成準時的本機排程通知。 */
+const canNotify=()=>'Notification' in window;
+async function setNotify(on){
+  if(on){
+    if(!canNotify()){toast(isIOS()&&!isStandalone()?'iPhone 要先把娃衣衣櫃加到主畫面，從主畫面打開才能開通知':'這個瀏覽器不支援通知');return}
+    const p=await Notification.requestPermission().catch(()=>'denied');
+    if(p!=='granted'){toast('通知權限被拒絕了，要到手機的設定裡打開');return}
+  }
+  S.settings.notify=on;await save();openSettings();
+  if(on){toast('已開啟紀念日通知');notifyAnniv(true)}
+}
+async function notifyAnniv(test){
+  if(!S.settings.notify||!canNotify()||Notification.permission!=='granted')return;
+  const done=S.settings.notified=S.settings.notified||{};
+  const show=async(title,body,tag)=>{
+    try{const reg=await navigator.serviceWorker?.getRegistration();if(reg){await reg.showNotification(title,{body,tag,icon:'icons/icon-192.png',badge:'icons/favicon.png'});return}}catch(e){}
+    try{new Notification(title,{body,tag,icon:'icons/icon-192.png'})}catch(e){}
+  };
+  let n=0;
+  for(const a of dollAnniv()){
+    const k=annKey(a)+':'+annStage(a);if(done[k])continue;
+    const nm=a.d.name,what=annWhat(a);
+    if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`今天帶 ${nm} 出去看看吧，也可以做一張紀念小卡`,k);
+    else await show(`🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}`,'可以先想想那天要穿什麼、去哪裡拍照',k);
+    done[k]=Date.now();n++;
+  }
+  if(n)save();
+  else if(test===true)show('紀念日通知已開啟','娃娃的到家日、生日前 7 天、前一天和當天會提醒你','wc-test');
+}
 /* ---- 到家紀念日 ---- */
+const annKey=a=>a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4);
+const annStage=a=>a.left===0?'today':a.left===1?'tomorrow':'week';
 function annWhat(a){
   if(a.kind==='year')return `來家裡第 ${a.n} 年`;
   if(a.kind==='day')return `來家裡第 ${a.n} 天`;
@@ -2047,7 +2080,7 @@ function annWhat(a){
 }
 // 紀念小卡：沿用分享小卡的主題、比例、一句話和下載
 function openAnnCard(key){
-  let a=dollAnniv().find(x=>x.d.id+':'+x.kind+':'+(x.id||'')+':'+x.n+':'+(x.date||'').slice(0,4)===key);
+  let a=dollAnniv().find(x=>annKey(x)===key);
   if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d)a={d,kind:'day',n:homeDays(d)+1,left:0}}
   if(!a)return;
   const nm=a.d.name;
@@ -2191,7 +2224,7 @@ function drawDoll(){
     <div class="f"><span>紀念日</span>
       ${(d.dates||[]).length?`<div class="blist" style="margin-bottom:8px">${d.dates.map(x=>`<div class="rowitem"><div class="tx"><b>🎂 ${esc(x.label)}</b><span>${+x.md.slice(0,2)} 月 ${+x.md.slice(3)} 日${x.year?`・${x.year} 年`:''}・每年提醒</span></div>
         <div class="rt"><button class="btn sm ghost" onclick="DD.dates=DD.dates.filter(y=>y.id!=='${x.id}');drawDoll()">刪除</button></div></div>`).join('')}</div>`:''}
-      <div class="parts" style="margin-top:0">${['生日',...(d.attr==='has'?['角色生日']:[]),'第一次見面','其他'].map(l=>`<button type="button" class="${(UI.dtLabel||'生日')===l?'on':''}" onclick="UI.dtLabel='${l}';drawDoll()">${l}</button>`).join('')}</div>
+      <div class="parts" style="margin-top:0">${['生日','角色生日','第一次見面','其他'].map(l=>`<button type="button" class="${(UI.dtLabel||'生日')===l?'on':''}" onclick="UI.dtLabel='${l}';drawDoll()">${l}</button>`).join('')}</div>
       ${(UI.dtLabel||'生日')==='其他'?`<input type="text" id="dt_name" placeholder="紀念日名稱，例如 第一次出國" maxlength="12" style="margin-top:8px">`:''}
       <div class="row" style="margin-top:8px">
         <select id="dt_m" class="grow">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1} 月</option>`).join('')}</select>
@@ -2199,7 +2232,7 @@ function drawDoll(){
         <input type="number" id="dt_y" inputmode="numeric" placeholder="年（選填）" style="max-width:110px">
         <button type="button" class="btn sm quiet" onclick="addDollDate()">加入</button>
       </div>
-      <small class="hint">${d.attr==='has'?'有屬性的娃娃可以填角色生日。':''}到了那天首頁會提醒，提前 7 天也會預告。填了年份會顯示第幾歲。</small>
+      <small class="hint">提前 7 天和前一天會預告，當天首頁會慶祝。填了年份會顯示第幾歲。</small>
     </div>
     <label class="f"><span>備註</span><textarea id="d_note" placeholder="個性小設定、愛吃的東西…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
     <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button>
@@ -3690,10 +3723,47 @@ function renderInsight(){
       <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
-  el.innerHTML=h+matchSection()+habitSection(items)+spendSection();
+  el.innerHTML=h+matchSection()+dollStyleSection()+habitSection(items)+spendSection();
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
+// 每隻娃娃的穿搭輪廓：穿過哪些類型、風格、顏色（用穿搭紀錄算）
+function dollProfile(d){
+  const ws=dollWears(d),cat={},sty={},fam={},seen=new Set();
+  ws.forEach(w=>w.itemIds.forEach(id=>{
+    const i=anyItem(id);if(!i||i.category==='套裝')return;
+    cat[i.category]=(cat[i.category]||0)+1;
+    (i.styles||[]).forEach(x=>sty[x.name]=(sty[x.name]||0)+1);
+    new Set((i.colors||[]).map(colorFam)).forEach(f=>{if(famLabel[f])fam[f]=(fam[f]||0)+1});
+    seen.add(id);
+  }));
+  const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
+  return {d,wears:ws.length,outs:outCount(d),items:seen.size,cats:top(cat),styles:top(sty),fams:top(fam),total:Object.values(cat).reduce((a,b)=>a+b,0)};
+}
+// 會員：每隻娃娃都穿什麼、適合什麼
+function dollStyleSection(){
+  const head=`<h2 class="sec">每隻娃娃的穿搭 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>梁湛：常穿上衣、外套</b><span>休閒・酷帥・黑色系</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>小白：常穿洋裝</b><span>甜系・粉色系</span></div></div>
+    </div>
+    <div class="lk-cover"><b>每隻娃娃適合什麼風格？</b>
+      <span>看每隻娃娃出門都穿什麼類型、風格和顏色，買新娃衣時也會幫你看適合給誰</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const ps=S.dolls.map(dollProfile).filter(p=>p.wears>=2).sort((a,b)=>b.wears-a.wears);
+  if(!ps.length)return head+'<div class="hint">記錄穿搭時選擇是哪隻娃娃，每隻有 2 次以上紀錄就會出現在這裡。</div>';
+  return head+`<div class="blist">${ps.slice(0,8).map(p=>{
+    const d=p.d,pc=(n)=>Math.round(n/p.total*100);
+    const sty=p.styles.slice(0,3).map(([k])=>k),fam=p.fams.slice(0,2).map(([f])=>famLabel[f]);
+    return `<div class="rowitem" style="align-items:flex-start" onclick="openDoll('${d.id}')">
+      <div class="th">${d.photo?`<img src="${d.photo}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(d.name)}</b>
+        <span>穿搭 ${p.wears} 次・出門 ${p.outs} 次・穿過 ${p.items} 件</span>
+        <span>最常穿：${p.cats.slice(0,3).map(([k,n])=>`${esc(k)} ${pc(n)}%`).join('、')||'—'}</span>
+        ${sty.length||fam.length?`<span style="color:var(--berry-deep)">適合：${[...sty.map(esc),...fam.map(f=>f+'系')].join('・')}</span>`:''}
+      </div></div>`}).join('')}</div>`;
+}
 // 會員：穿搭習慣（星期幾、每月趨勢、最近的風格變化）
 function habitSection(items){
   const head=`<h2 class="sec">穿搭習慣 <span class="vip">會員</span></h2>`;
@@ -3899,6 +3969,7 @@ function renderBuy(){
     </div>
     <div class="note" style="margin-top:14px">${msg}</div>
     ${st?`<h2 class="sec">你的衣櫃裡</h2><div class="bstats">${st}</div>`:''}
+    ${buyDollFit(t)}
     ${group('幾乎一樣','',same)}
     ${group('同款不同色','',recolor)}
     ${group(BUY.verdict.length?'風格很像':'可能類似','',similar)}
@@ -3908,6 +3979,34 @@ function renderBuy(){
       <button class="btn grow" onclick="buyToIntake()">買了，拿去建檔</button>
     </div>
     <button class="btn ghost wide sm" style="margin-top:8px;border:none;box-shadow:none;color:var(--muted)" onclick="openBuyCheck()">再查一件</button>`;
+}
+// 這件適合給哪隻娃娃：跟每隻娃娃平常穿的類型、風格、顏色比對（在手機上算，不用 AI）
+function buyDollFit(t){
+  if(!S.dolls.length||t.category==='套裝'&&!t.styles.length)return '';
+  const head=`<h2 class="sec">適合給哪隻娃娃 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked"><div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最適合：小白</b><span>常穿甜系、粉色系</span></div></div></div>
+    <div class="lk-cover"><b>這件買給誰最適合？</b><span>依每隻娃娃平常穿的風格和顏色推薦</span><button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const tf=new Set(t.colors.map(colorFam)),ts=new Set(t.styles.map(x=>x.name));
+  const rows=S.dolls.map(dollProfile).map(p=>{
+    if(p.wears<2)return {p,score:-1,why:['穿搭紀錄還不夠，先多記幾次']};
+    let score=0;const why=[];
+    const sHit=p.styles.filter(([k])=>ts.has(k));
+    if(sHit.length){score+=sHit.reduce((a,[,n])=>a+n,0)/p.total*6;why.push(`常穿${sHit.slice(0,2).map(([k])=>k).join('、')}`)}
+    const fHit=p.fams.filter(([f])=>tf.has(f));
+    if(fHit.length){score+=fHit.reduce((a,[,n])=>a+n,0)/p.total*4;why.push(`${fHit.slice(0,2).map(([f])=>famLabel[f]).join('、')}穿過 ${fHit.reduce((a,[,n])=>a+n,0)} 次`)}
+    const c=p.cats.find(([k])=>k===t.category);
+    if(c){score+=c[1]/p.total*3;why.push(`常穿${t.category}`)}
+    else if(t.category!=='套裝'&&p.total>=4)why.push(`很少穿${t.category}`);
+    if(!sHit.length&&!fHit.length)why.push('風格和平常不太一樣，可以當新嘗試');
+    return {p,score,why};
+  }).sort((a,b)=>b.score-a.score);
+  const best=rows[0];
+  const note=best&&best.score>0.8?`看起來最適合 <strong>${esc(best.p.d.name)}</strong>。`:rows.some(r=>r.score>=0)?'跟每隻娃娃平常的風格都不太一樣，可能會變成新風格。':'';
+  return head+(note?`<div class="note">${note}</div>`:'')+`<div class="blist">${rows.slice(0,4).map((r,i)=>`<div class="rowitem" onclick="openDoll('${r.p.d.id}')">
+    <div class="th">${r.p.d.photo?`<img src="${r.p.d.photo}" alt="">`:''}</div>
+    <div class="tx"><b>${i===0&&r.score>0.8?'👑 ':''}${esc(r.p.d.name)}${r.p.d.size?`<small style="color:var(--muted);font-weight:400">　${esc(r.p.d.size)}</small>`:''}</b><span>${r.why.map(esc).join('・')}</span></div>
+    ${r.score>=0?`<div class="rt">${r.score>2.5?'很適合':r.score>0.8?'適合':'普通'}</div>`:''}</div>`).join('')}</div>
+    <p class="hint" style="margin:6px 0 0">依穿搭紀錄計算；尺寸請在建檔時再確認。</p>`;
 }
 function buyWishForm(){
   const el=document.getElementById('buyWish');if(!el)return;
@@ -4022,6 +4121,13 @@ function openSettings(){
     <h2 class="sec" style="margin-top:4px">外觀</h2>
     <div class="swap" id="s_theme">
       ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
+    </div>
+
+    <h2 class="sec">提醒</h2>
+    <div class="card">
+      <div class="row"><span class="grow" style="font-size:13.5px">紀念日通知 ${st.notify&&canNotify()&&Notification.permission==='granted'?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
+        <button class="btn sm ${st.notify?'ghost':'quiet'}" onclick="readForm();setNotify(${!st.notify})">${st.notify?'關閉':'開啟'}</button></div>
+      <p class="hint" style="margin:8px 0 0">到家日、生日這些紀念日的前 7 天、前一天和當天，會跳手機通知。網頁版是在打開娃衣衣櫃時檢查${isIOS()?'，iPhone 要先加到主畫面才能開':''}；之後做成 App 會改成準時提醒。</p>
     </div>
 
     <h2 class="sec">AI 服務</h2>
@@ -4490,6 +4596,8 @@ document.addEventListener('wheel',e=>{
   try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))navigator.storage.persist()}catch(e){}
   if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
   if(!S.settings.welcomed&&!S.items.length&&!S.dolls.length)openWelcome();
+  setTimeout(notifyAnniv,1500);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){notifyAnniv();if(UI.tab==='home')renderHome()}});
 })();
 </script>
 </body>

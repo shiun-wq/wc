@@ -1,5 +1,5 @@
 // 娃衣衣櫃的離線快取：沒網路也能打開，第一次載入過的字型和去背模型也會留著
-const VER='wc-v1';
+const VER='wc-v2';
 const SHELL=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon.png'];
 const RUNTIME=/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|storage\.googleapis\.com)\//;
 
@@ -26,4 +26,13 @@ self.addEventListener('fetch',e=>{
       return hit||net;
     }));
   }
+});
+
+// 點通知就打開（或切回）娃衣衣櫃
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(ws=>{
+    for(const w of ws)if('focus' in w)return w.focus();
+    return clients.openWindow('./');
+  }));
 });
