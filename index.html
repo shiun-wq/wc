@@ -424,6 +424,13 @@ dl.meta dd{margin:0}
 .wpicked img{width:100%;height:100%;object-fit:contain;padding:3px}
 .wpicked i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--berry);color:#fff;font-size:12px;line-height:18px;font-style:normal}
 .wchips{margin:0 -2px 2px;flex-wrap:nowrap;overflow-x:auto}
+#multiBar{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto;
+  display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.08)}
+#multiBar span{flex:1;font-size:13.5px;color:var(--ink-2)}
+.piece.msel .sw{outline:2px solid transparent;outline-offset:-2px;border-radius:inherit}
+.piece.msel.on .sw{outline-color:var(--berry)}
+.mchk{position:absolute;left:8px;top:8px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(47,37,41,.25);color:#fff;font-size:14px;line-height:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.piece.on .mchk{background:var(--berry)}
 .setmember{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border:1px solid rgba(179,144,96,.25);margin:4px 0 14px}
 .setmember i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:#B39060;font-size:20px;box-shadow:var(--sh-1)}
 .setmember span,.setrow span{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -1865,6 +1872,8 @@ function go(k,fromPop){
   }
   if(!sub)UI.lastTab=k;
   UI.tab=k;buildTabs();
+  if(k!=='closet'&&UI.multi){UI.multi=false;UI.msel=new Set()}
+  renderMultiBar();
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+k));
   document.getElementById('backbtn').hidden=!sub;
   document.getElementById('title').textContent=sub?TITLES[k]:'娃衣衣櫃';
@@ -2702,7 +2711,7 @@ function renderCloset(){
   keep.forEach(([k,x])=>{const el=document.getElementById(k);el.scrollLeft=x;chipEdge(el)});
   if(UI.cat==='套裝')list=list.filter(i=>i.category==='套裝');
   else if(FMAP[UI.cat])list=list.filter(i=>FMAP[UI.cat].includes(i.category));
-  if(q)list=list.filter(i=>[i.name,i.brand,i.shop,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
+  if(q)list=list.filter(i=>[i.name,i.brand,i.shop,i.origin,setName(i.setId),(i.colors||[]).join(),(i.motifs||[]).join(),(i.styles||[]).map(s=>s.name).join()].join(' ').toLowerCase().includes(q));
   if(UI.mode==='從未穿過')list=list.filter(i=>wearCount(i.id)===0);
   if(UI.mode==='壓箱底')list=list.filter(isPressed);
   if(UI.mode==='收藏紀念')list=list.filter(i=>i.keepsake);
@@ -2711,17 +2720,23 @@ function renderCloset(){
 
   document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${S.items.length} 件`:'';
   const el=document.getElementById('closetGrid');
+  UI.closetList=list.map(i=>i.id);UI.msel=UI.msel||new Set();
+  renderMultiBar();
   if(!list.length){
     el.innerHTML=S.items.length
       ? `<div class="empty"><strong>沒有符合的娃衣</strong>換個篩選條件看看</div>`
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  el.innerHTML=(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+  const top=`<div class="row" style="margin:0 0 10px"><span class="hint grow">${list.length} 件</span>
+    <button class="btn sm ${UI.multi?'':'ghost'}" onclick="toggleMulti()">${UI.multi?'完成選取':'☑ 多選'}</button></div>`;
+  el.style.paddingBottom=UI.multi?'70px':'';
+  el.innerHTML=top+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
     <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
-    return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
-      <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}
+    const sel=UI.multi&&UI.msel.has(i.id);
+    return `<button class="piece ${(!c)?'dim':''} ${UI.multi?'msel':''} ${sel?'on':''}" data-id="${i.id}" onclick="${UI.multi?`toggleMsel('${i.id}')`:`openItem('${i.id}')`}">
+      <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}${UI.multi?`<span class="mchk">${sel?'✓':''}</span>`:''}
         <span class="tag">${c?`穿過 ${c} 次`:'未穿過'}</span>
         ${i.keepsake?'<span class="keep">🎀</span>':isPressed(i)?'<span class="keep press" title="壓箱底">📦</span>':''}
       </div>
@@ -2731,6 +2746,49 @@ function renderCloset(){
   }).join('')+`</div>`;
 }
 
+/* ---- 衣櫃多選：批次改產地、購入日期 ---- */
+const ORIGINS=['中國','台灣','日本','韓國','泰國','越南'];
+const originList=()=>[...new Set([...ORIGINS,...S.items.map(i=>(i.origin||'').trim()).filter(Boolean)])];
+function toggleMulti(){UI.multi=!UI.multi;if(!UI.multi)UI.msel=new Set();renderCloset()}
+function toggleMsel(id){
+  UI.msel.has(id)?UI.msel.delete(id):UI.msel.add(id);
+  const b=document.querySelector(`#closetGrid .piece[data-id="${id}"]`);
+  if(b){b.classList.toggle('on',UI.msel.has(id));const k=b.querySelector('.mchk');if(k)k.textContent=UI.msel.has(id)?'✓':''}
+  renderMultiBar();
+}
+function renderMultiBar(){
+  let bar=document.getElementById('multiBar');
+  if(!UI.multi||UI.tab!=='closet'){if(bar)bar.remove();return}
+  if(!bar){bar=document.createElement('div');bar.id='multiBar';document.body.appendChild(bar)}
+  const n=UI.msel.size,all=UI.closetList&&UI.closetList.length&&UI.closetList.every(id=>UI.msel.has(id));
+  bar.innerHTML=`<span><b>${n}</b> 件已選</span>
+    <button class="btn sm ghost" onclick="${all?'UI.msel=new Set()':'UI.msel=new Set(UI.closetList)'};renderCloset()">${all?'全不選':'全選'}</button>
+    <button class="btn sm" ${n?'':'disabled'} onclick="openBatch('origin')">改產地</button>
+    <button class="btn sm" ${n?'':'disabled'} onclick="openBatch('buy')">改購入日</button>`;
+}
+function openBatch(kind){
+  const ids=[...UI.msel];if(!ids.length)return;
+  const cur=ids.map(id=>(S.items.find(x=>x.id===id)||{})[kind==='origin'?'origin':'buyDate']||'');
+  const same=cur.every(v=>v===cur[0])?cur[0]:'';
+  openSheet(kind==='origin'?`<h3>批次改產地</h3>
+    <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的產地。</p>
+    <label class="f"><span>產地</span><input type="text" id="b_val" value="${esc(same)}" placeholder="例如 中國" maxlength="20"></label>
+    <div class="parts" style="margin:-4px 0 12px">${originList().map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatch('origin',true)">清空產地</button><button class="btn grow" onclick="applyBatch('origin')">套用到 ${ids.length} 件</button></div>`
+  :`<h3>批次改購入日期</h3>
+    <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的購入日期。壓箱底會從購入日期開始算。</p>
+    <label class="f"><span>購入日期</span><input type="date" id="b_val" value="${esc(same)}" max="${today()}"></label>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatch('buy',true)">清空日期</button><button class="btn grow" onclick="applyBatch('buy')">套用到 ${ids.length} 件</button></div>`);
+}
+async function applyBatch(kind,clear){
+  const v=clear?'':document.getElementById('b_val').value.trim();
+  if(!clear&&!v){toast(kind==='origin'?'先填產地':'先選日期');return}
+  if(kind==='buy'&&v>today()){toast('購入日期不能是未來');return}
+  const ids=[...UI.msel];
+  ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(i){if(kind==='origin')i.origin=v;else i.buyDate=v}});
+  await save();closeSheet();renderCloset();
+  toast(`已${clear?'清空':'更新'} ${ids.length} 件的${kind==='origin'?'產地':'購入日期'}`);
+}
 function openItem(id){
   const i=S.items.find(x=>x.id===id);if(!i)return;
   const c=wearCount(id),l=lastWear(id);
@@ -2761,6 +2819,7 @@ function openItem(id){
       ${top.length?`<dt>最常搭配</dt><dd>${top.map(([k])=>esc((S.items.find(x=>x.id===k)||{}).name||'')).join('、')}</dd>`:''}
       ${i.brand?`<dt>品牌</dt><dd>${esc(i.brand)}</dd>`:''}
       ${i.shop?`<dt>店家</dt><dd>${esc(i.shop)}</dd>`:''}
+      ${i.origin?`<dt>產地</dt><dd>${esc(i.origin)}</dd>`:''}
       ${i.buyDate?`<dt>購入日期</dt><dd>${esc(i.buyDate)}</dd>`:''}
       ${i.price?`<dt>購入價格</dt><dd>${esc(i.price)}</dd>`:''}
       ${(i.sizes||[]).length?`<dt>適用尺寸</dt><dd>${i.sizes.map(esc).join('、')}</dd>`:''}
@@ -2815,6 +2874,8 @@ function editItem(id){
       <label class="f"><span>購入日期（選填）</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"><small class="hint">填了之後，壓箱底會從這天開始算，不填就從建檔日算。</small></label>
       <label class="f"><span>價格</span><input type="number" id="e_price" value="${esc(i.price||'')}"></label>
     </div>
+    <label class="f"><span>產地（選填）</span><input type="text" id="e_origin" list="originDL" value="${esc(i.origin||'')}" placeholder="例如 中國、台灣、日本" maxlength="20">
+      <datalist id="originDL">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
     <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
     <label class="f"><span>材質</span><input type="text" id="e_mat" value="${esc(i.material||'')}"></label>
     <label class="f"><span>備註</span><textarea id="e_note">${esc(i.note||'')}</textarea></label>
@@ -2828,7 +2889,7 @@ function editItem(id){
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.brand=v('e_brand');i.shop=v('e_shop');
-  i.buyDate=v('e_buy');i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
+  i.buyDate=v('e_buy');i.origin=v('e_origin').trim();i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
   i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>b.textContent);
   i.keepsake=document.getElementById('e_keep').classList.contains('on');
   i.keepsakeReason=v('e_kr');
