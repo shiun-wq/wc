@@ -494,10 +494,18 @@ nav.tabs button.plus.on{color:var(--berry)}
 .hname b{font-family:var(--serif);font-size:22px;font-weight:700;letter-spacing:.08em}
 .hname span{font-size:11.5px;color:var(--berry-deep);background:var(--berry-soft);padding:2px 9px;border-radius:999px}
 .hgreet{margin:2px 0 6px;color:var(--ink-2);font-size:13.5px;letter-spacing:.04em}
-.dswitch{display:flex;justify-content:center;gap:8px;margin-top:10px}
-.dswitch button{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--card);border:2px solid transparent;box-shadow:var(--sh-1);display:grid;place-items:center;font-size:13px;color:var(--ink-2)}
-.dswitch button.on{border-color:var(--berry)}
+.dswitch{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.dswitch button{display:flex;flex-direction:column;align-items:center;gap:4px;width:48px;flex:0 1 48px;min-width:0;background:none;border:0;padding:0}
+.dswitch i{width:40px;height:40px;border-radius:50%;overflow:hidden;background:var(--card);border:2px solid transparent;box-shadow:var(--sh-1);display:grid;place-items:center;font-size:13px;font-style:normal;color:var(--ink-2)}
+.dswitch button.on i{border-color:var(--berry)}
 .dswitch img{width:100%;height:100%;object-fit:cover}
+.dswitch small{font-size:10.5px;color:var(--muted);max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dswitch button.on small{color:var(--berry-deep);font-weight:600}
+.notice.party{background:linear-gradient(135deg,var(--berry-soft,#F4E7E8),var(--gold-soft));border-color:rgba(162,77,102,.25)}
+.notice.party b{font-size:15px}
+.notice .x{float:right;background:none;border:0;font-size:18px;color:var(--muted);line-height:1;margin:-4px -6px 0 8px;padding:4px}
+.dcell .pin{position:absolute;top:4px;right:6px;font-size:13px}
+.dhome{display:block;text-align:center;margin:-6px 0 12px;font-size:12.5px;color:var(--berry-deep)}
 .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
 .qa button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 2px 10px;border-radius:var(--r);background:var(--card);
   border:1px solid var(--line);box-shadow:var(--sh-1);font-size:12px;color:var(--ink-2);letter-spacing:.04em;transition:transform .18s var(--ease)}
@@ -985,7 +993,8 @@ let S={items:[],sets:[],looks:[],wears:[],dolls:[],wish:[],memory:[],settings:{}
 let UI={tab:'home',lastTab:'home',size:'全部尺寸',wishTab:'wait',cat:'全部',mode:'全部',queue:[],canvas:[],selPc:null,detailImg:'cutout'};
 
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
-const today=()=>new Date().toISOString().slice(0,10);
+// 用手機的當地日期（toISOString 是 UTC，台灣早上 8 點前會變成昨天）
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const days=d=>d?Math.floor((Date.now()-new Date(d))/864e5):null;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const slotOf=c=>(CATS.find(x=>x[0]===c)||[])[1]||null;
@@ -1912,7 +1921,8 @@ function renderHome(){
       :`<div class="hname"><b>把你的娃娃放在這裡</b></div>
       <p class="hgreet">新增娃娃後，首頁就會是娃娃的專屬舞台</p>
       <button class="btn" style="margin-top:4px" onclick="openDoll()">新增我的娃娃</button>`}
-    ${S.dolls.length>1?`<div class="dswitch">${S.dolls.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}">${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</button>`).join('')}</div>`:''}
+    ${S.dolls.length>1?(()=>{const hs=homeDolls(d);return `<div class="dswitch">${hs.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}"><i>${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</i><small>${esc(x.name)}</small></button>`).join('')}
+      ${S.dolls.length>hs.length?`<button onclick="go('dolls')" aria-label="全部娃娃"><i><span>+${S.dolls.length-hs.length}</span></i><small>全部</small></button>`:''}</div>`})():''}
   </section>
 
   ${homeCards()}
@@ -1960,6 +1970,25 @@ let INSTALL_EVT=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(UI.tab==='home')renderHome()});
 function homeCards(){
   const st=S.settings,h=[];
+  // 0. 到家紀念日
+  st.annHide=st.annHide||{};
+  dollAnniv().forEach(a=>{
+    const key=a.d.id+':'+a.kind+':'+a.n,nm=esc(a.d.name);
+    if(st.annHide[key])return;
+    const what=a.kind==='year'?`來家裡第 ${a.n} 年`:`來家裡第 ${a.n} 天`;
+    const out=(a.d.outs||[]).includes(today());
+    const hide=`<button class="x" onclick="S.settings.annHide['${key}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
+    if(a.left===0)h.push(`<section class="notice party">${hide}
+      <b>🎂 今天是 ${nm} ${what}！</b>
+      <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年，今天帶 ${nm} 出去看看吧，拍張照留下紀念。`:`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`}</span>
+      <div class="row">${out?`<button class="btn sm ghost" disabled>今天已經帶出門了 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">今天帶 ${nm} 出門</button>`}
+        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄今天穿搭</button></div>
+    </section>`);
+    else h.push(`<section class="notice">${hide}
+      <b>🎈 再 ${a.left} 天就是 ${nm} ${what}</b>
+      <span>${a.date?`${+a.date.slice(5,7)} 月 ${+a.date.slice(8)} 日。`:''}可以先想想那天要穿什麼、去哪裡拍照。</span>
+    </section>`);
+  });
   // 1. 新手引導
   const steps=[
     [S.dolls.length>0,'放上你的娃娃','首頁中間會是娃娃的舞台',"openDoll()"],
@@ -2000,6 +2029,42 @@ function openWelcome(){
   </div>`,()=>{S.settings.welcomed=true;save()});
 }
 async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
+// 首頁切換列：有釘選就顯示釘選的（最多 5 隻），沒有就顯示最常帶出門的 5 隻；目前這隻一定在裡面
+const PIN_MAX=5;
+function homeDolls(cur){
+  const pins=S.dolls.filter(d=>d.pin).slice(0,PIN_MAX);
+  let list=pins.length?pins:S.dolls.slice().sort((a,b)=>outCount(b)-outCount(a)||(a.createdAt||0)-(b.createdAt||0)).slice(0,PIN_MAX);
+  if(cur&&!list.includes(cur))list=[cur,...list.slice(0,PIN_MAX-1)];
+  return list;
+}
+/* ---- 到家紀念日 ---- */
+const dayNum=s=>{const [y,m,d]=String(s).split('-').map(Number);return Date.UTC(y,m-1,d)/864e5};
+function homeDays(d){return d.home?dayNum(today())-dayNum(d.home):null}
+// 今天或接下來 7 天內的紀念日：每年到家日，和第 100／500／1000… 天
+function dollAnniv(){
+  const t=today(),out=[];
+  S.dolls.forEach(d=>{
+    if(!d.home||!/^\d{4}-\d\d-\d\d$/.test(d.home))return;
+    const days=homeDays(d);if(days<0)return;
+    const [hy,hm,hd]=d.home.split('-').map(Number),ty=+t.slice(0,4);
+    for(const y of [ty,ty+1]){
+      const leap=(y%4===0&&y%100!==0)||y%400===0;
+      const md=hm===2&&hd===29&&!leap?'02-28':String(hm).padStart(2,'0')+'-'+String(hd).padStart(2,'0');
+      const n=y-hy,left=dayNum(y+'-'+md)-dayNum(t);
+      if(n>=1&&left>=0&&left<=7){out.push({d,kind:'year',n,left,date:y+'-'+md});break}
+    }
+    for(const m of [100,200,300,500,1000,1500,2000,3000]){
+      const left=m-1-days; // 到家那天算第 1 天
+      if(left>=0&&left<=7&&m%365)out.push({d,kind:'day',n:m,left});
+    }
+  });
+  return out.sort((a,b)=>a.left-b.left);
+}
+async function dollOutId(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  d.outs=d.outs||[];if(!d.outs.includes(today()))d.outs.push(today());
+  await save();renderHome();toast(`${d.name} 今天出門了！`);
+}
 
 /* ============================================================
    0b. 我的娃娃
@@ -2032,7 +2097,7 @@ function renderDolls(){
       ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
         const n=rank.indexOf(d.id);
         return `<button class="dcell" onclick="openDoll('${d.id}')">
-          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}
+          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}
             ${n>=0&&srt==='out'?`<span class="rank r${n+1}">${n+1}</span>`:''}</div>
           <b>${esc(d.name)}</b>
           <span>${srt==='wear'?`換裝 ${dollWears(d).length} 次`:srt==='price'&&d.price?`$${(+d.price).toLocaleString()}`:`出門 ${outCount(d)} 次`}</span>
@@ -2067,6 +2132,7 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
+    ${saved&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天</span>`:''}
     ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
       <div><b>${outCount(saved)}</b><span>出門次數</span></div>
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
@@ -2090,7 +2156,9 @@ function drawDoll(){
       <label class="f"><span>角色</span><input type="text" value="${esc(d.chara||'')}" placeholder="例如 日向翔陽" oninput="DD.chara=this.value"></label>
     </div>`:''}
     <label class="f"><span>備註</span><textarea id="d_note" placeholder="個性小設定、愛吃的東西…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
-    <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button></div></label>
+    <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button>
+      <button type="button" class="${d.pin?'on':''}" onclick="togglePinDD(this)">📌 釘選在首頁</button></div>
+      <small class="hint">首頁下方的娃娃切換列最多放 ${PIN_MAX} 隻（目前釘選 ${S.dolls.filter(x=>x.pin&&x.id!==d.id).length+(d.pin?1:0)} 隻）。都沒釘選時，會自動放最常帶出門的 ${PIN_MAX} 隻。</small></label>
     <button class="btn wide" onclick="saveDoll()">儲存</button>
     ${saved?`<button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delDoll('${saved.id}')">刪除這隻娃娃</button>`:''}`);
 }
@@ -2103,6 +2171,10 @@ async function cutDoll(btn){
   const m=await pickCut();drawDoll();prog('娃娃去背中…');
   try{const src=DD.raw||DD.photo;const r=await cutout(src,m,DOLL_PROMPT);DD.raw=src;DD.photo=r.sticker;drawDoll();toast('去背完成')}
   catch(e){toast(e.message);drawDoll()}
+}
+function togglePinDD(btn){
+  if(!DD.pin&&S.dolls.filter(x=>x.pin&&x.id!==DD.id).length>=PIN_MAX){toast(`首頁最多釘選 ${PIN_MAX} 隻，先到其他娃娃取消釘選`);return}
+  DD.pin=!DD.pin;btn.classList.toggle('on',DD.pin);
 }
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
