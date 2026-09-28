@@ -922,7 +922,7 @@ nav.tabs button.plus.on{color:var(--berry)}
         <input type="text" id="q" placeholder="搜尋名稱、品牌、標籤" oninput="renderCloset()">
       </div>
       <button class="buybar" onclick="openBuyCheck()">
-        <i></i><span><b>買前檢查</b>想買新娃衣？先看看衣櫃裡有沒有類似的</span><em>›</em>
+        <i></i><span><b>買前檢查 <span class="vip">會員</span></b>想買新娃衣？先看看衣櫃裡、以前賣掉的有沒有類似的</span><em>›</em>
       </button>
       <div class="chips" id="catchips"></div>
       <div class="chips" id="viewchips"></div>
@@ -1604,7 +1604,7 @@ function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.m
    ============================================================ */
 const QUOTA={
   tag:{name:'AI 建檔分析',free:10,member:150},
-  buy:{name:'買前檢查',free:3,member:30},
+  buy:{name:'買前檢查',free:0,member:30,memberOnly:true},
   img:{name:'AI 出圖去背',free:0,member:30},
   wearid:{name:'穿搭照辨識',free:3,member:50},
   idea:{name:'AI 搭配建議',free:3,member:50}
@@ -1620,9 +1620,17 @@ function spendQuota(k){
   updateWalletChip();
 }
 function needQuota(k){
+  if(QUOTA[k].memberOnly&&!isMember()){memberOnly(k);return false}
   if(quotaLeft(k)>0)return true;
   if(wallet().points>=POINT_COST[k]){if(usage().pts)return true;askPoints(k);return false}
   quotaBlocked(k);return false;
+}
+// 會員限定的功能：不給免費額度，也不能用點數
+function memberOnly(k){
+  openSheet(`<h3>${QUOTA[k].name}是會員功能</h3>
+    <div class="note">${k==='buy'?'下單前幫你比對：衣櫃裡有沒有幾乎一樣、同款不同色的，還在路上的訂單，以及<b>以前賣掉的娃衣裡有沒有很像的</b>，避免買了又賣。':''}</div>
+    <p class="hint" style="margin:10px 0 0">會員每月可以檢查 ${QUOTA[k].member} 次。</p>
+    <button class="btn wide" style="margin-top:14px" onclick="closeSheet();openMember()">了解會員</button>`);
 }
 function quotaBlocked(k){
   const q=QUOTA[k];
@@ -1684,6 +1692,7 @@ function renderWallet(){
   <h2 class="sec">本月還可以用</h2>
   <div class="blist">${Object.entries(QUOTA).map(([k,q])=>{
     const left=quotaLeft(k),max=quotaMax(k);
+    if(q.memberOnly&&!isMember())return `<div class="qrow"><div><b>${q.name}</b><span>會員限定・每月 ${q.member} 次</span></div><div class="qbar"><i style="width:0%"></i></div></div>`;
     return `<div class="qrow"><div><b>${q.name}</b><span>${max?`${isMember()?'會員':'免費'}額度 ${left} / ${max}`:'沒有免費額度'}・之後每次 ${POINT_COST[k]} 點</span></div>
       <div class="qbar"><i style="width:${max?left/max*100:0}%"></i></div></div>`}).join('')}</div>
   <p class="hint" style="margin-top:8px">額度每月 1 號重置。額度用完才會扣點數，點數不會過期。</p>
@@ -4053,7 +4062,7 @@ function openMember(){
       <div><span>穿搭習慣分析</span><b>—</b><b>✓</b></div>
       <div><span>花費分析</span><b>—</b><b>✓</b></div>
     </div>
-    <p class="hint" style="margin:10px 0 0">不想訂閱也可以用點數：建檔分析、穿搭辨識 1 點，買前檢查 3 點，AI 出圖 5 點。會員每月多出的額度大約等於 ${memberValue()} 點。</p>
+    <p class="hint" style="margin:10px 0 0">不想訂閱也可以用點數：建檔分析、穿搭辨識 1 點，AI 出圖 5 點。買前檢查是會員限定（會員額度用完後 3 點一次）。會員每月多出的額度大約等於 ${memberValue()} 點。</p>
     <p class="hint" style="margin:10px 0 0">衣櫃、建檔、簡易去背、修補筆刷、搭配、穿搭紀錄、娃娃櫃、考慮中、分享小卡、備份都一直免費。</p>
     <div class="note" style="margin-top:12px">網頁版目前是測試階段，可以直接開啟會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
     <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
@@ -4832,6 +4841,7 @@ const famLabel={'粉':'粉色','紅':'紅色','橘':'橘色','黃':'黃色','綠
 const idle=i=>{const l=lastWear(i.id);return !l||days(l)>180};
 
 function openBuyCheck(){
+  if(!isMember())return memberOnly('buy');
   if(!aiReady()){toast(aiMissing());return}
   BUY.photo=null;BUY.wishId=null;
   openSheet(`<h3>買前檢查</h3>
@@ -4910,15 +4920,34 @@ async function runBuy(file){
       <button class="btn ghost wide" style="margin-top:12px" onclick="openBuyCheck()">重新選照片</button>`;
   }finally{BUY.busy=false}
 }
+const GONE_REASONS=['賣掉了','送人了','交換了'];
+// 以前賣掉、送走的類似娃衣
+function buySoldHTML(){
+  const ai=(BUY.soldV||[]).length||(BUY.verdict||[]).length;
+  const list=ai?(BUY.soldV||[]).filter(v=>v.level!=='different'):(BUY.sold||[]).slice(0,2).map(x=>({it:x.i,level:'similar',reason:''}));
+  if(!list.length)return '';
+  const lv={same:'幾乎一樣',recolor:'同款不同色',similar:'風格很像'},strong=list.some(v=>v.level==='same'||v.level==='recolor');
+  return `<h2 class="sec">以前賣掉的</h2>
+    <div class="note">${strong?'你以前<b>賣掉過很像的</b>。':'以前送走的娃衣裡有類似的。'}當時為什麼讓它離開？如果是不常穿或不好搭，這件可能也會一樣，想清楚再下單。</div>
+    <div class="blist">${list.map(v=>{const i=v.it,w=wearCount(i.id);
+      return `<div class="rowitem"><div class="th"><img src="${img(i)}" alt=""></div>
+        <div class="tx"><b>${esc(i.name)}</b><span>${ai?lv[v.level]||'':'可能類似'}${v.reason?'・'+esc(v.reason):''}</span>
+          <span>${esc(i.reason||'')} ${esc(i.archivedAt||'')}・穿過 ${w} 次${i.soldPrice?`・賣了 ${fmt$(money(i.soldPrice))}`:''}</span>
+          ${i.memo?`<span>「${esc(i.memo)}」</span>`:''}</div></div>`}).join('')}</div>`;
+}
 async function buyCompare(){
   const t=BUY.t;
   const pool=S.items.filter(i=>i.category!=='套裝'||t.isSet);
   const cands=pool.map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=3&&img(x.i)).sort((a,b)=>b.s-a.s).slice(0,8);
+  // 以前賣掉／送走的也拿來比：很像的話提醒，避免買了又賣
+  const sold=S.memory.filter(i=>GONE_REASONS.includes(i.reason)&&(i.category!=='套裝'||t.isSet))
+    .map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=3&&img(x.i)).sort((a,b)=>b.s-a.s).slice(0,3);
   let verdict=[];
-  if(cands.length){
-    buyStep(`跟衣櫃裡最像的 ${cands.length} 件比對中…`);
-    const imgs=[await thumb(BUY.photo,512),...await Promise.all(cands.map(x=>thumb(img(x.i),320)))];
-    const prompt=`第 1 張是使用者想買的娃衣，後面第 2 到第 ${cands.length+1} 張是使用者衣櫃裡已經有的（編號 1 到 ${cands.length}）。
+  const all=[...cands,...sold];
+  if(all.length){
+    buyStep(`跟衣櫃裡${sold.length?'和以前賣掉的':''}最像的 ${all.length} 件比對中…`);
+    const imgs=[await thumb(BUY.photo,512),...await Promise.all(all.map(x=>thumb(img(x.i),320)))];
+    const prompt=`第 1 張是使用者想買的娃衣，後面第 2 到第 ${all.length+1} 張是使用者有過的娃衣（編號 1 到 ${all.length}）。
 逐一比較想買的這件跟每一件，只回傳 JSON 陣列，不要其他文字：
 [{"n":編號,"level":"same 或 recolor 或 similar 或 different","reason":"15字內的中文理由"}]
 level 定義：
@@ -4928,10 +4957,10 @@ similar：款式不同，但風格、元素或配色很像
 different：沒什麼關係`;
     try{
       const out=parseJSON(await callAIImgs('buy',prompt,imgs));
-      verdict=(Array.isArray(out)?out:[]).map(v=>({...v,it:cands[(+v.n)-1]?.i})).filter(v=>v.it);
+      verdict=(Array.isArray(out)?out:[]).map(v=>({...v,it:all[(+v.n)-1]?.i,sold:(+v.n)>cands.length})).filter(v=>v.it);
     }catch(e){toast('圖片比對失敗，先只顯示標籤統計')}
   }
-  BUY.verdict=verdict;BUY.cands=cands;
+  BUY.verdict=verdict.filter(v=>!v.sold);BUY.soldV=verdict.filter(v=>v.sold);BUY.cands=cands;BUY.sold=sold;
   renderBuy();
 }
 function renderBuy(){
@@ -4969,7 +4998,9 @@ function renderBuy(){
   const similar=BUY.verdict.length?by('similar'):BUY.cands.slice(0,4).map(x=>({it:x.i,reason:''}));
 
   let msg;
-  if(same.length)msg='衣櫃裡好像已經有幾乎一樣的了，下單前可以先翻出來對照看看。';
+  const soldStrong=(BUY.soldV||[]).some(v=>v.level==='same'||v.level==='recolor');
+  if(soldStrong&&!same.length)msg='你以前賣掉過很像的一件，先看看下面「以前賣掉的」，想想當時為什麼賣掉。';
+  else if(same.length)msg='衣櫃裡好像已經有幾乎一樣的了，下單前可以先翻出來對照看看。';
   else if(recolor.length)msg='有同款不同色的。如果你在收包色，這件剛好可以補上；如果不是，也可以想想會不會跟它們撞在一起。';
   else if(similar.length)msg='沒有一樣的，但有幾件風格很接近，可以想想這件能不能帶來新的搭配。';
   else msg='衣櫃裡沒有類似的，這件會是新面孔。';
@@ -4987,6 +5018,7 @@ function renderBuy(){
     </div>
     <div class="note" style="margin-top:14px">${msg}</div>
     ${st?`<h2 class="sec">你的衣櫃裡</h2><div class="bstats">${st}</div>`:''}
+    ${buySoldHTML()}
     ${buyOrdersHTML(t)}
     ${buyDollFit(t)}
     ${group('幾乎一樣','',same)}
@@ -5188,7 +5220,7 @@ const HELP=[
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','到貨後按「拿去建檔」就好。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','以前賣掉、送走的娃衣裡有很像的也會提醒你，避免買了又賣。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','到貨後按「拿去建檔」就好。']],
   ['📦','壓箱底・狀況・出售',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['買來 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','賣掉後移到回憶箱，會記下賣了多少錢。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
