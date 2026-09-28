@@ -268,6 +268,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 .sheet.on{display:block}
 .sheet .scrim{position:absolute;inset:0;background:rgba(47,37,41,.38);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade .25s ease}
 @keyframes fade{from{opacity:0}}
+.sheet .scrim{touch-action:none}
 .sheet .panel{
   position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;
   background:var(--paper);border-radius:26px 26px 0 0;max-height:92vh;max-height:92dvh;overflow-y:auto;
@@ -355,7 +356,12 @@ dl.meta dd{margin:0}
 .pc .rh::after{content:"";position:absolute;inset:-10px}
 .ctrl{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-top:12px;box-shadow:var(--sh-1)}
 .ctrl input[type=range]{width:100%;accent-color:var(--berry);height:28px}
-.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:220px;overflow-y:auto;margin-top:10px}
+.drawer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.drawer:not(.dolls) button{aspect-ratio:auto;display:flex;flex-direction:column}
+.drawer:not(.dolls) button img{aspect-ratio:1;height:auto}
+.drawer .cap{display:block;font-size:10px;padding:0 4px 4px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drawer button.on{border:2px solid var(--berry);background:var(--berry-soft)}
+.drawer.dolls{max-height:none}
 .drawer button{aspect-ratio:1;border-radius:12px;background:var(--swatch);overflow:hidden;border:1px solid var(--line);transition:transform .18s var(--ease)}
 .drawer button:active{transform:scale(.94)}
 .drawer button img{width:100%;height:100%;object-fit:contain;padding:5px}
@@ -1888,15 +1894,21 @@ function openSheet(html,onClose){
   document.getElementById('sheetBody').innerHTML=html;
   sh.querySelector('.panel').classList.remove('full');
   if(!NAV.open){
-    NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;
+    NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;lockScroll(true);
     history.pushState({sheet:1},'');
   }
 }
+// 視窗打開時把背後的頁面鎖住：手指滑動只會捲視窗，不會捲到後面（iPhone 要用 position:fixed 才鎖得住）
+function lockScroll(on){
+  const b=document.body;
+  if(on){if(b.dataset.lock)return;const y=window.scrollY;b.dataset.lock=y;b.style.position='fixed';b.style.top=-y+'px';b.style.left='0';b.style.right='0';b.style.overflow='hidden'}
+  else{if(!b.dataset.lock)return;const y=+b.dataset.lock;delete b.dataset.lock;b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.overflow='';window.scrollTo(0,y)}
+}
 function hideSheet(){
   // 設定畫面沒按「保存」就關掉時，也把填好的內容存起來
-  const wasSettings=!!document.getElementById('s_endpoint');
+  const wasSettings=!!document.querySelector('#sheetBody .setrow,#sheetBody .sethead,#s_endpoint');
   if(wasSettings){readForm();save()}
-  NAV.open=false;document.getElementById('sheet').classList.remove('on');
+  NAV.open=false;document.getElementById('sheet').classList.remove('on');lockScroll(false);
   const cb=NAV.onClose;NAV.onClose=null;if(cb)cb();
   // 設定改了類別、尺寸等，關掉後讓目前的頁面重畫
   if(wasSettings){const k=UI.tab;if(k==='closet')renderCloset();else if(k==='intake')renderQueue();else if(k==='home')renderHome()}
@@ -2410,11 +2422,19 @@ async function recheckWish(id){
    壓箱底：自動判斷（建檔 60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
    回憶箱：賣掉、送人、壞掉的娃衣移到 S.memory，衣櫃和分析都不再算它們
    ============================================================ */
+// 用手機今天的日期算。使用者也可以手動放進去（press:'on'）或拿出來（press:'off'），手動的優先
+const PRESS_NEW=60,PRESS_IDLE=180;
 function isPressed(i){
-  if(i.keepsake||i.category==='套裝')return false;
+  if(i.press==='on')return true;
+  if(i.press==='off'||i.keepsake||i.category==='套裝')return false;
   const l=lastWear(i.id);
-  if(l)return days(l)>=180;
-  return (Date.now()-(i.createdAt||Date.now()))/864e5>=60;
+  if(l)return days(l)>=PRESS_IDLE;
+  return (Date.now()-(i.createdAt||Date.now()))/864e5>=PRESS_NEW;
+}
+async function setPress(id,v){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  i.press=v;await save();openItem(id);renderCloset();if(UI.tab==='home')renderHome();
+  toast(v==='on'?'已放進壓箱底 📦':v==='off'?'已從壓箱底拿出來':'改回自動判斷');
 }
 const MEM_REASONS=['賣掉了','送人了','交換了','壞掉了','遺失了','其他'];
 function anyItem(id){return S.items.find(x=>x.id===id)||S.memory.find(x=>x.id===id)}
@@ -2692,7 +2712,8 @@ function renderCloset(){
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  el.innerHTML=(UI.mode==='壓箱底'?`<button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
+  el.innerHTML=(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">建檔 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+    <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
     return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
       <div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}
@@ -2741,6 +2762,9 @@ function openItem(id){
       ${i.material?`<dt>材質</dt><dd>${esc(i.material)}</dd>`:''}
       ${i.season?`<dt>季節</dt><dd>${esc(i.season)}</dd>`:''}
       ${i.keepsake?`<dt>收藏紀念</dt><dd>${esc(i.keepsakeReason||'已標記')}</dd>`:''}
+      ${i.category!=='套裝'?`<dt>壓箱底</dt><dd>${isPressed(i)?'📦 是':'否'}${i.press?'（手動）':'（自動）'}
+        <button class="btn sm ghost" style="margin-left:6px;padding:4px 10px" onclick="setPress('${id}',${isPressed(i)?"'off'":"'on'"})">${isPressed(i)?'拿出來':'放進去'}</button>
+        ${i.press?`<button class="btn sm ghost" style="padding:4px 10px" onclick="setPress('${id}',null)">改回自動</button>`:''}</dd>`:''}
       ${i.note?`<dt>備註</dt><dd>${esc(i.note)}</dd>`:''}
     </dl>
     <div class="divider"></div>
@@ -3194,23 +3218,48 @@ function layerPiece(d){
 }
 function removePiece(){UI.canvas.splice(UI.selPc,1);UI.selPc=null;renderCanvas()}
 function clearCanvas(){UI.canvas=[];UI.selPc=null;renderCanvas()}
+// 搭配頁「加入娃衣」：上面控制列畫一次，切換只換下面的清單；清單不再有自己的捲軸，整個視窗一起捲
+const DR={cat:'全部',sort:'new',q:''};
 function openDrawer(){
   const sets=S.sets.filter(s=>S.items.some(i=>i.setId===s.id&&i.category!=='套裝'));
-  let list=S.items.filter(i=>i.category!=='套裝');
-  if(UI.pressFirst)list=list.slice().sort((a,b)=>isPressed(b)-isPressed(a));
+  const cats=visibleFilters().filter(f=>f!=='套裝');
   openSheet(`
     <h3>加入娃衣</h3>
     ${S.dolls.some(d=>d.photo)?`<div class="hint" style="margin-bottom:6px">放上娃娃（會在最底層，衣服可以直接拖到身上）：</div>
       <div class="drawer dolls" style="margin:0 0 12px">${S.dolls.filter(d=>d.photo).map(d=>`<button onclick="addDollToCanvas('${d.id}');closeSheet()" class="${canvasDoll()===d.id?'on':''}"><img src="${d.photo}" alt=""><i class="dn">${esc(d.name)}</i></button>`).join('')}</div>`
       :`<p class="hint" style="margin:0 0 12px">到娃娃櫃幫娃娃放一張去背照片，就可以把娃娃放上畫布試穿。</p>`}
-    <label class="remember" style="margin:0 0 10px"><input type="checkbox" ${UI.pressFirst?'checked':''} onchange="UI.pressFirst=this.checked;openDrawer()"> 壓箱底的娃衣排前面，給它們一點出場機會 📦</label>
     ${sets.length?`<div class="hint" style="margin-bottom:8px">整套加入：</div>
-      <div class="chips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}')">${esc(s.name)}</button>`).join('')}</div>`:''}
-    <div class="hint" style="margin:6px 0">單件加入（點一下就放上畫布）：</div>
-    <div class="drawer">${list.map(i=>
-      `<button onclick="addToCanvas('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="">${isPressed(i)?'<i class="pbadge">📦</i>':''}</button>`).join('')}</div>
-    <button class="btn wide" style="margin-top:12px" onclick="closeSheet()">完成</button>
+      <div class="chips wchips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}');drawerRedraw()">${esc(s.name)}</button>`).join('')}</div>`:''}
+    <div class="hint" style="margin:10px 0 6px">單件加入（點一下放上畫布，再點一下拿掉）：</div>
+    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(DR.q)}" oninput="DR.q=this.value;clearTimeout(DR.t);DR.t=setTimeout(drawerRedraw,200)" style="margin-bottom:8px">
+    <div class="chips wchips" id="dcats">${cats.map(c=>`<button class="chip ${DR.cat===c?'on':''}" data-k="${esc(c)}" onclick="DR.cat=this.dataset.k;drawerRedraw()">${esc(c)}</button>`).join('')}</div>
+    <div class="swap" id="dsort" style="margin:6px 0 10px">${[['new','最新入櫃'],['worn','最常穿'],['press','壓箱底優先 📦']].map(([k,l])=>`<button data-k="${k}" class="${DR.sort===k?'on':''}" onclick="DR.sort='${k}';drawerRedraw()">${l}</button>`).join('')}</div>
+    <div id="dlist">${drawerListHTML()}</div>
+    <button class="btn wide" style="margin-top:12px;position:sticky;bottom:0" onclick="closeSheet()">完成</button>
   `);
+  document.querySelector('#sheet .panel').classList.add('full');
+}
+function drawerListHTML(){
+  const FM=fmap(),on=new Set(canvasItemIds());
+  let list=S.items.filter(i=>i.category!=='套裝');
+  if(DR.cat!=='全部'&&FM[DR.cat])list=list.filter(i=>FM[DR.cat].includes(i.category));
+  const q=DR.q.trim().toLowerCase();
+  if(q)list=list.filter(i=>[i.name,setName(i.setId),(i.colors||[]).join(),i.category].join(' ').toLowerCase().includes(q));
+  const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),worn:(a,b)=>wearCount(b.id)-wearCount(a.id),press:(a,b)=>isPressed(b)-isPressed(a)||(b.createdAt||0)-(a.createdAt||0)}[DR.sort];
+  list.sort(srt);
+  if(!list.length)return `<div class="hint" style="padding:18px 0;text-align:center">沒有符合的娃衣</div>`;
+  return `<div class="drawer">${list.map(i=>`<button data-id="${i.id}" class="${on.has(i.id)?'on':''}" onclick="drawerPick('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="" loading="lazy">${isPressed(i)?'<i class="pbadge">📦</i>':''}<span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`;
+}
+function drawerRedraw(){
+  document.querySelectorAll('#dcats button').forEach(b=>b.classList.toggle('on',b.dataset.k===DR.cat));
+  document.querySelectorAll('#dsort button').forEach(b=>b.classList.toggle('on',b.dataset.k===DR.sort));
+  const el=document.getElementById('dlist');if(el)el.innerHTML=drawerListHTML();
+}
+function drawerPick(id){
+  if(UI.canvas.find(p=>p.itemId===id)){UI.canvas=UI.canvas.filter(p=>p.itemId!==id);renderCanvas()}
+  else addToCanvas(id);
+  const on=!!UI.canvas.find(p=>p.itemId===id);
+  document.querySelectorAll(`#dlist button[data-id="${id}"]`).forEach(b=>b.classList.toggle('on',on));
 }
 function addSet(sid){
   S.items.filter(i=>i.setId===sid&&i.category!=='套裝').forEach(i=>addToCanvas(i.id));
