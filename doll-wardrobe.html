@@ -2419,7 +2419,7 @@ async function recheckWish(id){
 
 /* ============================================================
    0d. 壓箱底 + 回憶箱
-   壓箱底：自動判斷（建檔 60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
+   壓箱底：自動判斷（從購入日期、沒填就從建檔日算，60 天以上都沒穿，或 180 天以上沒穿；紀念品不算）
    回憶箱：賣掉、送人、壞掉的娃衣移到 S.memory，衣櫃和分析都不再算它們
    ============================================================ */
 // 用手機今天的日期算。使用者也可以手動放進去（press:'on'）或拿出來（press:'off'），手動的優先
@@ -2429,7 +2429,12 @@ function isPressed(i){
   if(i.press==='off'||i.keepsake||i.category==='套裝')return false;
   const l=lastWear(i.id);
   if(l)return days(l)>=PRESS_IDLE;
-  return (Date.now()-(i.createdAt||Date.now()))/864e5>=PRESS_NEW;
+  return (Date.now()-pressStart(i))/864e5>=PRESS_NEW;
+}
+// 從哪天開始算「買來都沒穿」：有填購入日期就用購入日期（很多娃衣早在用 App 之前就買了），沒有才用建檔日
+function pressStart(i){
+  if(/^\d{4}-\d\d-\d\d$/.test(i.buyDate||'')){const t=Date.UTC(...i.buyDate.split('-').map((v,k)=>k===1?v-1:+v));if(t<=Date.now())return t-8*3600e3}
+  return i.createdAt||Date.now();
 }
 async function setPress(id,v){
   const i=S.items.find(x=>x.id===id);if(!i)return;
@@ -2712,7 +2717,7 @@ function renderCloset(){
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  el.innerHTML=(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">建檔 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+  el.innerHTML=(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
     <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
     return `<button class="piece ${(!c)?'dim':''}" onclick="openItem('${i.id}')">
@@ -2807,7 +2812,7 @@ function editItem(id){
       <label class="f"><span>店家</span><input type="text" id="e_shop" value="${esc(i.shop||'')}"></label>
     </div>
     <div class="split">
-      <label class="f"><span>購入日期</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"></label>
+      <label class="f"><span>購入日期（選填）</span><input type="date" id="e_buy" value="${esc(i.buyDate||'')}"><small class="hint">填了之後，壓箱底會從這天開始算，不填就從建檔日算。</small></label>
       <label class="f"><span>價格</span><input type="number" id="e_price" value="${esc(i.price||'')}"></label>
     </div>
     <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
