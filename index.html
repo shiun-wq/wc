@@ -405,6 +405,10 @@ dl.meta dd{margin:0}
 .rowitem:last-child{border:none}
 .rowitem .th{width:52px;height:52px;flex:0 0 52px;border-radius:14px;background:var(--swatch);overflow:hidden;border:1px solid var(--line)}
 .rowitem .th img{width:100%;height:100%;object-fit:contain;padding:4px}
+.qsize.need button{border-color:var(--berry);border-style:dashed}
+.needtip{color:var(--berry-deep);margin:4px 0 0;font-size:12px}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.qsize.shake{animation:shake .45s}
 .cfam{display:flex;flex-wrap:wrap;gap:7px}
 .cfam span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
 .cfam i{width:12px;height:12px;border-radius:50%;border:1px solid var(--line-2)}
@@ -2616,7 +2620,8 @@ function renderQueue(){
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
-        <div class="parts" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
+        <div class="parts qsize ${(q.sizes||[]).length?'':'need'}" id="qsize${n}" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
+        ${(q.sizes||[]).length?'':`<div class="hint needtip">請選尺寸（可以複選），沒選不能建檔</div>`}
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
@@ -2804,6 +2809,15 @@ async function analyze(n){
 async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length&&await analyze(i)===false)break}}
 
 async function commitQueue(){
+  // 尺寸一定要選：之後的分析、買前檢查「適合哪隻娃娃」都靠它
+  const noSize=UI.queue.map((q,i)=>(q.sizes||[]).length?-1:i).filter(i=>i>=0);
+  if(noSize.length){
+    renderQueue();
+    toast(`有 ${noSize.length} 件還沒選尺寸，選好才能建檔`);
+    const el=document.getElementById('qsize'+noSize[0]);
+    if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake')}
+    return;
+  }
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   let n=0;
