@@ -3262,6 +3262,7 @@ function openBatchMenu(){
       ${row('untag','✂️','移除標籤','把選到的娃衣拿掉某個標籤')}
       ${row('holiday','🎄','節日主題','聖誕節、新年、萬聖節…')}
       ${row('cat','🗂️','類型','上衣、裙子、自訂類別…')}
+      ${row('size','📏','尺寸','10cm、20cm…（單選）')}
     </div>
     <div class="setgroup" style="margin-top:10px">
       ${row('brand','🏷','品牌','')}
@@ -3358,7 +3359,7 @@ async function bigDo(){
   await save();closeSheet();renderCloset();if(UI.tab==='home')renderHome();
   toast(kind==='press'?`已更新 ${its.length} 件`:kind==='sell'?`${its.length} 件移到回憶箱了`:`已刪除 ${its.length} 件`);
 }
-const BATCH={brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
+const BATCH={size:['尺寸','sizes'],brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
 function openBatch(kind){
   const ids=[...UI.msel];if(!ids.length)return;
   if(!['origin','buy'].includes(kind))return openBatch2(kind,ids);
@@ -3382,6 +3383,10 @@ function openBatch2(kind,ids){
   if(kind==='brand'){const brands=[...new Set(S.items.map(i=>(i.brand||'').trim()).filter(Boolean))];
     h=`<h3>批次改品牌</h3><label class="f"><span>品牌</span><input type="text" id="b_val" maxlength="30" placeholder="例如 某某娃衣屋"></label>
     ${brands.length?`<div class="parts" style="margin:-4px 0 12px">${brands.map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>`:''}${apply('清空品牌')}`}
+  if(kind==='size')h=`<h3>批次改尺寸</h3><p class="hint" style="margin:-6px 0 12px">選一個尺寸，這 ${ids.length} 件原本的尺寸會換成它。${UI.batchSet!==false&&batchHasSet()?'選到的套裝，拆出來的單品也會一起改。':''}</p>
+    <div class="parts" id="b_size">${sizes().map(z=>`<button type="button" onclick="document.querySelectorAll('#b_size button').forEach(b=>b.classList.toggle('on',b===this));document.getElementById('b_val').value=this.textContent">${esc(z)}</button>`).join('')}</div>
+    <input type="hidden" id="b_val" value="">
+    <button class="btn wide" style="margin-top:12px" onclick="applyBatch('size')">套用</button>`;
   if(kind==='cat')h=`<h3>批次改類型</h3><p class="hint" style="margin:-6px 0 12px">想要新的類型（例如 日卡套裝、和服），先到 設定 → 衣櫃類別 新增。</p>
     <label class="f"><span>類型</span><select id="b_val">${allCats().filter(c=>c!=='套裝').map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>${apply('取消').replace(`applyBatch('cat',true)`,'openBatchMenu()')}`;
   if(kind==='holiday')h=`<h3>批次設定節日主題</h3><p class="hint" style="margin:-6px 0 12px">節日服一年才穿一次，壓箱底會放寬到 13 個月；節日前 3 週首頁會提醒你。</p>
@@ -3396,10 +3401,11 @@ function openBatch2(kind,ids){
   openSheet(back+h);
 }
 async function applyBatch(kind,clear,arg){
-  if(['brand','cat','holiday','tag','untag'].includes(kind)){
+  if(['size','brand','cat','holiday','tag','untag'].includes(kind)){
     const ids=kind==='cat'?[...UI.msel]:batchIds(),v=arg||(clear?'':(document.getElementById('b_val')||{}).value||'').trim();
-    if(!clear&&!v&&kind!=='untag'){toast('先填內容');return}
+    if(!clear&&!v&&kind!=='untag'){toast(kind==='size'?'先選一個尺寸':'先填內容');return}
     ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i)return;
+      if(kind==='size'&&v)i.sizes=[v];
       if(kind==='brand')i.brand=v;
       if(kind==='cat'&&v)i.category=v;
       if(kind==='holiday')i.holiday=clear?'':v;
@@ -3573,6 +3579,17 @@ function syncToMates(i,before){
   });
   return mates.length;
 }
+// 單品名稱是「套裝名－上衣」：把前面的套裝名換成現在的名字
+// 以前改過名但沒同步的，也看單品們共同的前綴來修正
+function renameMates(i,oldName){
+  const mates=setMates(i),pre=m=>{const k=m.name.indexOf('－');return k>0?m.name.slice(0,k):null};
+  const cnt={};mates.forEach(m=>{const p=pre(m);if(p)cnt[p]=(cnt[p]||0)+1});
+  const common=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+  const olds=new Set([oldName,setName(i.setId),common].filter(Boolean));
+  let n=0;
+  mates.forEach(m=>{const p=pre(m);if(p&&p!==i.name&&olds.has(p)){m.name=i.name+m.name.slice(p.length);n++}});
+  return n;
+}
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
   const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]])))),oldName=i.name;
@@ -3585,10 +3602,9 @@ async function saveEdit(id){
   const doSync=i.category==='套裝'&&(!sync||sync.checked);
   let n=doSync?syncToMates(i,before):0;
   // 改套裝名稱：單品是「套裝名－上衣」，前面的套裝名一起換
-  if(doSync&&i.name.trim()&&i.name!==oldName){
+  if(doSync&&i.name.trim()){
+    const r=renameMates(i,oldName);if(r)n=Math.max(n,r);
     const st=S.sets.find(x=>x.id===i.setId);if(st)st.name=i.name;
-    setMates(i).forEach(m=>{if(oldName&&m.name.startsWith(oldName+'－'))m.name=i.name+m.name.slice(oldName.length)});
-    n=setMates(i).length;
   }
   await save();closeSheet();renderCloset();toast(n?`已儲存，也同步到這套的 ${n} 件單品`:'已儲存');
 }
