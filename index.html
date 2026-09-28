@@ -2112,7 +2112,7 @@ function annWhat(a){
 // 紀念小卡：沿用分享小卡的主題、比例、一句話和下載
 function openAnnCard(key){
   let a=dollAnniv().find(x=>annKey(x)===key);
-  if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d)a={d,kind:'day',n:homeDays(d)+1,left:0}}
+  if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d&&d.home&&homeDays(d)>=0)a={d,kind:'day',n:homeDays(d)+1,left:0}}
   if(!a)return;
   const nm=a.d.name;
   SC.ann={
@@ -2229,7 +2229,8 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
-    ${saved&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`:''}
+    ${saved&&saved.home&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`
+      :saved?`<span class="dhome" style="color:var(--muted)">填上「到家日」，就會幫 ${esc(saved.name)} 記住來家裡幾天、每年慶祝</span>`:''}
     ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
       <div><b>${outCount(saved)}</b><span>出門次數</span></div>
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
