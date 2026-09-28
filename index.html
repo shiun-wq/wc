@@ -1875,13 +1875,13 @@ function askAIConsent(){
   d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-labelledby','ac_t');
   d.innerHTML=`<div class="consent-panel">
     <h3 id="ac_t">使用 AI 功能前，先跟你說明</h3>
-    <p>AI 功能需要把這次用到的資料送到哇娃衣櫃的後台，再轉給<b>第三方 AI 服務</b>處理，結果會傳回你的手機：</p>
+    <p>AI 功能需要把這次用到的資料送到哇娃衣櫃的後台，再經由 AI 中轉服務，交給 <b>Google（Gemini）</b>和 <b>OpenAI（GPT Image）</b>的 AI 模型處理，結果會傳回你的手機：</p>
     <ul>
       <li><b>辨識娃衣、辨識穿搭、AI 出圖去背</b>：你選的那張照片</li>
       <li><b>買前檢查</b>：那件的照片，加上衣櫃裡最像的幾件縮圖</li>
       <li><b>穿搭建議</b>：衣櫃單品的名稱、分類、顏色等文字，不含照片</li>
     </ul>
-    <p>我們的後台不會保存你的照片和文字。拍照時請避免拍到人臉或個人資料。</p>
+    <p>我們的後台不會保存你的照片和文字，但中轉服務和 AI 公司可能依各自的政策短暫保留。拍照時請避免拍到人臉或個人資料。</p>
     <p>不同意也沒關係，衣櫃、紀錄、點選去背和簡易去背都照常可以用；之後可以在「設定 › 隱私與 AI」改變主意。詳見<a href="privacy.html" target="_blank" rel="noopener">隱私權政策</a>。</p>
     <div class="row">
       <button class="btn ghost grow" onclick="doneAIConsent(false)">先不要</button>
@@ -5973,7 +5973,7 @@ function openSettings(page){
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">使用 AI 功能</b><div class="hint">${aiConsented()?`已同意${st.aiConsentAt?'（'+new Date(st.aiConsentAt).toLocaleDateString()+'）':''}`:'尚未同意，AI 功能不會送出任何資料'}</div></span>
         <button class="btn sm ${aiConsented()?'ghost':''}" onclick="${aiConsented()?'revokeAIConsent()':'askAIConsent().then(()=>openSettings(\'privacy\'))'}">${aiConsented()?'撤回同意':'查看並同意'}</button></div>
-      <p class="hint" style="margin:10px 0 0">使用 AI 辨識、買前檢查、穿搭建議或 AI 出圖去背時，會把那次需要的照片或文字送到本 App 的後台，再轉給第三方 AI 服務處理，處理完不會被保存。點選去背和簡易去背只在手機上處理。</p>
+      <p class="hint" style="margin:10px 0 0">使用 AI 辨識、買前檢查、穿搭建議或 AI 出圖去背時，會把那次需要的照片或文字送到本 App 的後台，再經由 AI 中轉服務交給 Google（Gemini）或 OpenAI（GPT Image）處理，我們的後台不會保存。點選去背和簡易去背只在手機上處理。</p>
     </div>
     <div class="setgroup">
       <a class="setrow" href="privacy.html" target="_blank" rel="noopener"><i>📄</i><span><b>隱私權政策</b><small>完整說明資料怎麼處理</small></span><em>›</em></a>
