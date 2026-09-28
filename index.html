@@ -276,6 +276,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
   box-shadow:var(--sh-3);
   animation:up .42s var(--ease);
 }
+/* 內容會一直變的畫面（例如挑衣服）固定高度，切換類別時視窗才不會跳 */
+.sheet .panel.full{height:92vh;height:92dvh}
 @keyframes up{from{transform:translateY(100%)}}
 .sheet .grab{position:sticky;top:0;background:var(--paper);padding:10px 0 10px;z-index:2}
 .sheet .grab i{display:block;width:40px;height:5px;border-radius:3px;background:var(--line-2);margin:0 auto}
@@ -1884,6 +1886,7 @@ function openSheet(html,onClose){
   // 換內容時，先通知上一個畫面它被關掉了（例如點選去背還在等結果）
   const prev=NAV.onClose;NAV.onClose=onClose||null;if(prev&&prev!==onClose)prev();
   document.getElementById('sheetBody').innerHTML=html;
+  sh.querySelector('.panel').classList.remove('full');
   if(!NAV.open){
     NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;
     history.pushState({sheet:1},'');
@@ -3501,6 +3504,7 @@ function drawWearSheet(){
     <div id="wpick">${wearPickHTML()}</div>
     <button class="btn wide" style="margin-top:14px" onclick="commitWear()">存入穿著紀錄</button>
   `);
+  document.querySelector('#sheet .panel').classList.add('full');
 }
 function renderCands(){
   return `<div class="card" style="margin-bottom:12px">
@@ -3545,10 +3549,10 @@ ${cat}
     toast(WEAR.cands.length?'請確認辨識結果':'沒有找到相符的娃衣');
   }catch(e){toast('辨識失敗：'+e.message)}
 }
-// 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋；只重畫這一塊，不會跳回最上面
-function wearPickHTML(){
+// 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋
+// 上面的控制列只畫一次；切換時只換下面的清單，視窗不會跳、按鈕列也不會閃
+function wearFiltered(){
   const d=S.dolls.find(x=>x.id===WEAR.dollId),FM=fmap();
-  const cats=visibleFilters().filter(f=>f!=='套裝');
   let list=S.items.filter(i=>i.category!=='套裝');
   const fitOn=!!(d&&d.size&&WEAR.fit);
   if(fitOn)list=list.filter(i=>(i.sizes||[]).includes(d.size));
@@ -3556,25 +3560,44 @@ function wearPickHTML(){
   const q=(WEAR.q||'').trim().toLowerCase();
   if(q)list=list.filter(i=>[i.name,setName(i.setId),(i.colors||[]).join(),i.category].join(' ').toLowerCase().includes(q));
   const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),name:(a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant'),worn:(a,b)=>wearCount(b.id)-wearCount(a.id)}[WEAR.sort]||(()=>0);
-  list.sort(srt);
+  return {list:list.sort(srt),d,fitOn};
+}
+function wearListHTML(){
+  const {list,d,fitOn}=wearFiltered();
+  return list.length?`<div class="pick">${list.map(i=>
+      `<button data-id="${i.id}" class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
+        <img src="${img(i)}" alt="" loading="lazy"><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
+    :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`;
+}
+function wearPickedHTML(){
   const picked=WEAR.picked.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
-  return `<div class="row" style="margin:4px 0 8px"><b class="grow" style="font-size:13.5px">手動勾選</b><span class="hint">${picked.length} 件已選</span></div>
-    ${picked.length?`<div class="wpicked">${picked.map(i=>`<button onclick="togglePick('${i.id}')" title="取消"><img src="${img(i)}" alt=""><i>×</i></button>`).join('')}</div>`:''}
-    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(WEAR.q||'')}" oninput="WEAR.q=this.value;clearTimeout(WEAR.t);WEAR.t=setTimeout(()=>{const p=this.selectionStart;document.getElementById('wpick').innerHTML=wearPickHTML();const e=document.querySelector('#wpick input[enterkeyhint]');e.focus();e.setSelectionRange(p,p)},250)" style="margin-bottom:8px">
-    <div class="chips wchips">${cats.map(c=>`<button class="chip ${WEAR.cat===c?'on':''}" onclick="WEAR.cat=decodeURIComponent('${encodeURIComponent(c)}');wearPickRedraw()">${esc(c)}</button>`).join('')}</div>
+  return picked.length?`<div class="wpicked">${picked.map(i=>`<button onclick="togglePick('${i.id}')" title="取消"><img src="${img(i)}" alt=""><i>×</i></button>`).join('')}</div>`:'';
+}
+function wearPickHTML(){
+  const d=S.dolls.find(x=>x.id===WEAR.dollId);
+  const cats=visibleFilters().filter(f=>f!=='套裝');
+  return `<div class="row" style="margin:4px 0 8px"><b class="grow" style="font-size:13.5px">手動勾選</b><span class="hint" id="wcount">${WEAR.picked.length} 件已選</span></div>
+    <div id="wpicked">${wearPickedHTML()}</div>
+    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(WEAR.q||'')}" oninput="WEAR.q=this.value;clearTimeout(WEAR.t);WEAR.t=setTimeout(wearListRedraw,200)" style="margin-bottom:8px">
+    <div class="chips wchips" id="wcats">${cats.map(c=>`<button class="chip ${WEAR.cat===c?'on':''}" data-k="${esc(c)}" onclick="WEAR.cat=this.dataset.k;wearListRedraw()">${esc(c)}</button>`).join('')}</div>
     <div class="row" style="gap:8px;margin:6px 0 10px;flex-wrap:wrap">
-      <div class="swap" style="margin:0;flex:1;min-width:220px">${[['new','最新入櫃'],['name','名稱'],['worn','最常穿']].map(([k,l])=>`<button class="${WEAR.sort===k?'on':''}" onclick="WEAR.sort='${k}';wearPickRedraw()">${l}</button>`).join('')}</div>
-      ${d&&d.size?`<label class="remember" style="margin:0"><input type="checkbox" ${WEAR.fit?'checked':''} onchange="WEAR.fit=this.checked;wearPickRedraw()"> 只看 ${esc(d.size)}</label>`:''}
+      <div class="swap" id="wsort" style="margin:0;flex:1;min-width:220px">${[['new','最新入櫃'],['name','名稱'],['worn','最常穿']].map(([k,l])=>`<button data-k="${k}" class="${WEAR.sort===k?'on':''}" onclick="WEAR.sort='${k}';wearListRedraw()">${l}</button>`).join('')}</div>
+      ${d&&d.size?`<label class="remember" style="margin:0"><input type="checkbox" ${WEAR.fit?'checked':''} onchange="WEAR.fit=this.checked;wearListRedraw()"> 只看 ${esc(d.size)}</label>`:''}
     </div>
-    ${list.length?`<div class="pick">${list.map(i=>
-      `<button class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
-        <img src="${img(i)}" alt=""><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
-      :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`}`;
+    <div id="wlist">${wearListHTML()}</div>`;
+}
+function wearListRedraw(){
+  document.querySelectorAll('#wcats button').forEach(b=>b.classList.toggle('on',b.dataset.k===WEAR.cat));
+  document.querySelectorAll('#wsort button').forEach(b=>b.classList.toggle('on',b.dataset.k===WEAR.sort));
+  const el=document.getElementById('wlist');if(el)el.innerHTML=wearListHTML();
 }
 function wearPickRedraw(){const el=document.getElementById('wpick');if(el)el.innerHTML=wearPickHTML()}
 function togglePick(id){
   WEAR.picked=WEAR.picked.includes(id)?WEAR.picked.filter(x=>x!==id):[...WEAR.picked,id];
-  if(WEAR.cands)drawWearSheet();else wearPickRedraw();
+  if(WEAR.cands){drawWearSheet();return}
+  document.querySelectorAll(`#wlist button[data-id="${id}"]`).forEach(b=>b.classList.toggle('on',WEAR.picked.includes(id)));
+  const p=document.getElementById('wpicked');if(p)p.innerHTML=wearPickedHTML();
+  const c=document.getElementById('wcount');if(c)c.textContent=WEAR.picked.length+' 件已選';
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
