@@ -122,7 +122,9 @@ header.top h1::before{
   background:url(icons/mascot.png) center/contain no-repeat;
 }
 header.top h1 .wa{color:#C9615A}
-.pro{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:6px;color:#fff;-webkit-text-fill-color:#fff;display:inline-block;line-height:1.4;background:linear-gradient(135deg,#2F2529,#5A4650);vertical-align:2px;margin-left:4px}
+.pro{font-family:var(--sans);font-size:9px;font-weight:800;letter-spacing:.06em;padding:1px 5px;border-radius:5px;color:#5A3E12;-webkit-text-fill-color:#5A3E12;background:linear-gradient(135deg,#F6D98A,#E3B85A);display:inline-block;line-height:1.35;vertical-align:3px;margin-left:5px;box-shadow:0 1px 2px rgba(90,62,18,.18)}
+.qa i,.buybar i{position:relative}
+.pro.corner{position:absolute;top:-5px;right:-9px;margin:0;vertical-align:0;font-style:normal;font-size:7.5px;padding:1px 4px;letter-spacing:.04em;box-shadow:0 0 0 2px var(--card),0 1px 3px rgba(90,62,18,.25)}
 header.top .sub{font-size:12px;color:var(--muted);margin-left:auto;letter-spacing:.06em;font-variant-numeric:tabular-nums}
 .iconbtn{width:var(--tap);height:var(--tap);margin-right:-8px;border-radius:14px;display:grid;place-items:center;color:var(--ink-2);transition:background .2s,transform .2s var(--ease)}
 .iconbtn:active{background:var(--berry-soft);transform:scale(.92)}
@@ -979,7 +981,7 @@ nav.tabs button.plus.on{color:var(--berry)}
         <input type="text" id="q" placeholder="搜尋名稱、品牌、標籤" oninput="renderCloset()">
       </div>
       <button class="buybar" onclick="openBuyCheck()">
-        <i></i><span><b>買前檢查<span class="pro">PRO</span></b>想買新娃衣？先看看衣櫃裡、以前賣掉的有沒有類似的</span><em>›</em>
+        <i><span class="pro corner">PRO</span></i><span><b>買前檢查</b>想買新娃衣？先看看衣櫃裡、以前賣掉的有沒有類似的</span><em>›</em>
       </button>
       <div class="chips" id="catchips"></div>
       <div class="chips" id="viewchips"></div>
@@ -2150,7 +2152,7 @@ function renderHome(){
   <div class="qa">
     <button onclick="openWear()"><i class="i1"></i>記錄穿搭</button>
     <button onclick="go('studio')"><i class="i2"></i>開始搭配</button>
-    <button onclick="openBuyCheck()"><i class="i3"></i>買前檢查<span class="pro">PRO</span></button>
+    <button onclick="openBuyCheck()"><i class="i3"><span class="pro corner">PRO</span></i>買前檢查</button>
     <button onclick="go('dolls')"><i class="i4"></i>娃娃櫃</button>
   </div>
 
