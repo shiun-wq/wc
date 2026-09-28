@@ -506,6 +506,7 @@ nav.tabs button.plus.on{color:var(--berry)}
 .notice .x{float:right;background:none;border:0;font-size:18px;color:var(--muted);line-height:1;margin:-4px -6px 0 8px;padding:4px}
 .dcell .pin{position:absolute;top:4px;right:6px;font-size:13px}
 .dhome{display:block;text-align:center;margin:-6px 0 12px;font-size:12.5px;color:var(--berry-deep)}
+.dhome a{color:var(--berry-deep);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
 .qa button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 2px 10px;border-radius:var(--r);background:var(--card);
   border:1px solid var(--line);box-shadow:var(--sh-1);font-size:12px;color:var(--ink-2);letter-spacing:.04em;transition:transform .18s var(--ease)}
@@ -1973,16 +1974,17 @@ function homeCards(){
   // 0. 到家紀念日
   st.annHide=st.annHide||{};
   dollAnniv().forEach(a=>{
-    const key=a.d.id+':'+a.kind+':'+a.n,nm=esc(a.d.name);
+    const key=a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4),nm=esc(a.d.name);
     if(st.annHide[key])return;
-    const what=a.kind==='year'?`來家裡第 ${a.n} 年`:`來家裡第 ${a.n} 天`;
+    const what=annWhat(a);
     const out=(a.d.outs||[]).includes(today());
     const hide=`<button class="x" onclick="S.settings.annHide['${key}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
-      <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年，今天帶 ${nm} 出去看看吧，拍張照留下紀念。`:`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`}</span>
+      <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年，今天帶 ${nm} 出去看看吧，拍張照留下紀念。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，出去走走吧。`}</span>
       <div class="row">${out?`<button class="btn sm ghost" disabled>今天已經帶出門了 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">今天帶 ${nm} 出門</button>`}
-        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄今天穿搭</button></div>
+        <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
+        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄穿搭</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
       <b>🎈 再 ${a.left} 天就是 ${nm} ${what}</b>
@@ -2038,12 +2040,43 @@ function homeDolls(cur){
   return list;
 }
 /* ---- 到家紀念日 ---- */
+function annWhat(a){
+  if(a.kind==='year')return `來家裡第 ${a.n} 年`;
+  if(a.kind==='day')return `來家裡第 ${a.n} 天`;
+  return `的${a.label}`+(a.n>0?`（${a.n} 歲）`:'');
+}
+// 紀念小卡：沿用分享小卡的主題、比例、一句話和下載
+function openAnnCard(key){
+  let a=dollAnniv().find(x=>x.d.id+':'+x.kind+':'+(x.id||'')+':'+x.n+':'+(x.date||'').slice(0,4)===key);
+  if(!a&&key.startsWith('days:')){const d=S.dolls.find(x=>x.id===key.slice(5));if(d)a={d,kind:'day',n:homeDays(d)+1,left:0}}
+  if(!a)return;
+  const nm=a.d.name;
+  SC.ann={
+    tag:a.kind==='custom'?(/生日/.test(a.label)?'HAPPY BIRTHDAY':'SPECIAL DAY'):'HAPPY ANNIVERSARY',
+    big:a.kind==='custom'?(a.n>0?String(a.n):'🎂'):String(a.n),
+    unit:a.kind==='year'?(a.n===1?'YEAR':'YEARS'):a.kind==='day'?'DAYS':(a.n>0?'YEARS OLD':''),
+    line:a.kind==='custom'?`${nm} 的${a.label}`:`${nm} 來家裡第 ${a.n} ${a.kind==='year'?'年':'天'}`,
+    since:a.kind!=='custom'&&a.d.home?a.d.home:''
+  };
+  openShare('ann',a.d.id);
+}
 const dayNum=s=>{const [y,m,d]=String(s).split('-').map(Number);return Date.UTC(y,m-1,d)/864e5};
 function homeDays(d){return d.home?dayNum(today())-dayNum(d.home):null}
 // 今天或接下來 7 天內的紀念日：每年到家日，和第 100／500／1000… 天
 function dollAnniv(){
   const t=today(),out=[];
   S.dolls.forEach(d=>{
+    // 自訂紀念日（生日、角色生日…）：每年的月／日
+    (d.dates||[]).forEach(x=>{
+      if(!/^\d\d-\d\d$/.test(x.md||''))return;
+      const ty=+t.slice(0,4);
+      for(const y of [ty,ty+1]){
+        const leap=(y%4===0&&y%100!==0)||y%400===0,md=x.md==='02-29'&&!leap?'02-28':x.md;
+        const left=dayNum(y+'-'+md)-dayNum(t);
+        if(left>=0&&left<=7){out.push({d,kind:'custom',label:x.label||'紀念日',id:x.id,n:x.year?y-x.year:0,left,date:y+'-'+md});break}
+        if(left>=0)break;
+      }
+    });
     if(!d.home||!/^\d{4}-\d\d-\d\d$/.test(d.home))return;
     const days=homeDays(d);if(days<0)return;
     const [hy,hm,hd]=d.home.split('-').map(Number),ty=+t.slice(0,4);
@@ -2132,7 +2165,7 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
-    ${saved&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天</span>`:''}
+    ${saved&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`:''}
     ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
       <div><b>${outCount(saved)}</b><span>出門次數</span></div>
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
@@ -2155,6 +2188,19 @@ function drawDoll(){
       <label class="f"><span>作品</span><input type="text" value="${esc(d.work||'')}" placeholder="例如 排球少年" oninput="DD.work=this.value"></label>
       <label class="f"><span>角色</span><input type="text" value="${esc(d.chara||'')}" placeholder="例如 日向翔陽" oninput="DD.chara=this.value"></label>
     </div>`:''}
+    <div class="f"><span>紀念日</span>
+      ${(d.dates||[]).length?`<div class="blist" style="margin-bottom:8px">${d.dates.map(x=>`<div class="rowitem"><div class="tx"><b>🎂 ${esc(x.label)}</b><span>${+x.md.slice(0,2)} 月 ${+x.md.slice(3)} 日${x.year?`・${x.year} 年`:''}・每年提醒</span></div>
+        <div class="rt"><button class="btn sm ghost" onclick="DD.dates=DD.dates.filter(y=>y.id!=='${x.id}');drawDoll()">刪除</button></div></div>`).join('')}</div>`:''}
+      <div class="parts" style="margin-top:0">${['生日',...(d.attr==='has'?['角色生日']:[]),'第一次見面','其他'].map(l=>`<button type="button" class="${(UI.dtLabel||'生日')===l?'on':''}" onclick="UI.dtLabel='${l}';drawDoll()">${l}</button>`).join('')}</div>
+      ${(UI.dtLabel||'生日')==='其他'?`<input type="text" id="dt_name" placeholder="紀念日名稱，例如 第一次出國" maxlength="12" style="margin-top:8px">`:''}
+      <div class="row" style="margin-top:8px">
+        <select id="dt_m" class="grow">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1} 月</option>`).join('')}</select>
+        <select id="dt_d" class="grow">${Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1} 日</option>`).join('')}</select>
+        <input type="number" id="dt_y" inputmode="numeric" placeholder="年（選填）" style="max-width:110px">
+        <button type="button" class="btn sm quiet" onclick="addDollDate()">加入</button>
+      </div>
+      <small class="hint">${d.attr==='has'?'有屬性的娃娃可以填角色生日。':''}到了那天首頁會提醒，提前 7 天也會預告。填了年份會顯示第幾歲。</small>
+    </div>
     <label class="f"><span>備註</span><textarea id="d_note" placeholder="個性小設定、愛吃的東西…" oninput="DD.note=this.value">${esc(d.note||'')}</textarea></label>
     <label class="f"><span>首頁</span><div class="parts"><button type="button" class="${d.isMain?'on':''}" onclick="DD.isMain=!DD.isMain;this.classList.toggle('on')">放在首頁中間</button>
       <button type="button" class="${d.pin?'on':''}" onclick="togglePinDD(this)">📌 釘選在首頁</button></div>
@@ -2171,6 +2217,13 @@ async function cutDoll(btn){
   const m=await pickCut();drawDoll();prog('娃娃去背中…');
   try{const src=DD.raw||DD.photo;const r=await cutout(src,m,DOLL_PROMPT);DD.raw=src;DD.photo=r.sticker;drawDoll();toast('去背完成')}
   catch(e){toast(e.message);drawDoll()}
+}
+function addDollDate(){
+  const lab=(UI.dtLabel||'生日')==='其他'?(document.getElementById('dt_name').value.trim()||'紀念日'):(UI.dtLabel||'生日');
+  const m=+document.getElementById('dt_m').value,dd=+document.getElementById('dt_d').value,y=+document.getElementById('dt_y').value||0;
+  const max=[31,29,31,30,31,30,31,31,30,31,30,31][m-1];if(dd>max){toast(`${m} 月沒有 ${dd} 日`);return}
+  DD.dates=[...(DD.dates||[]),{id:uid('t'),label:lab,md:String(m).padStart(2,'0')+'-'+String(dd).padStart(2,'0'),year:y>1900&&y<=new Date().getFullYear()?y:0}];
+  drawDoll();toast(`已加入 ${lab}，記得按儲存`);
 }
 function togglePinDD(btn){
   if(!DD.pin&&S.dolls.filter(x=>x.pin&&x.id!==DD.id).length>=PIN_MAX){toast(`首頁最多釘選 ${PIN_MAX} 隻，先到其他娃娃取消釘選`);return}
@@ -3278,6 +3331,8 @@ function openShare(kind,id){
   }else if(kind==='look'){
     const l=S.looks.find(x=>x.id===id);if(!l)return;
     items=l.itemIds;layout=l.layout;cw=l.cw||cw;title=l.name;doll=lookDoll(l)||mainDoll();
+  }else if(kind==='ann'){
+    doll=S.dolls.find(d=>d.id===id);title=SC.ann.line;
   }else{
     if(!UI.canvas.length){toast('畫布是空的，先加幾件娃衣');return}
     layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.filter(p=>p.itemId).map(p=>p.itemId);
@@ -3288,13 +3343,14 @@ function openShare(kind,id){
   SC.hasDollPiece=!!(layout&&layout.some(p=>p.dollId));
   if(SC.hasDollPiece){const d=S.dolls.find(x=>x.id===layout.find(p=>p.dollId).dollId);if(d)SC.doll=d}
   SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
-  openSheet(`<h3>分享小卡</h3>
+  if(kind!=='ann')SC.ann=null;
+  openSheet(`<h3>${SC.ann?'紀念小卡':'分享小卡'}</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
     <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
-    <div class="swap" id="scLay">${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
+    <div class="swap" id="scLay" ${SC.ann?'hidden':''}>${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
-    ${!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
-    <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="今天是草莓甜點日 🍓" oninput="scCapChange(this.value)"></label>
+    ${!SC.ann&&!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
+    <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="${SC.ann?'謝謝你來到我身邊 🤍':'今天是草莓甜點日 🍓'}" oninput="scCapChange(this.value)"></label>
     <div class="row">
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
       ${navigator.share?`<button class="btn grow" onclick="scShare()">分享</button>`:''}
@@ -3378,6 +3434,38 @@ function scPills(x,T,X,Y,maxW,sans,lines){
   }
   return ly+50;
 }
+// 紀念小卡：彩色紙花 + 大數字 + 娃娃照片 + 一行紀念文字
+async function scAnn(x,T,W,H,P,serif,num,sans){
+  const A=SC.ann,story=SC.ratio==='story';
+  // 紙花
+  const cols=[T.accent,T.soft,'#E8C07A','#9BB7A0','#E7A3B6'];
+  for(let i=0;i<46;i++){const r=(i*9301+49297)%233280/233280,r2=(i*4271+1231)%1000/1000,r3=(i*733+17)%97/97;
+    x.save();x.translate(r*W,r2*H*.9);x.rotate(r3*6.28);x.globalAlpha=.55;x.fillStyle=cols[i%cols.length];
+    if(i%3)x.fillRect(-9,-4,18,8);else{x.beginPath();x.arc(0,0,6,0,7);x.fill()}x.restore()}
+  x.textAlign='center';
+  x.fillStyle=T.accent;x.font=`600 32px ${num}`;x.letterSpacing='10px';x.fillText(A.tag,W/2,P+50);x.letterSpacing='0px';
+  // 大數字
+  const by=P+(story?300:230);
+  x.fillStyle=T.ink;x.font=`700 ${story?240:200}px ${num}`;x.fillText(A.big,W/2,by);
+  if(A.unit){x.fillStyle=T.sub;x.font=`600 40px ${num}`;x.letterSpacing='8px';x.fillText(A.unit,W/2,by+60);x.letterSpacing='0px'}
+  // 娃娃
+  const cy=by+(story?520:400),R=story?300:250;
+  x.fillStyle=T.soft;x.globalAlpha=.8;x.beginPath();x.arc(W/2,cy,R,0,7);x.fill();x.globalAlpha=1;
+  x.strokeStyle=T.accent;x.globalAlpha=.35;x.lineWidth=3;x.setLineDash([4,14]);x.beginPath();x.arc(W/2,cy,R+26,0,7);x.stroke();x.setLineDash([]);x.globalAlpha=1;
+  const im=SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null;
+  if(im){const s=Math.min(R*1.7/im.width,R*1.9/im.height);x.save();x.shadowColor='rgba(0,0,0,.18)';x.shadowBlur=36;x.shadowOffsetY=16;
+    x.drawImage(im,W/2-im.width*s/2,cy+R*.92-im.height*s,im.width*s,im.height*s);x.restore()}
+  else{x.fillStyle=T.accent;x.font=`700 ${R}px ${serif}`;x.fillText((SC.doll&&SC.doll.name||'?').slice(0,1),W/2,cy+R*.35)}
+  // 文字
+  let y=cy+R+(story?150:120);
+  x.fillStyle=T.ink;x.font=`700 60px ${serif}`;x.fillText(fitText(x,A.line,W-P*2),W/2,y);
+  const d=new Date(SC.date+'T00:00:00'),fmt=s=>s.replace(/-/g,'.').replace(/\.0/g,'.');
+  y+=62;x.fillStyle=T.sub;x.font=`600 34px ${num}`;x.letterSpacing='4px';
+  x.fillText(A.since?`${fmt(A.since)}  →  ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`:`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`,W/2,y);x.letterSpacing='0px';
+  if(SC.cap){y+=84;x.fillStyle=T.ink;x.font=`500 40px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),W/2,y)}
+  x.textAlign='left';
+  const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
+}
 // 拍立得：照片放在白框裡，稍微歪一點，上面貼一條紙膠帶
 async function scPolaroid(x,T,W,H,P,serif,num,sans){
   const d=new Date(SC.date+'T00:00:00');
@@ -3424,6 +3512,7 @@ async function scDraw(){
   const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
   x.fillStyle=T.soft;x.globalAlpha=.55;x.beginPath();x.arc(W-60,120,220,0,7);x.fill();x.beginPath();x.arc(40,H-160,180,0,7);x.fill();x.globalAlpha=1;
   x.textBaseline='alphabetic';
+  if(SC.ann){await scAnn(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='polaroid'){await scPolaroid(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='mag'){await scMag(x,T,W,H,P,serif,num,sans);return c}
   // 標題列
