@@ -902,7 +902,7 @@ nav.tabs button.plus.on{color:var(--berry)}
     <!-- 搭配 -->
     <section class="view" id="v-studio">
       <button class="buybar" onclick="openIdea()" style="margin-bottom:12px">
-        <i class="idea-ico"></i><span><b>今天去哪裡拍？</b>選個地點，隨機或讓 AI 幫你搭一套</span><em>›</em>
+        <i class="idea-ico"></i><span><b>不知道穿什麼？幫我搭一套</b>選地點或節日，隨機抽或讓 AI 幫你搭</span><em>›</em>
       </button>
       <div id="canvas"></div>
       <div class="ctrl" id="pcCtrl" style="display:none">
@@ -2030,7 +2030,7 @@ function homeCards(){
     const hide=`<button class="x" onclick="S.settings.annHide['${key}:${annStage(a)}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
-      <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年，今天帶 ${nm} 出去看看吧，拍張照留下紀念。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，出去走走吧。`}</span>
+      <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年。出門走走，或在家幫 ${nm} 換上最喜歡的衣服慶祝都好，拍張照留下紀念吧。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，在家慶祝或出門走走都好。`}</span>
       <div class="row">${out?`<button class="btn sm ghost" disabled>今天已經帶出門了 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">今天帶 ${nm} 出門</button>`}
         <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
         <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄穿搭</button></div>
@@ -2047,22 +2047,22 @@ function homeCards(){
     if(x.its.length)h.push(`<section class="notice ${x.left===0?'party':''}">${hide}
       <b>${holIcon(n)} ${x.left===0?`今天是${n}！`:x.left===1?`明天就是${n}了`:`${n}還有 ${x.left} 天`}</b>
       <span>衣櫃裡有 ${x.its.length} 件${n}主題的娃衣，${x.left===0?'今天就讓它們出場吧':x.left===1?'今晚先把明天要穿的挑好吧':'可以先想想要怎麼搭'}。</span>
-      <div class="row"><button class="btn sm" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button><button class="btn sm ghost" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
       <b>${holIcon(n)} ${n}還有 ${x.left} 天</b>
       <span>衣櫃裡還沒有${n}主題的娃衣。不一定要買新的，${HOL_COLORS[n]||''}的娃衣也能搭出${n}的感覺。</span>
-      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(openIdea,200)">幫我搭一套</button></div>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button></div>
     </section>`);
   });
-  // 0b. 很久沒出門（最多顯示一張，列出其他隻）
+  // 0b. 很久沒換裝（出門或在家記錄穿搭都算；最多顯示一張，列出其他隻）
   const idle=idleDolls().filter(x=>!st.annHide['idle:'+x.d.id+':'+x.last]);
   if(idle.length){
     const x=idle[0],nm=esc(x.d.name);
     h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['idle:${x.d.id}:${x.last}']=1;save();renderHome()" aria-label="隱藏">×</button>
-      <b>🌿 ${nm} 已經 ${x.n} 天沒出門了</b>
-      <span>${idle.length>1?`還有 ${idle.slice(1,4).map(y=>esc(y.d.name)).join('、')}${idle.length>4?' 等':''}也好久沒出門。`:''}天氣好的話，帶 ${nm} 出去走走吧。</span>
-      <div class="row"><button class="btn sm" onclick="dollOutId('${x.d.id}')">今天帶 ${nm} 出門</button></div>
+      <b>🌿 好久沒幫 ${nm} 換裝了（${x.n} 天）</b>
+      <span>${idle.length>1?`還有 ${idle.slice(1,4).map(y=>esc(y.d.name)).join('、')}${idle.length>4?' 等':''}也是。`:''}不一定要出門，在家幫 ${nm} 換一套、拍張照也很好。</span>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({dollId:'${x.d.id}',scene:'在家陪伴'}),250)">幫 ${nm} 搭一套</button><button class="btn sm ghost" onclick="setMainDoll('${x.d.id}').then(openWear)">記錄今天穿搭</button></div>
     </section>`);
   }
   // 1. 新手引導
@@ -2136,7 +2136,7 @@ async function notifyAnniv(test){
   let n=0;
   for(const x of idleDolls()){
     const k='idle:'+x.d.id+':'+x.last+':'+outRemind();if(done[k])continue;
-    await show(`🌿 ${x.d.name} 已經 ${x.n} 天沒出門了`,`帶 ${x.d.name} 出去走走吧，順便記錄今天的穿搭`,k);
+    await show(`🌿 好久沒幫 ${x.d.name} 換裝了`,`已經 ${x.n} 天了，不一定要出門，在家換一套也很好`,k);
     done[k]=Date.now();n++;
   }
   if(S.settings.holOn!==false)for(const x of holidayAlerts()){
@@ -2147,12 +2147,12 @@ async function notifyAnniv(test){
   if(S.settings.annOn!==false)for(const a of dollAnniv()){
     const k=annKey(a)+':'+annStage(a);if(done[k])continue;
     const nm=a.d.name,what=annWhat(a);
-    if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`今天帶 ${nm} 出去看看吧，也可以做一張紀念小卡`,k);
+    if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`在家慶祝或出門走走都好，也可以做一張紀念小卡`,k);
     else await show(`🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}`,'可以先想想那天要穿什麼、去哪裡拍照',k);
     done[k]=Date.now();n++;
   }
   if(n)save();
-  else if(test===true)show('通知已開啟','紀念日和很久沒出門的娃娃，會在這裡提醒你','wc-test');
+  else if(test===true)show('通知已開啟','紀念日、節日和好久沒換裝的娃娃，會在這裡提醒你','wc-test');
 }
 /* ---- 到家紀念日 ---- */
 // 很久沒出門：最後一次出門或穿搭紀錄（都沒有就從建立那天算）超過設定天數
@@ -3617,14 +3617,17 @@ async function wearLook(id){
 /* ============================================================
    8c. 搭配靈感：選地點 → 隨機抽一套（免費）或 AI 建議（用額度／點數）
    ============================================================ */
-const SCENES=['咖啡廳','外拍','公園野餐','看展','逛街','居家','節日派對','下雨天'];
+// 在家排最前面：娃娃是陪伴，不一定要出門才需要打扮
+const SCENES=['在家陪伴','睡覺前','咖啡廳','外拍','公園野餐','看展','逛街','節日派對','下雨天'];
+const HOME_SCENES=['在家陪伴','睡覺前'];
 const SCENE_TIP={
   '咖啡廳':'靠窗的位子光線最好，拿杯飲料或甜點當道具，娃娃坐在桌邊拍 45 度。',
   '外拍':'陰天或傍晚的光最柔，找有層次的背景（花叢、樹影），把鏡頭放低到娃娃視線高度。',
   '公園野餐':'鋪一塊格紋布，放小籃子和水果，從上往下拍平鋪構圖也很可愛。',
   '看展':'找白牆或作品旁邊的留白，娃娃小小一隻站在畫面角落，很有故事感。',
   '逛街':'櫥窗倒影、招牌、樓梯都是好背景，可以拍娃娃「逛到一半」的抓拍感。',
-  '居家':'用書桌、床邊、窗台布置小場景，暖黃燈光拍起來很溫馨。',
+  '在家陪伴':'在家也可以穿得很正式或很可愛。書桌、沙發、窗台都是小場景，開一盞暖黃的燈就很溫馨。',
+  '睡覺前':'睡衣配小毯子、小枕頭，只留一盞小夜燈，拍起來很療癒。',
   '節日派對':'加一點彩帶、氣球或小蛋糕，背景用散景燈串最有氣氛。',
   '下雨天':'拍窗上的雨滴當前景，娃娃配小雨傘，色調偏冷一點更有味道。'
 };
@@ -3633,13 +3636,21 @@ function ideaPool(){
   const d=S.dolls.find(x=>x.id===IDEA.dollId);
   return S.items.filter(i=>i.category!=='套裝'&&img(i)&&(!d||!d.size||!(i.sizes||[]).length||i.sizes.includes(d.size)));
 }
-function openIdea(){
-  IDEA=Object.assign({scene:IDEA.scene||SCENES[0],custom:'',dollId:(mainDoll()||{}).id||null,press:IDEA.press??true},{res:null});
+// opt.theme：從節日提醒進來時帶節日，優先挑那個節日的娃衣和節日配色
+function openIdea(opt){
+  opt=opt||{};
+  const sc=opt.scene||(SCENES.includes(IDEA.scene)?IDEA.scene:SCENES[0]);
+  IDEA=Object.assign({scene:sc,custom:'',dollId:opt.dollId||(mainDoll()||{}).id||null,press:IDEA.press??true,theme:opt.theme||''},{res:null});
   drawIdea();
 }
+const HOL_FAMS={'聖誕節':['紅','綠','白'],'新年':['黃','白'],'過年':['紅','黃'],'萬聖節':['黑','橘','紫'],'情人節':['粉','紅'],'中秋節':['黃','白']};
 function drawIdea(){
   const r=IDEA.res,n=ideaPool().length;
-  openSheet(`<h3>今天去哪裡拍？</h3>
+  const hols=HOL_NAMES.filter(n=>HOL_FAMS[n]);
+  openSheet(`<h3>幫我搭一套</h3>
+    <p class="mh" style="margin-top:0">節日主題（選填）</p>
+    <div class="parts" id="id_th" style="margin-top:0">${['',...hols].map(n=>`<button type="button" data-k="${n}" class="${IDEA.theme===n?'on':''}" onclick="IDEA.theme='${n}';document.querySelectorAll('#id_th button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${n}'))">${n?holIcon(n)+' '+n:'不限'}</button>`).join('')}</div>
+    <p class="mh">今天在哪裡？</p>
     <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div>
     <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&b.textContent===IDEA.scene))">
     ${S.dolls.length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${S.dolls.map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
@@ -3672,7 +3683,9 @@ function showIdea(r){
 // 免費版：先挑一件主角，再挑同風格／同色系的其他部位；壓箱底加權
 function ideaRandom(){
   const pool=ideaPool();if(pool.length<2){toast('合身的娃衣還太少');return}
-  const w=i=>1+(IDEA.press&&isPressed(i)?3:0);
+  const tf=new Set(HOL_FAMS[IDEA.theme]||[]);
+  const sleepy=IDEA.scene==='睡覺前'&&!IDEA.custom;
+  const w=i=>1+(IDEA.press&&isPressed(i)?3:0)+(sleepy&&(i.styles||[]).some(x=>x.name==='睡衣風')?8:0)+(IDEA.theme?(i.holiday===IDEA.theme?8:0)+(i.colors||[]).filter(c=>tf.has(colorFam(c))).length*2:0);
   const pick=(list,base)=>{
     if(!list.length)return null;
     const sc=list.map(i=>{let s=w(i);if(base){
@@ -3685,16 +3698,20 @@ function ideaRandom(){
   };
   const by=slot=>pool.filter(i=>slotOf(i.category)===slot);
   const dress=by('dress'),top=by('top'),bottom=by('bottom');
-  const useDress=dress.length&&(!top.length||!bottom.length||Math.random()<.4);
-  const base=useDress?pick(dress):pick(top.length?top:pool);
+  // 睡覺前先從睡衣挑、節日主題先從節日服挑，當作主角
+  const lead=sleepy?pool.filter(i=>(i.styles||[]).some(x=>x.name==='睡衣風')):IDEA.theme?pool.filter(i=>i.holiday===IDEA.theme&&slotOf(i.category)&&['dress','top','bottom','outer'].includes(slotOf(i.category))):[];
+  let useDress,base;
+  if(lead.length){base=pick(lead);useDress=slotOf(base.category)==='dress'}
+  else{useDress=dress.length&&(!top.length||!bottom.length||Math.random()<.4);base=useDress?pick(dress):pick(top.length?top:pool)}
   const out=[base];
   const add=(slot,p)=>{if(Math.random()<p){const x=pick(by(slot).filter(i=>!out.includes(i)),base);if(x)out.push(x)}};
   if(!useDress&&slotOf(base.category)==='top')add('bottom',1);
   add('outer',.3);add('head',.6);add('socks',.3);add('shoes',.5);add('bag',.3);add('acc',.3);
   const styles=[...new Set(out.flatMap(i=>(i.styles||[]).map(x=>x.name)))].slice(0,2);
   const pressed=out.filter(isPressed);
-  showIdea({ai:false,ids:out.map(i=>i.id),title:`${sceneName()}的${styles[0]||'日常'}搭配`,
-    reason:`以「${base.name}」當主角${out.length>1?`，搭配${out.slice(1).map(i=>'「'+i.name+'」').join('、')}`:''}${styles.length?`，整體是${styles.join('、')}的感覺`:''}。${pressed.length?`其中 ${pressed.length} 件是壓箱底的，剛好讓它們出來透透氣。`:''}`,
+  const hol=IDEA.theme?out.filter(i=>i.holiday===IDEA.theme).length:0;
+  showIdea({ai:false,ids:out.map(i=>i.id),title:IDEA.theme?`${IDEA.theme}${sceneName()}搭配`:HOME_SCENES.includes(sceneName())?`${sceneName()}的${styles[0]||'日常'}造型`:`${sceneName()}的${styles[0]||'日常'}搭配`,
+    reason:`以「${base.name}」當主角${out.length>1?`，搭配${out.slice(1).map(i=>'「'+i.name+'」').join('、')}`:''}${styles.length?`，整體是${styles.join('、')}的感覺`:''}。${IDEA.theme?(hol?`用了 ${hol} 件${IDEA.theme}主題的娃衣。`:`衣櫃裡沒有${IDEA.theme}主題的娃衣，所以挑了${(HOL_FAMS[IDEA.theme]||[]).map(f=>famLabel[f]).join('、')}比較多的搭出節日感。`):''}${pressed.length?`其中 ${pressed.length} 件是壓箱底的，剛好讓它們出來透透氣。`:''}`,
     tip:SCENE_TIP[IDEA.scene]&&!IDEA.custom?SCENE_TIP[IDEA.scene]:''});
 }
 async function ideaAI(btn){
@@ -3703,13 +3720,15 @@ async function ideaAI(btn){
   if(!needQuota('idea'))return;
   const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> 想一想…';btn.disabled=true;
   const d=S.dolls.find(x=>x.id===IDEA.dollId);
-  const list=pool.slice(0,150).map(i=>`${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.styles||[]).map(x=>x.name).join('/')}|${(i.motifs||[]).join('/')}|${isPressed(i)?'壓箱底':''}`).join('\n');
-  const prompt=`你是娃衣穿搭顧問。使用者要帶娃娃${d?`「${d.name}」`:''}去「${sceneName()}」拍照。
+  const list=pool.slice(0,150).map(i=>`${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.styles||[]).map(x=>x.name).join('/')}|${(i.motifs||[]).join('/')}|${isPressed(i)?'壓箱底':''}${i.holiday?'|'+i.holiday:''}`).join('\n');
+  const atHome=HOME_SCENES.includes(sceneName());
+  const prompt=`你是娃衣穿搭顧問。${atHome?`使用者今天在家陪娃娃${d?`「${d.name}」`:''}（${sceneName()}），不出門也想幫娃娃打扮；${sceneName()==='睡覺前'?'以睡衣、居家服為主，舒服可愛':'可以很正式也可以很可愛，不一定是居家服'}。`:`使用者要帶娃娃${d?`「${d.name}」`:''}去「${sceneName()}」拍照。`}
 下面是衣櫃裡合身的娃衣，格式 id|名稱|類型|顏色|風格|圖案|是否壓箱底：
 ${list}
 
-請搭一套適合這個地點拍照的造型，只回傳 JSON，不要其他文字：
-{"title":"10字內的造型名稱","itemIds":["只能用清單裡的id"],"reason":"60字內，說明為什麼適合這個地點","tip":"40字內的拍照小建議"}
+${IDEA.theme?`這次是「${IDEA.theme}」主題：有${IDEA.theme}主題的娃衣請優先用，沒有的話用${(HOL_FAMS[IDEA.theme]||[]).map(f=>famLabel[f]).join('、')}等節日配色搭出節日感。
+`:''}請搭一套適合${atHome?'今天在家':'這個地點拍照'}的造型，只回傳 JSON，不要其他文字：
+{"title":"10字內的造型名稱","itemIds":["只能用清單裡的id"],"reason":"60字內，說明為什麼適合","tip":"40字內的拍照小建議"}
 規則：通常是 上衣+下身 或 洋裝，再視情況加帽子、外套、鞋子、配件，3到6件；不要同一個部位放兩件；${IDEA.press?'有標記「壓箱底」的請優先考慮，讓它們有機會出場；':''}每次給不一樣的組合。`;
   try{
     const r=parseJSON(await callAI('idea',prompt));
@@ -3740,7 +3759,7 @@ function ideaToCanvas(){
 let WEAR={date:today(),doll:'',photo:null,picked:[],cands:null};
 function openWear(){
   const d=mainDoll();
-  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:[],cands:null,cat:'全部',sort:WEAR.sort||'new',q:'',fit:true};
+  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:[],cands:null,place:'在家',cat:'全部',sort:WEAR.sort||'new',q:'',fit:true};
   drawWearSheet();
 }
 function drawWearSheet(){
@@ -3752,6 +3771,7 @@ function drawWearSheet(){
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
     </div>`}
+    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門']].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';document.querySelectorAll('#w_place button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div></label>
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
@@ -3859,7 +3879,9 @@ function togglePick(id){
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
-  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:''});
+  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||''});
+  // 選「出門」就順便記一次帶出門
+  if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date)}}
   const wid=S.wears[S.wears.length-1].id;
   await save();if(UI.tab==='home')renderHome();else renderWears();
   openShare('wear',wid);toast('已記錄！要不要做成小卡分享？');
@@ -3871,7 +3893,7 @@ function renderWears(){
     <div class="rowitem">
       ${wearThumb(w)}
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
-        <span>${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+        <span>${w.place?(w.place==='在家'?'🏠 ':'🚶 '):''}${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
       <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
     </div>`).join('');
 }
@@ -4687,7 +4709,7 @@ function openSettings(page){
     <button class="setmember" onclick="readForm();openSettings('member')">
       <i>♛</i><span><b>${isMember()?'會員':'免費版'}</b><small>點數 ${wallet().points}・${aiReady()?'AI 服務正常':'AI 暫時無法使用'}</small></span><em>›</em></button>
     <div class="setgroup">
-      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'開':'關'}・節日${st.holOn!==false?'開':'關'}・出門${outRemind()?outRemind()+' 天':'不提醒'}`)}
+      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'開':'關'}・節日${st.holOn!==false?'開':'關'}・換裝${outRemind()?outRemind()+' 天':'不提醒'}`)}
     </div>
     <p class="setlabel">我的衣櫃</p>
     <div class="setgroup">
@@ -4735,8 +4757,8 @@ function openSettings(page){
         <button class="btn sm ${st.holOn!==false?'ghost':''}" onclick="S.settings.holOn=${st.holOn===false};save().then(()=>openSettings('notify'))">${st.holOn!==false?'關閉':'開啟'}</button></div>
     </div>
     <div class="card">
-      <b style="font-size:14px">🌿 很久沒帶娃娃出門</b>
-      <div class="hint" style="margin:2px 0 10px">超過這麼多天沒出門、也沒記錄穿搭就提醒</div>
+      <b style="font-size:14px">🌿 好久沒幫娃娃換裝</b>
+      <div class="hint" style="margin:2px 0 10px">超過這麼多天沒記錄穿搭就提醒（在家換裝也算，不一定要出門）</div>
       <div class="swap" style="margin:0">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="S.settings.outRemind=${v};save().then(()=>openSettings('notify'))">${l}</button>`).join('')}</div>
     </div>
     <p class="hint">提醒會出現在首頁；開了手機通知，也會跳通知給你。</p>`;
