@@ -2040,15 +2040,19 @@ function homeCards(){
       <span>${a.date?`${+a.date.slice(5,7)} 月 ${+a.date.slice(8)} 日。`:''}可以先想想那天要穿什麼、去哪裡拍照。</span>
     </section>`);
   });
-  // 0a. 節日快到了，衣櫃裡有這個節日的娃衣
-  HOL_NAMES.forEach(n=>{
-    const its=S.items.filter(i=>i.holiday===n&&i.category!=='套裝');if(!its.length)return;
-    const nh=nextHoliday(n);if(!nh||nh.left>21)return;
-    const key='hol:'+n+':'+nh.year;if(st.annHide[key])return;
-    h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['${key}']=1;save();renderHome()" aria-label="隱藏">×</button>
-      <b>${holIcon(n)} ${nh.left===0?`今天是${n}！`:`${n}還有 ${nh.left} 天`}</b>
-      <span>衣櫃裡有 ${its.length} 件${n}主題的娃衣，${nh.left===0?'今天就讓它們出場吧':'可以先想想要怎麼搭'}。</span>
+  // 0a. 節日：有節日服 → 前 3 週、前一天、當天提醒；沒有 → 一個月前提醒一次，建議用現有的衣服搭出節日感
+  if(st.holOn!==false)holidayAlerts().forEach(x=>{
+    if(st.annHide[x.key])return;const n=x.n;
+    const hide=`<button class="x" onclick="S.settings.annHide['${x.key}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
+    if(x.its.length)h.push(`<section class="notice ${x.left===0?'party':''}">${hide}
+      <b>${holIcon(n)} ${x.left===0?`今天是${n}！`:x.left===1?`明天就是${n}了`:`${n}還有 ${x.left} 天`}</b>
+      <span>衣櫃裡有 ${x.its.length} 件${n}主題的娃衣，${x.left===0?'今天就讓它們出場吧':x.left===1?'今晚先把明天要穿的挑好吧':'可以先想想要怎麼搭'}。</span>
       <div class="row"><button class="btn sm" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
+    </section>`);
+    else h.push(`<section class="notice">${hide}
+      <b>${holIcon(n)} ${n}還有 ${x.left} 天</b>
+      <span>衣櫃裡還沒有${n}主題的娃衣。不一定要買新的，${HOL_COLORS[n]||''}的娃衣也能搭出${n}的感覺。</span>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(openIdea,200)">幫我搭一套</button></div>
     </section>`);
   });
   // 0b. 很久沒出門（最多顯示一張，列出其他隻）
@@ -2134,6 +2138,11 @@ async function notifyAnniv(test){
     const k='idle:'+x.d.id+':'+x.last+':'+outRemind();if(done[k])continue;
     await show(`🌿 ${x.d.name} 已經 ${x.n} 天沒出門了`,`帶 ${x.d.name} 出去走走吧，順便記錄今天的穿搭`,k);
     done[k]=Date.now();n++;
+  }
+  if(S.settings.holOn!==false)for(const x of holidayAlerts()){
+    if(!x.its.length||done[x.key])continue;
+    await show(`${holIcon(x.n)} ${x.left===0?`今天是${x.n}！`:x.left===1?`明天就是${x.n}了`:`${x.n}還有 ${x.left} 天`}`,`衣櫃裡有 ${x.its.length} 件${x.n}主題的娃衣，打開看看要怎麼搭`,x.key);
+    done[x.key]=Date.now();n++;
   }
   if(S.settings.annOn!==false)for(const a of dollAnniv()){
     const k=annKey(a)+':'+annStage(a);if(done[k])continue;
@@ -2450,6 +2459,24 @@ const HOLIDAYS=[['聖誕節','🎄','12-25'],['新年','🎆','01-01'],['過年'
   ['萬聖節','🎃','10-31'],['情人節','💝','02-14'],['中秋節','🥮',{2026:'09-25',2027:'09-15',2028:'10-03',2029:'09-22',2030:'09-12',2031:'10-01'}],['生日','🎂',null],['復活節','🐣',null]];
 const HOL_NAMES=HOLIDAYS.map(h=>h[0]),holIcon=n=>(HOLIDAYS.find(h=>h[0]===n)||[])[1]||'🎉';
 const HOL_DAYS=400;
+const HOL_COLORS={'聖誕節':'紅色、綠色、白色','新年':'金色、白色、亮片','過年':'紅色、金色、中式','萬聖節':'黑色、橘色、紫色','情人節':'粉色、紅色、愛心','中秋節':'黃色、白色、中式'};
+// 現在該提醒哪些節日：有節日服的在前 21 天內（分成 3 週前、前一天、當天三段）；沒有的只在一個月前那段提醒（大節日）
+function holidayAlerts(){
+  const out=[];
+  HOL_NAMES.forEach(n=>{
+    const nh=nextHoliday(n);if(!nh)return;
+    const its=S.items.filter(i=>i.holiday===n&&i.category!=='套裝');
+    if(its.length){
+      if(nh.left>21)return;
+      const stage=nh.left===0?'today':nh.left===1?'tomorrow':'weeks';
+      out.push({n,its,left:nh.left,key:'hol:'+n+':'+nh.year+':'+stage});
+    }else{
+      if(!HOL_COLORS[n]||nh.left>30||nh.left<22)return;
+      out.push({n,its,left:nh.left,key:'hol0:'+n+':'+nh.year});
+    }
+  });
+  return out.sort((a,b)=>a.left-b.left);
+}
 function nextHoliday(n){
   const h=HOLIDAYS.find(x=>x[0]===n);if(!h||!h[2])return null;
   const ty=+today().slice(0,4);
@@ -4660,7 +4687,7 @@ function openSettings(page){
     <button class="setmember" onclick="readForm();openSettings('member')">
       <i>♛</i><span><b>${isMember()?'會員':'免費版'}</b><small>點數 ${wallet().points}・${aiReady()?'AI 服務正常':'AI 暫時無法使用'}</small></span><em>›</em></button>
     <div class="setgroup">
-      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'提醒中':'關閉'}・出門${outRemind()?outRemind()+' 天':'不提醒'}`)}
+      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'開':'關'}・節日${st.holOn!==false?'開':'關'}・出門${outRemind()?outRemind()+' 天':'不提醒'}`)}
     </div>
     <p class="setlabel">我的衣櫃</p>
     <div class="setgroup">
@@ -4702,6 +4729,10 @@ function openSettings(page){
       <div class="row"><span class="grow"><b style="font-size:14px">🎂 紀念日提醒</b><div class="hint">到家日、生日、自己設定的紀念日<br>前 7 天、前一天和當天提醒</div></span>
         <button class="btn sm ${st.annOn!==false?'ghost':''}" onclick="S.settings.annOn=${st.annOn===false};save().then(()=>openSettings('notify'))">${st.annOn!==false?'關閉':'開啟'}</button></div>
       <p class="hint" style="margin:8px 0 0">紀念日在「娃娃櫃」點進娃娃設定：填到家日，或在「紀念日」加生日。</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:14px">🎄 節日提醒</b><div class="hint">有節日服：前 3 週、前一天和當天提醒<br>還沒有節日服：大節日前一個月提醒一次，建議用現有的衣服搭</div></span>
+        <button class="btn sm ${st.holOn!==false?'ghost':''}" onclick="S.settings.holOn=${st.holOn===false};save().then(()=>openSettings('notify'))">${st.holOn!==false?'關閉':'開啟'}</button></div>
     </div>
     <div class="card">
       <b style="font-size:14px">🌿 很久沒帶娃娃出門</b>
