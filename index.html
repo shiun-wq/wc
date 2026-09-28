@@ -479,6 +479,21 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .setrow i{font-style:normal;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--swatch);font-size:16px;flex:0 0 32px}
 .setrow b{font-size:14.5px;font-weight:600}
 .setrow.warn b{color:#B4443C}
+.pgroup{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;margin-top:6px;background:var(--card)}
+.pgroup summary{cursor:pointer;font-size:13.5px;font-weight:600;padding:2px 0}
+.pgroup .pg{margin-top:8px}.pgroup .pg small{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+.footrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
+.footrow span{flex:0 0 52px;color:var(--muted);font-size:12.5px;display:flex;flex-direction:column}
+.footrow span small{font-size:10.5px}
+.footrow b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.footrow b i{font-style:normal;font-weight:400;color:var(--placeholder)}
+.footrow em{font-style:normal;color:var(--muted)}
+.twgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.twgrid>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.twgrid small{width:34px;font-size:11.5px;color:var(--muted)}
+.twgrid span{font-size:12.5px;padding:5px 10px;border-radius:999px;background:var(--swatch);color:var(--muted);position:relative}
+.twgrid span.on{background:var(--berry);color:var(--on-ink);font-weight:600}
+.twgrid span i{font-style:normal;font-size:10px;margin-left:4px;opacity:.85}
 .bigthumbs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
 .bigthumbs .th{width:46px;height:46px;flex:0 0 46px;border-radius:10px;overflow:hidden;background:var(--swatch)}
 .bigthumbs .th img{width:100%;height:100%;object-fit:contain}
@@ -2331,11 +2346,7 @@ function dollAnniv(){
   });
   return out.sort((a,b)=>a.left-b.left);
 }
-async function dollOutId(id){
-  const d=S.dolls.find(x=>x.id===id);if(!d)return;
-  d.outs=d.outs||[];if(!d.outs.includes(today()))d.outs.push(today());
-  await save();renderHome();toast(`${d.name} 今天出門了！`);
-}
+function dollOutId(id){openTrip(id,null,'home')}
 
 /* ============================================================
    0b. 我的娃娃
@@ -2385,7 +2396,7 @@ async function dollOut(){
   const d=S.dolls.find(x=>x.id===DD.id);if(!d)return;
   d.outs=d.outs||[];const t=today();
   if(d.outs.includes(t)){d.outs=d.outs.filter(x=>x!==t);toast('已取消今天的出門紀錄')}
-  else{d.outs.push(t);toast(`${d.name} 今天出門了！`)}
+  else{DD.outs=d.outs.slice();return openTrip(d.id,null,'doll')}
   DD.outs=d.outs.slice();await save();drawDoll();
   if(UI.tab==='dolls')renderDolls();
 }
@@ -2415,7 +2426,7 @@ function drawDoll(){
       <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
       <div><b>${fit}</b><span>合身娃衣</span></div></div>
       <button class="btn ${(saved.outs||[]).includes(today())?'ghost':'quiet'} wide" style="margin-bottom:16px" onclick="dollOut()">${(saved.outs||[]).includes(today())?'今天已經帶出門了 ✓':`今天帶 ${esc(saved.name)} 出門`}</button>`:''}
-    ${saved?dollCareBlock(saved)+dollAccBlock(saved):''}
+    ${saved?dollFootBlock(saved)+dollCareBlock(saved)+dollAccBlock(saved):''}
     <label class="f"><span>名字</span><input type="text" id="d_name" value="${esc(d.name)}" placeholder="小白" oninput="DD.name=this.value"></label>
     <div class="split">
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
@@ -4222,6 +4233,146 @@ function ideaToCanvas(){
 /* ============================================================
    9. 穿著紀錄 + AI 辨識
    ============================================================ */
+/* ---- 足跡：娃娃陪你去過哪裡（在家／台灣縣市／國外）----
+   出門的地點記在娃娃身上 d.outPlaces[日期]={r:縣市或國家,n:地點名稱}；沒有指定娃娃的穿搭記在 w.spot
+   照片有 GPS 定位的話，會建議一個縣市或國家，使用者點了才採用 */
+const TW_GROUPS=[['北部',['台北市','新北市','基隆市','桃園市','新竹市','新竹縣','宜蘭縣']],['中部',['苗栗縣','台中市','彰化縣','南投縣','雲林縣']],
+  ['南部',['嘉義市','嘉義縣','台南市','高雄市','屏東縣']],['東部',['花蓮縣','台東縣']],['離島',['澎湖縣','金門縣','連江縣']]];
+const TW_ALL=TW_GROUPS.flatMap(g=>g[1]);
+const ABROAD=['日本','韓國','香港','澳門','中國','泰國','新加坡','馬來西亞','越南','菲律賓','美國','加拿大','英國','法國','澳洲'];
+const isTW=r=>TW_ALL.includes(r);
+// 大約的座標點（大縣市放好幾個點），拿來找最近的縣市；只是建議，不準也沒關係
+const GEO_TW={'基隆市':[[25.13,121.74]],'台北市':[[25.04,121.56],[25.12,121.52]],'新北市':[[25.01,121.46],[25.06,121.64],[25.17,121.44],[24.93,121.37],[25.11,121.84],[24.87,121.55],[25.22,121.64],[25.02,121.94]],
+  '桃園市':[[24.99,121.3],[24.95,121.22],[24.83,121.33]],'新竹市':[[24.8,120.97]],'新竹縣':[[24.84,121.0],[24.74,121.09],[24.66,121.2]],'苗栗縣':[[24.56,120.82],[24.69,120.88],[24.41,120.77],[24.48,121.0]],
+  '台中市':[[24.15,120.67],[24.25,120.72],[24.26,120.56],[24.26,120.83]],'彰化縣':[[24.08,120.54],[23.96,120.57],[23.86,120.4]],'南投縣':[[23.91,120.68],[23.96,120.97],[23.86,120.91],[23.62,120.9]],
+  '雲林縣':[[23.71,120.54],[23.7,120.23]],'嘉義市':[[23.48,120.45]],'嘉義縣':[[23.46,120.25],[23.55,120.3],[23.51,120.8],[23.41,120.55]],'台南市':[[22.99,120.21],[23.31,120.32],[23.03,120.48]],
+  '高雄市':[[22.63,120.3],[22.73,120.33],[22.88,120.48],[23.1,120.7]],'屏東縣':[[22.67,120.49],[21.95,120.78],[22.4,120.6]],'宜蘭縣':[[24.75,121.75],[24.6,121.85],[24.5,121.5]],
+  '花蓮縣':[[23.99,121.6],[23.5,121.38],[23.3,121.3],[24.15,121.5]],'台東縣':[[22.76,121.14],[23.05,121.16],[22.4,120.9],[22.05,121.55],[22.66,121.49]],
+  '澎湖縣':[[23.57,119.58]],'金門縣':[[24.44,118.32]],'連江縣':[[26.16,119.95]]};
+const GEO_ABROAD={'日本':[[35.68,139.69],[34.69,135.5],[43.06,141.35],[33.59,130.4],[26.21,127.68],[38.27,140.87],[35.18,136.9],[34.39,132.45]],
+  '韓國':[[37.57,126.98],[35.18,129.08],[33.5,126.53],[35.87,128.6],[35.16,126.85]],'香港':[[22.32,114.17]],'澳門':[[22.19,113.54]],
+  '中國':[[39.9,116.4],[31.23,121.47],[23.13,113.26],[30.57,104.07],[24.48,118.09],[22.54,114.06],[30.27,120.15],[34.26,108.94]],
+  '泰國':[[13.75,100.5],[18.79,98.98],[7.88,98.39]],'新加坡':[[1.35,103.82]],'馬來西亞':[[3.14,101.69],[5.41,100.33]],'越南':[[21.03,105.85],[10.82,106.63],[16.05,108.2]],
+  '菲律賓':[[14.6,120.98],[10.3,123.9]],'美國':[[40.71,-74],[34.05,-118.24],[37.77,-122.42],[21.31,-157.86],[47.61,-122.33]],'加拿大':[[43.65,-79.38],[49.28,-123.12]],
+  '英國':[[51.5,-.12]],'法國':[[48.86,2.35]],'澳洲':[[-33.87,151.2],[-37.81,144.96]]};
+function geoGuess(lat,lon){
+  const km=q=>Math.hypot((q[1]-lon)*Math.cos(lat*Math.PI/180),q[0]-lat)*111;
+  const near=G=>Object.entries(G).map(([r,ps])=>[r,Math.min(...ps.map(km))]).sort((a,b)=>a[1]-b[1])[0];
+  const t=near(GEO_TW);if(t&&t[1]<(t[0]==='金門縣'||t[0]==='連江縣'?12:35))return t[0];
+  const a=near(GEO_ABROAD);return a&&a[1]<500?a[0]:'';
+}
+// 讀 JPEG 的 EXIF GPS（很多手機選照片時會拿掉定位，讀不到就算了）
+async function photoGPS(file){
+  try{
+    const v=new DataView(await file.slice(0,262144).arrayBuffer());
+    if(v.getUint16(0)!==0xFFD8)return null;
+    let o=2;
+    while(o<v.byteLength-4){
+      const mk=v.getUint16(o),len=v.getUint16(o+2);
+      if(mk===0xFFE1&&v.getUint32(o+4)===0x45786966){
+        const t=o+10,le=v.getUint16(t)===0x4949,u16=p=>v.getUint16(t+p,le),u32=p=>v.getUint32(t+p,le);
+        const ifd=(p,want)=>{const n=u16(p),r={};for(let k=0;k<n;k++){const e=p+2+k*12,tag=u16(e);if(want.includes(tag))r[tag]={type:u16(e+2),cnt:u32(e+4),val:e+8}}return r};
+        const g0=ifd(u32(4),[0x8825])[0x8825];if(!g0)return null;
+        const g=ifd(u32(g0.val),[1,2,3,4]);
+        const rat=x=>{const p=u32(x.val);return [0,1,2].map(k=>u32(p+k*8)/(u32(p+k*8+4)||1))};
+        const dms=a=>a[0]+a[1]/60+a[2]/3600,ch=x=>String.fromCharCode(v.getUint8(t+x.val));
+        if(!g[2]||!g[4])return null;
+        let lat=dms(rat(g[2])),lon=dms(rat(g[4]));
+        if(g[1]&&ch(g[1])==='S')lat=-lat;if(g[3]&&ch(g[3])==='W')lon=-lon;
+        return (lat||lon)?{lat,lon}:null;
+      }
+      if((mk&0xFF00)!==0xFF00)break;o+=2+len;
+    }
+  }catch(e){}
+  return null;
+}
+const spotText=sp=>sp&&sp.r?(sp.n?`${sp.r}・${sp.n}`:sp.r):'';
+// 所有出門紀錄：娃娃身上的出門日＋沒選娃娃的出門穿搭
+function footprints(){
+  const out=[];
+  S.dolls.forEach(d=>(d.outs||[]).forEach(date=>out.push({d,date,sp:(d.outPlaces||{})[date]||null})));
+  S.wears.filter(w=>w.place==='出門'&&!w.dollId).forEach(w=>out.push({d:null,date:w.date,sp:w.spot||null,name:w.dollName}));
+  return out.sort((a,b)=>b.date.localeCompare(a.date));
+}
+function recentRegions(){const c={};footprints().forEach(f=>{if(f.sp&&f.sp.r)c[f.sp.r]=(c[f.sp.r]||0)+1});return Object.entries(c).sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,6)}
+// 地點選擇器：PLACE_OBJ 裡的物件要有 sp={r,n}，選完只重畫選擇器那一塊
+const PLACE_OBJ={get WEAR(){return WEAR},get TRIP(){return TRIP}};
+function placePickerHTML(o){
+  const ob=PLACE_OBJ[o],sp=ob.sp||(ob.sp={r:'',n:''}),rec=recentRegions();
+  const chip=r=>`<button type="button" class="${sp.r===r?'on':''}" onclick="pickRegion('${o}','${r}')">${r}</button>`;
+  const open=g=>g.includes(sp.r)?'open':'';
+  return `${ob.gps&&ob.gps!==sp.r?`<button type="button" class="btn sm quiet" style="margin-bottom:8px" onclick="pickRegion('${o}','${ob.gps}')">📍 照片拍攝地：${ob.gps}，用這個</button>`:''}
+    ${sp.r?`<div class="hint" style="margin-bottom:6px">已選：<b style="color:var(--berry-deep)">${esc(sp.r)}</b>　<a href="javascript:void 0" onclick="pickRegion('${o}','')">清除</a></div>`:''}
+    ${rec.length?`<div class="parts" style="margin:0 0 6px">${rec.map(chip).join('')}</div>`:''}
+    <details class="pgroup" ${open(TW_ALL)}><summary>🇹🇼 台灣縣市</summary>${TW_GROUPS.map(([g,l])=>`<div class="pg"><small>${g}</small><div class="parts" style="margin:0">${l.map(chip).join('')}</div></div>`).join('')}</details>
+    <details class="pgroup" ${sp.r&&!isTW(sp.r)?'open':''}><summary>✈️ 國外</summary><div class="parts" style="margin:6px 0">${ABROAD.map(chip).join('')}</div>
+      <input type="text" maxlength="20" placeholder="其他國家，例如 德國" value="${sp.r&&!isTW(sp.r)&&!ABROAD.includes(sp.r)?esc(sp.r):''}" onchange="pickRegion('${o}',this.value.trim())"></details>
+    <input type="text" style="margin-top:8px" maxlength="30" placeholder="地點名稱（選填）例如 九份、迪士尼、咖啡廳" value="${esc(sp.n||'')}" oninput="PLACE_OBJ['${o}'].sp.n=this.value">`;
+}
+function pickRegion(o,r){const ob=PLACE_OBJ[o];ob.sp=ob.sp||{r:'',n:''};ob.sp.r=r;const el=document.getElementById('pp_'+o);if(el)el.innerHTML=placePickerHTML(o)}
+// 帶出門／補記一次出門
+let TRIP={};
+function openTrip(dollId,date,from){
+  const d=S.dolls.find(x=>x.id===dollId);if(!d)return;
+  const old=date&&(d.outPlaces||{})[date];
+  TRIP={dollId,date:date||today(),orig:date&&(d.outs||[]).includes(date)?date:null,sp:old?{...old}:{r:'',n:''},from:from||'doll'};
+  openSheet(`${from==='doll'?`<div class="sethead"><button onclick="openDoll('${dollId}')">‹ ${esc(d.name)}</button></div>`:''}
+    <h3>${TRIP.orig?'這次出門':`帶 ${esc(d.name)} 出門`}</h3>
+    <label class="f"><span>日期</span><input type="date" value="${TRIP.date}" max="${today()}" onchange="TRIP.date=this.value"></label>
+    <div class="f"><span>去了哪裡（選填）</span><div id="pp_TRIP">${placePickerHTML('TRIP')}</div></div>
+    <div class="row" style="margin-top:12px">${TRIP.orig?`<button class="btn ghost" onclick="delTrip()">刪除這次</button>`:''}<button class="btn grow" onclick="saveTrip()">儲存</button></div>`);
+}
+async function saveTrip(){
+  const d=S.dolls.find(x=>x.id===TRIP.dollId);if(!d||!TRIP.date)return;
+  d.outs=d.outs||[];d.outPlaces=d.outPlaces||{};
+  if(TRIP.orig&&TRIP.orig!==TRIP.date){d.outs=d.outs.filter(x=>x!==TRIP.orig);delete d.outPlaces[TRIP.orig]}
+  if(!d.outs.includes(TRIP.date))d.outs.push(TRIP.date);
+  if(TRIP.sp&&TRIP.sp.r)d.outPlaces[TRIP.date]={r:TRIP.sp.r,n:(TRIP.sp.n||'').trim()};else delete d.outPlaces[TRIP.date];
+  await save();tripDone(d,TRIP.sp&&TRIP.sp.r?`${d.name} 去了 ${spotText(TRIP.sp)}！`:`${d.name} 出門了！`);
+}
+async function delTrip(){
+  const d=S.dolls.find(x=>x.id===TRIP.dollId);if(!d||!confirm('刪除這次出門紀錄？'))return;
+  d.outs=(d.outs||[]).filter(x=>x!==TRIP.orig);if(d.outPlaces)delete d.outPlaces[TRIP.orig];
+  await save();tripDone(d,'已刪除');
+}
+function tripDone(d,msg){
+  if(TRIP.from==='doll')openDoll(d.id);else closeSheet();
+  if(UI.tab==='home')renderHome();if(UI.tab==='dolls')renderDolls();if(UI.tab==='insight')renderInsight();
+  toast(msg);
+}
+// 娃娃頁的足跡
+function dollFootBlock(d){
+  const ts=(d.outs||[]).slice().sort().reverse(),P=d.outPlaces||{};
+  const rs=[...new Set(ts.map(t=>P[t]&&P[t].r).filter(Boolean))],tw=rs.filter(isTW).length,ab=rs.length-tw;
+  return `<div class="care"><div class="row"><b class="grow">📍 足跡</b><button class="btn sm ghost" onclick="openTrip('${d.id}',null,'doll')">＋ 補記出門</button></div>
+    ${ts.length?`<div class="hint" style="margin:4px 0 6px">出門 ${ts.length} 次${tw?`・去過 ${tw} 個縣市`:''}${ab?`・${ab} 個國家`:''}</div>
+    ${ts.slice(0,5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
+    ${ts.length>5?`<div class="hint">還有 ${ts.length-5} 次，全部可以在「洞察 → 足跡」看</div>`:''}`
+    :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，之後會變成她的旅行地圖。</div>`}</div>`;
+}
+// 洞察頁的足跡
+function footSection(){
+  const fp=footprints(),home=S.wears.filter(w=>w.place==='在家').length;
+  if(!fp.length&&!home)return '';
+  const cnt={};fp.forEach(f=>{if(f.sp&&f.sp.r)cnt[f.sp.r]=(cnt[f.sp.r]||0)+1});
+  const tw=TW_ALL.filter(r=>cnt[r]),ab=Object.keys(cnt).filter(r=>!isTW(r)).sort((a,b)=>cnt[b]-cnt[a]);
+  const first={};fp.slice().reverse().forEach(f=>{if(f.sp&&f.sp.r&&!first[f.sp.r])first[f.sp.r]=f});
+  const newest=Object.values(first).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const spots={};fp.forEach(f=>{if(f.sp&&f.sp.n){const k=spotText(f.sp);spots[k]=(spots[k]||0)+1}});
+  const topSpots=Object.entries(spots).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const byDoll=S.dolls.map(d=>{const P=d.outPlaces||{},rs=[...new Set((d.outs||[]).map(t=>P[t]&&P[t].r).filter(Boolean))];return {d,n:(d.outs||[]).length,rs}}).filter(x=>x.n).sort((a,b)=>b.rs.length-a.rs.length||b.n-a.n);
+  return `<h2 class="sec">足跡</h2>
+    <div class="stat">
+      <div><b>${fp.length}</b><span>出門次數</span></div><div><b>${home}</b><span>在家穿搭</span></div>
+      <div><b>${tw.length}<small style="font-size:14px"> / 22</small></b><span>台灣縣市</span></div><div><b>${ab.length}</b><span>去過的國家</span></div></div>
+    ${newest?`<div class="note">最近解鎖的地方：<strong>${esc(newest.sp.r)}</strong>（${newest.date}${newest.d?`，${esc(newest.d.name)} 第一次去`:''}）</div>`:''}
+    <div class="twgrid">${TW_GROUPS.map(([g,l])=>`<div><small>${g}</small>${l.map(r=>`<span class="${cnt[r]?'on':''}">${/^(新竹|嘉義)/.test(r)?r:r.replace(/[市縣]$/,'')}${cnt[r]?`<i>${cnt[r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>
+    ${ab.length?`<div class="parts" style="margin:8px 0 0">${ab.map(r=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(r)} ${cnt[r]}</button>`).join('')}</div>`:''}
+    ${topSpots.length?`<h2 class="sec" style="font-size:15px">最常去的地方</h2>${topSpots.map(([k,n])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${n} 次</em></div><div class="tr"><i style="width:${n/topSpots[0][1]*100}%"></i></div></div>`).join('')}`:''}
+    ${byDoll.length?`<h2 class="sec" style="font-size:15px">誰去過最多地方</h2><div class="blist">${byDoll.slice(0,6).map(x=>`<div class="rowitem" onclick="openDoll('${x.d.id}')"><div class="th">${x.d.photo?`<img src="${x.d.photo}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(x.d.name)}</b><span>出門 ${x.n} 次${x.rs.length?`・${x.rs.slice(0,4).map(esc).join('、')}${x.rs.length>4?` 等 ${x.rs.length} 個地方`:''}`:''}</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
+    ${fp.some(f=>!f.sp||!f.sp.r)?`<p class="hint" style="margin-top:8px">有 ${fp.filter(f=>!f.sp||!f.sp.r).length} 次出門還沒填地點，可以到娃娃頁的「足跡」補上。</p>`:''}`;
+}
 let WEAR={date:today(),doll:'',photo:null,picked:[],cands:null},WEAR_PRESET=null;
 function openWear(){
   const d=mainDoll();
@@ -4238,7 +4389,9 @@ function drawWearSheet(){
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
     </div>`}
-    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門']].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';document.querySelectorAll('#w_place button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div></label>
+    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門']].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';document.querySelectorAll('#w_place button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'));document.getElementById('w_where').style.display='${k}'==='出門'?'':'none'">${l}</button>`).join('')}</div></label>
+    <div class="f" id="w_where" style="${WEAR.place==='出門'?'':'display:none'}"><span>去了哪裡（選填）</span><div id="pp_WEAR">${placePickerHTML('WEAR')}</div></div>
+    ${WEAR.place!=='出門'&&WEAR.gps?`<p class="hint" style="margin:-6px 0 10px">📍 這張照片是在 ${WEAR.gps} 拍的，出門的話按「出門」就能選。</p>`:''}
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
@@ -4271,7 +4424,9 @@ function renderCands(){
 async function onWearPhoto(ev){
   const f=ev.target.files[0];ev.target.value='';
   if(!f)return;
-  WEAR.photo=await compress(f);drawWearSheet();
+  const [ph,gps]=await Promise.all([compress(f),photoGPS(f)]);
+  WEAR.photo=ph;WEAR.gps=gps?geoGuess(gps.lat,gps.lon):'';drawWearSheet();
+  if(WEAR.gps)toast(`照片的拍攝地是 ${WEAR.gps}`);
 }
 async function identify(){
   if(!aiReady()){toast(aiMissing());return}
@@ -4346,9 +4501,10 @@ function togglePick(id){
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
-  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||''});
-  // 選「出門」就順便記一次帶出門
-  if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date)}}
+  const sp=WEAR.place==='出門'&&WEAR.sp&&WEAR.sp.r?{r:WEAR.sp.r,n:(WEAR.sp.n||'').trim()}:null;
+  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||'',spot:sp});
+  // 選「出門」就順便記一次帶出門，地點也記到娃娃的足跡
+  if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[WEAR.date]=sp}}}
   const wid=S.wears[S.wears.length-1].id;
   await save();if(UI.tab==='home')renderHome();else renderWears();
   openShare('wear',wid);toast('已記錄！要不要做成小卡分享？');
@@ -4360,7 +4516,7 @@ function renderWears(){
     <div class="rowitem">
       ${wearThumb(w)}
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
-        <span>${w.place?(w.place==='在家'?'🏠 ':'🚶 '):''}${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+        <span>${w.place?(w.place==='在家'?'🏠 ':'🚶 '+(w.spot&&w.spot.r?esc(spotText(w.spot))+'・':'')):''}${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
       <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
     </div>`).join('');
 }
@@ -4640,7 +4796,7 @@ function renderInsight(){
   const el=document.getElementById('insight');
   const items=S.items.filter(i=>i.category!=='套裝');
   if(items.length<3){
-    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+spendSection();
+    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+footSection()+spendSection();
     return;
   }
   const buyGroup={},wearGroup={};
@@ -4691,6 +4847,7 @@ function renderInsight(){
       <div class="sw"><img src="${img(x.i)}" alt=""><span class="tag">${k===0?'👑 ':''}${x.c} 次</span></div>
       <div class="nm">${esc(x.i.name)}</div></button>`).join('')}</div>`;
   }
+  h+=footSection();
   // 娃娃出場排行
   const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
   if(dollRank.length){
@@ -5225,6 +5382,8 @@ const HELP=[
     ['買來 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','賣掉後移到回憶箱，會記下賣了多少錢。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空、日卡）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
+  ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['📊','洞察 → 足跡']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','洞察頁會整理出去過幾個台灣縣市、幾個國家，和每隻娃娃去過的地方。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料都存在這支手機上，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟。']],
 ];
