@@ -2990,12 +2990,13 @@ function openSell(ids){
   const pressed=S.items.filter(isPressed).map(i=>i.id);
   const pool=[...new Set([...(ids||[]),...pressed])];
   if(!pool.length){toast('目前沒有壓箱底的娃衣');return}
-  SELL={pool,sel:new Set(ids&&ids.length?ids:pressed.slice(0,1)),info:SELL.info||{},showWear:SELL.showWear||false,showSet:SELL.showSet!==false,lay:SELL.lay||'grid'};
+  const so=S.settings.sellShow||{brand:true,tags:true,shop:false,origin:false,buy:false,env:[]};
+  SELL={pool,sel:new Set(ids&&ids.length?ids:pressed.slice(0,1)),info:SELL.info||{},showWear:SELL.showWear||false,showSet:SELL.showSet!==false,lay:SELL.lay||'grid',show:so};
   drawSell();
 }
 function sellInfo(id){
   if(!SELL.info[id]){const i=S.items.find(x=>x.id===id)||{},iss=openIssues(i);
-    SELL.info[id]={price:'',cond:iss.length?'有小瑕疵':'良好',note:'',washed:isWashed(i)?'已下水':'未下水',flaw:iss.map(c=>c.type+(c.note?'（'+c.note+'）':'')).join('、'),fragile:false}}
+    SELL.info[id]={price:'',brand:i.brand||'',cond:iss.length?'有小瑕疵':'良好',note:'',washed:isWashed(i)?'已下水':'未下水',flaw:iss.map(c=>c.type+(c.note?'（'+c.note+'）':'')).join('、'),fragile:false}}
   return SELL.info[id];
 }
 function drawSell(){
@@ -3013,23 +3014,43 @@ function drawSell(){
           <div class="split" style="margin-top:8px">
             <label class="f" style="margin:0"><span>有無下水</span><select onchange="sellInfo('${i.id}').washed=this.value">${['未下水','已下水','不確定'].map(x=>`<option ${x===f.washed?'selected':''}>${x}</option>`).join('')}</select></label>
             <label class="f" style="margin:0"><span>瑕疵</span><input type="text" maxlength="40" placeholder="沒有就留空" value="${esc(f.flaw)}" oninput="sellInfo('${i.id}').flaw=this.value"></label></div>
+          <label class="f" style="margin:8px 0 0"><span>品牌</span><input type="text" maxlength="30" placeholder="沒有就留空" value="${esc(f.brand||'')}" oninput="sellInfo('${i.id}').brand=this.value"></label>
           <label class="remember" style="margin:8px 0 0"><input type="checkbox" ${f.fragile?'checked':''} onchange="sellInfo('${i.id}').fragile=this.checked"> 上面的裝飾容易掉（提醒買家小心拿）</label>
           <input type="text" style="margin-top:8px" maxlength="40" placeholder="其他補充（選填）" value="${esc(f.note)}" oninput="sellInfo('${i.id}').note=this.value">`:''}
       </div>`}).join('')}</div>
     <div class="f" style="margin:14px 0 0"><span>圖片樣式</span>
       <div class="swap" id="sellLay">${[['grid','多件放一張'],['single','每件一張大圖']].map(([k,l])=>`<button data-k="${k}" class="${SELL.lay===k?'on':''}" onclick="SELL.lay='${k}';document.querySelectorAll('#sellLay button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div>
       <small class="hint">多件放一張適合一次po很多件；每件一張大圖看得比較清楚，適合讓買家參考細節。</small></div>
+    <div class="f" style="margin:14px 0 0"><span>要讓買家看到的資訊</span>
+      <div class="parts" id="sellShow" style="margin:0">${[['brand','品牌'],['tags','作品／標籤'],['shop','店家'],['origin','產地'],['buy','購入年份']].map(([k,l])=>`<button type="button" class="${SELL.show[k]?'on':''}" onclick="sellShow('${k}',this)">${l}</button>`).join('')}</div>
+      <small class="hint">大牌、正版、保存良好的娃衣，寫出品牌和作品會比較好賣。店家要不要透露由你決定。</small></div>
+    <div class="f" style="margin:10px 0 0"><span>保存環境（選填）</span>
+      <div class="parts" id="sellEnv" style="margin:0">${['無菸環境','無寵物','防塵收納','避光保存'].map(k=>`<button type="button" class="${(SELL.show.env||[]).includes(k)?'on':''}" onclick="sellEnv('${k}',this)">${k}</button>`).join('')}</div></div>
     <label class="remember" style="margin:12px 0 0"><input type="checkbox" ${SELL.showWear?'checked':''} onchange="SELL.showWear=this.checked"> 讓買家知道穿過幾次</label>
     <label class="remember" style="margin:6px 0 0"><input type="checkbox" ${SELL.showSet?'checked':''} onchange="SELL.showSet=this.checked"> 標出是哪一套的（有的話）</label>
     <div class="note" style="margin-top:12px">出售圖用的是建檔時的貼圖，圖上會註明「實際衣況請以賣家說明為準」。賣之前建議再拍一張現在的實拍一起放。</div>
     <button class="btn wide" style="margin-top:12px" onclick="makeSell()">做出售圖和文字</button>`);
+}
+function sellShow(k,b){SELL.show[k]=!SELL.show[k];b.classList.toggle('on',SELL.show[k]);S.settings.sellShow=SELL.show;save()}
+function sellEnv(k,b){const e=SELL.show.env=SELL.show.env||[];const i=e.indexOf(k);if(i<0)e.push(k);else e.splice(i,1);b.classList.toggle('on',i<0);S.settings.sellShow=SELL.show;save()}
+// 出售時要露出的品牌／作品／店家…（依使用者勾選）
+function sellMeta(i){
+  const f=sellInfo(i.id),o=SELL.show||{},out=[];
+  if(o.brand&&(f.brand||'').trim())out.push(['品牌',f.brand.trim()]);
+  if(o.tags&&(i.tags||[]).length)out.push(['作品',i.tags.join('、')]);
+  if(o.shop&&(i.shop||'').trim())out.push(['店家',i.shop.trim()]);
+  if(o.origin&&(i.origin||'').trim())out.push(['產地',i.origin.trim()]);
+  if(o.buy&&/^\d{4}/.test(i.buyDate||''))out.push(['購入',i.buyDate.slice(0,4)+' 年']);
+  return out;
 }
 function sellToggle(id,on){if(on)SELL.sel.add(id);else SELL.sel.delete(id);drawSell()}
 function sellList(){return [...SELL.sel].map(id=>S.items.find(x=>x.id===id)).filter(Boolean)}
 function sellText(list){
   const lines=['【出售｜娃衣】',''];
   list.forEach((i,k)=>{const f=sellInfo(i.id),sn=SELL.showSet&&i.setId?setName(i.setId):'';
-    lines.push(`${list.length>1?(k+1)+'. ':''}${i.name}`);
+    const mt=sellMeta(i),br=mt.find(m=>m[0]==='品牌');
+    lines.push(`${list.length>1?(k+1)+'. ':''}${br?`【${br[1]}】`:''}${i.name}`);
+    mt.filter(m=>m[0]!=='品牌').forEach(([a,b])=>lines.push(`　${a}：${b}`));
     if((i.sizes||[]).length)lines.push(`　尺寸：${i.sizes.join(' / ')}`);
     if(sn&&!i.name.startsWith(sn))lines.push(`　套裝：${sn}`);
     lines.push(`　價格：${f.price?'$'+money(f.price).toLocaleString():'私訊詢問'}`);
@@ -3039,6 +3060,7 @@ function sellText(list){
     if(f.fragile)lines.push('　⚠ 裝飾容易掉，拿取請小心');
     lines.push('');
   });
+  if((SELL.show.env||[]).length)lines.push(`保存環境：${SELL.show.env.join('・')}`,'');
   lines.push('※ 圖片為 App 建檔時的照片，實際衣況以私訊確認、實拍為準，歡迎詢問。');
   return lines.join('\n');
 }
@@ -3079,19 +3101,22 @@ async function drawSellCard(list){
     const im=ims[k];
     if(im){const s=Math.min((cellW-40)/im.width,(imgH-20)/im.height);x.drawImage(im,cx+(cellW-im.width*s)/2,cy+14+(imgH-im.height*s)/2,im.width*s,im.height*s)}
     let ty=cy+imgH+(cols===1?64:48);
+    const mt=sellMeta(i),br=mt.find(m=>m[0]==='品牌');
+    if(br){x.fillStyle=T.accent;x.font=`700 ${cols===3?18:22}px ${sans}`;x.fillText(fitText(x,br[1],cellW-36),cx+18,ty-(cols===3?30:36))}
     x.fillStyle=T.ink;x.font=`600 ${cols===3?26:32}px ${sans}`;x.fillText(fitText(x,i.name,cellW-36),cx+18,ty);
     ty+=cols===3?40:48;
     x.fillStyle=T.accent;x.font=`700 ${cols===3?36:46}px ${num}`;const pr=f.price?'$'+money(f.price).toLocaleString():'私訊';x.fillText(pr,cx+18,ty);
     const pw=x.measureText(pr).width;
     x.font=`500 ${cols===3?20:24}px ${sans}`;const tag=f.cond+(SELL.showWear?`・穿 ${wearCount(i.id)} 次`:'');const tw=Math.min(x.measureText(tag).width+28,cellW-pw-52);
     if(tw>40){x.fillStyle=T.soft;rrect(x,cx+30+pw,ty-(cols===3?26:32),tw,cols===3?34:42,17);x.fill();x.fillStyle=T.accent;x.fillText(fitText(x,tag,tw-28),cx+44+pw,ty-(cols===3?3:4))}
-    {ty+=cols===3?34:40;x.fillStyle=T.sub;x.font=`500 ${cols===3?20:24}px ${sans}`;x.fillText(fitText(x,[(i.sizes||[]).join(' / '),f.washed,f.flaw?'有瑕疵':'無瑕疵',f.fragile?'裝飾易掉':''].filter(Boolean).join('・')+(SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'・'+setName(i.setId):''),cellW-36),cx+18,ty)}
+    {ty+=cols===3?34:40;x.fillStyle=T.sub;x.font=`500 ${cols===3?20:24}px ${sans}`;x.fillText(fitText(x,[(i.sizes||[]).join(' / '),...mt.filter(m=>m[0]==='作品').map(m=>m[1]),f.washed,f.flaw?'有瑕疵':'無瑕疵',f.fragile?'裝飾易掉':''].filter(Boolean).join('・')+(SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'・'+setName(i.setId):''),cellW-36),cx+18,ty)}
   });
   // 一定要有的提醒
   const fy=H-footH+6;
   x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
   x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「哇娃衣櫃」App 以建檔時的照片製作',P+26,fy+42);
   x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
+  if((SELL.show.env||[]).length){x.fillStyle=T.accent;x.font=`600 24px ${sans}`;x.fillText('🏠 '+SELL.show.env.join('・'),P,fy-18)}
   x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('哇娃衣櫃',W-P,H-P+8);x.textAlign='left';
   return c;
 }
@@ -3104,18 +3129,24 @@ async function drawSellBig(i){
   const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
   x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText('FOR SALE',P,P+34);x.letterSpacing='0px';
   // 大圖
-  const AY=P+70,AH=720;
+  // 資訊行越多，大圖就縮一點，才不會壓到最下面的提醒
+  const m0=sellMeta(i),nl=[1,m0.some(m=>m[0]!=='品牌'),f.fragile||(SELL.show.env||[]).length].filter(Boolean).length;
+  const AY=P+70,AH=720-Math.max(0,nl-1)*52;
   x.save();x.shadowColor='rgba(0,0,0,.08)';x.shadowBlur=30;x.shadowOffsetY=10;x.fillStyle=T.card;rrect(x,P,AY,W-P*2,AH,36);x.fill();x.restore();
   const im=img(i)?await loadImg(img(i)).catch(()=>null):null;
   if(im){const s=Math.min((W-P*2-80)/im.width,(AH-80)/im.height);x.drawImage(im,(W-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s)}
   let y=AY+AH+86;
+  const mt=sellMeta(i),br=mt.find(m=>m[0]==='品牌');
+  if(br){x.textAlign='right';x.fillStyle=T.accent;x.font=`700 30px ${sans}`;x.letterSpacing='2px';x.fillText(fitText(x,br[1],600),W-P,P+34);x.letterSpacing='0px';x.textAlign='left'}
   x.fillStyle=T.ink;x.font=`700 54px ${serif}`;x.fillText(fitText(x,i.name,W-P*2),P,y);
   y+=84;x.fillStyle=T.accent;x.font=`700 72px ${num}`;const pr=f.price?'$'+money(f.price).toLocaleString():'私訊詢價';x.fillText(pr,P,y);
   const pw=x.measureText(pr).width;x.font=`500 30px ${sans}`;const tag=f.cond+(SELL.showWear?`・穿過 ${wearCount(i.id)} 次`:'');const tw=x.measureText(tag).width+40;
   x.fillStyle=T.soft;rrect(x,P+pw+24,y-42,tw,52,26);x.fill();x.fillStyle=T.accent;x.fillText(tag,P+pw+44,y-6);
   const meta=[(i.sizes||[]).length?'尺寸 '+i.sizes.join(' / '):'',f.washed,f.flaw?'瑕疵：'+f.flaw:'無瑕疵',SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'套裝 '+setName(i.setId):'',f.note].filter(Boolean).join('・');
   if(meta){y+=56;x.fillStyle=T.sub;x.font=`500 30px ${sans}`;x.fillText(fitText(x,meta,W-P*2),P,y)}
-  if(f.fragile){y+=50;x.fillStyle=T.accent;x.font=`600 28px ${sans}`;x.fillText('⚠ 裝飾容易掉，拿取請小心',P,y)}
+  const extra=mt.filter(m=>m[0]!=='品牌').map(([a,b])=>`${a} ${b}`).join('・');
+  if(extra){y+=50;x.fillStyle=T.sub;x.font=`500 28px ${sans}`;x.fillText(fitText(x,extra,W-P*2),P,y)}
+  if(f.fragile||(SELL.show.env||[]).length){y+=50;x.fillStyle=T.accent;x.font=`600 28px ${sans}`;x.fillText(fitText(x,[f.fragile?'⚠ 裝飾容易掉，拿取請小心':'',(SELL.show.env||[]).length?'🏠 '+SELL.show.env.join('・'):''].filter(Boolean).join('　'),W-P*2),P,y)}
   const fy=H-P-120;
   x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
   x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「哇娃衣櫃」App 以建檔時的照片製作',P+26,fy+42);
