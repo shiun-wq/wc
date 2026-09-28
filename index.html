@@ -623,7 +623,7 @@ nav.tabs button.plus.on{color:var(--berry)}
 .hstat small{font-size:16px}
 .hstat span{font-size:11px;color:var(--muted);letter-spacing:.06em}
 .hstat em,.hct em{font-style:normal;color:var(--muted);font-size:20px}
-.hcard{padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft));border:1px solid rgba(162,77,102,.12);cursor:pointer}
+.hcard{padding:14px 16px;margin-bottom:12px;border-radius:var(--r);background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft));border:1px solid rgba(162,77,102,.12);cursor:pointer}
 .hct{display:flex;align-items:center;gap:8px}
 .hct b{font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:.06em}
 .hct span{flex:1;font-size:12px;color:var(--ink-2)}
@@ -800,6 +800,45 @@ nav.tabs button.plus.on{color:var(--berry)}
 .idea>b{font-family:var(--serif);font-size:16px}
 .idea p{margin:6px 0 0;font-size:13px;line-height:1.7;color:var(--ink-2)}
 .idea .tipline{padding:8px 10px;border-radius:10px;background:var(--gold-soft);color:var(--ink)}
+.sheet .panel.editor{top:0;height:100vh;height:100dvh;max-height:none;max-width:none;border-radius:0;padding:0;overflow:hidden;animation:fade .2s ease}
+.sheet .panel.editor .grab{display:none}
+.sheet .panel.editor #sheetBody{height:100%}
+.ted{display:flex;flex-direction:column;height:100%;background:#1E1A1C;color:#F2EAE5}
+.tedtop{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px}
+.tedtop b{flex:1;text-align:center;font-size:15px;font-weight:600;letter-spacing:.04em}
+.tedtop .tx{color:#F2EAE5;font-size:14px;padding:8px 10px;border-radius:10px;min-width:60px;text-align:left}
+.tedtop .tz{font-size:12px;color:#A0939A;min-width:60px;text-align:right;font-variant-numeric:tabular-nums}
+.tedvp{position:relative;flex:1;overflow:hidden;touch-action:none;background:repeating-conic-gradient(#2A2427 0 25%,#241F21 0 50%) 0 0/24px 24px}
+.tedvp canvas{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 10px 40px rgba(0,0,0,.45);image-rendering:auto}
+.tedvp .tapload{background:rgba(30,26,28,.82);color:#F2EAE5}
+.tedzoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.tedzoom button{width:40px;height:40px;border-radius:12px;background:rgba(30,26,28,.78);color:#F2EAE5;font-size:18px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.12)}
+.tedzoom button.on{background:#A24D66;border-color:#A24D66}
+.tapring{position:absolute;border:2px solid #fff;border-radius:50%;pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.5);display:none;z-index:3;transform:translate(-50%,-50%)}
+.tedbar{background:#262023;padding:10px 12px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.08)}
+.tedbar .tedtip{font-size:12px;color:#B8ABB1;margin:0 2px 8px;line-height:1.5}
+.tedbar .swap{background:rgba(255,255,255,.08);margin-bottom:8px}
+.tedbar .swap button{color:#D9CDD2}
+.tedbar .swap button.on{background:#F2EAE5;color:#2F2529}
+.tedrow{display:flex;gap:6px;align-items:center}
+.tedrow .tb{flex:1;min-height:44px;border-radius:12px;background:rgba(255,255,255,.08);color:#F2EAE5;font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.tedrow .tb:disabled{opacity:.35}
+.tedrow .tb i{font-style:normal;font-size:17px;line-height:1}
+.tedrow .ok{flex:1.4;min-height:44px;border-radius:12px;background:#A24D66;color:#fff;font-weight:600;font-size:15px}
+.tedrow .ok:disabled{opacity:.4}
+.tedsize{display:flex;align-items:center;gap:10px;margin:-2px 2px 8px;font-size:12px;color:#B8ABB1}
+.tedsize input{flex:1}
+.tedsize i{display:inline-block;border-radius:50%;background:#F2EAE5;flex:0 0 auto}
+.mhead{display:grid;grid-template-columns:1fr 58px 58px;gap:0;padding:6px 12px !important;font-size:12px;color:var(--muted);text-align:center;margin:-4px 0 0;position:sticky;top:30px;background:var(--paper);z-index:1;padding:6px 0}
+.mhead span.on,.mq span.on{color:var(--berry-deep);font-weight:700}
+.mlabel{font-size:12.5px;color:var(--muted);letter-spacing:.06em;margin:16px 2px 6px;font-weight:600}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.mfeat{display:grid;grid-template-columns:28px 1fr 116px;gap:8px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--line)}
+.mfeat:last-child{border-bottom:0}
+.mfeat>i{font-style:normal;font-size:18px;text-align:center}
+.mfeat b{font-size:14px;font-weight:600;display:block}
+.mfeat small{display:block;font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+.mq{display:grid;grid-template-columns:1fr 1fr;text-align:center;font-size:13px;font-variant-numeric:tabular-nums}
 .tapwrap{position:relative;display:flex;justify-content:center;border-radius:18px;overflow:hidden;background:var(--paper-2)}
 #tapc{display:block;height:auto;max-width:100%;cursor:crosshair;touch-action:none}
 .tapload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(245,240,235,.82);text-align:center}
@@ -1435,21 +1474,30 @@ function tapCutout(dataURL,opt){
       if(mi){const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d');mx.drawImage(mi,0,0,W,H);
         const md=mx.getImageData(0,0,W,H).data;init=new Uint8ClampedArray(W*H);for(let k=0;k<W*H;k++)init[k]=md[k*4]}
     }
-    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:init,hist:[],sign:'add',tool:'smart',size:TAP_SIZE,opened:!NAV.open,busy:false};
-    openSheet(`<h3>${opt.title||'選出要留下的部分'}</h3>
-      <p class="hint" style="margin:-6px 0 10px" id="taptip"></p>
-      <div class="swap" id="taptool" style="margin-bottom:6px">
-        <button class="on" onclick="tapTool('smart')">✦ 智慧選取</button><button onclick="tapTool('brush')">🖌 筆刷</button></div>
-      <div class="swap" id="tapsign" style="margin-bottom:10px">
-        <button class="on" onclick="tapSign('add')">＋ 留下</button><button onclick="tapSign('sub')">－ 去掉</button></div>
-      <label class="f" id="tapsize" style="display:none;margin:-2px 0 8px"><span>筆刷大小</span><input type="range" min="6" max="80" value="${TAP_SIZE}" oninput="TAP_SIZE=+this.value;if(TAP)TAP.size=TAP_SIZE"></label>
-      <div class="tapwrap"><canvas id="tapc" width="${W}" height="${H}" style="width:min(100%,${(52*W/H).toFixed(2)}vh)"></canvas><div class="tapload" id="tapload"><span class="spin dark"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div></div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn ghost" onclick="tapUndo()">復原</button>
-        <button class="btn ghost" onclick="tapReset()">重來</button>
-        <span class="grow hint" id="taphint" style="text-align:center">還沒選</span>
-        <button class="btn" id="tapok" onclick="tapDone()" disabled>完成</button>
-      </div>`,()=>{if(TAP){const r=TAP.rej;TAP=null;r(new Error('已取消'))}});
+    TAP={res,rej,W,H,src:c.getContext('2d').getImageData(0,0,W,H),canvas:c,pts:[],a:init,hist:[],fut:[],sign:'add',tool:'smart',size:TAP_SIZE,opened:!NAV.open,busy:false,z:1,tx:0,ty:0,fit:1,pan:false};
+    openSheet(`<div class="ted">
+      <div class="tedtop"><button class="tx" onclick="closeSheet()">取消</button><b>${opt.title||'選出要留下的部分'}</b><span class="tz" id="tapz">100%</span></div>
+      <div class="tedvp" id="tapvp">
+        <canvas id="tapc" width="${W}" height="${H}"></canvas>
+        <div class="tedzoom"><button onclick="tapZoomBy(1.5)" aria-label="放大">＋</button><button onclick="tapZoomBy(1/1.5)" aria-label="縮小">－</button><button onclick="tapFit()" aria-label="整張" style="font-size:13px">全圖</button><button id="tappan" onclick="tapPanMode()" aria-label="移動">✋</button></div>
+        <div class="tapring" id="tapring"></div>
+        <div class="tapload" id="tapload"><span class="spin"></span><b>載入點選去背模型…</b><small>第一次約 6MB，之後就很快</small></div>
+      </div>
+      <div class="tedbar">
+        <p class="tedtip" id="taptip"></p>
+        <div class="row" style="gap:8px"><div class="swap grow" id="taptool"><button class="on" onclick="tapTool('smart')">✦ 智慧選取</button><button onclick="tapTool('brush')">🖌 筆刷</button></div>
+          <div class="swap grow" id="tapsign"><button class="on" onclick="tapSign('add')">＋ 留下</button><button onclick="tapSign('sub')">－ 去掉</button></div></div>
+        <div class="tedsize" id="tapsize" style="display:none"><span>筆刷</span><input type="range" min="6" max="90" value="${TAP_SIZE}" oninput="TAP_SIZE=+this.value;if(TAP)TAP.size=TAP_SIZE;tapSizeDot()"><i id="tapdot"></i></div>
+        <div class="tedrow">
+          <button class="tb" id="tapundo" onclick="tapUndo()"><i>↶</i>復原</button>
+          <button class="tb" id="tapredo" onclick="tapRedo()"><i>↷</i>重做</button>
+          <button class="tb" onclick="tapReset()"><i>⟲</i>重來</button>
+          <button class="ok" id="tapok" onclick="tapDone()" disabled>完成</button>
+        </div>
+        <p class="tedtip" id="taphint" style="margin:8px 2px 0;text-align:center">還沒選</p>
+      </div></div>`,()=>{if(TAP){const r=TAP.rej;TAP=null;r(new Error('已取消'))}});
+    document.querySelector('#sheet .panel').classList.add('editor');
+    requestAnimationFrame(()=>{tapFit();tapSizeDot()});
     tapTip();tapDraw();tapBind();
     if(opt.brush)tapTool('brush');
     try{await loadTapModel();const l=document.getElementById('tapload');if(l)l.remove()}
@@ -1463,9 +1511,9 @@ function tapCutout(dataURL,opt){
 let TAP_SIZE=24;
 function tapTip(){
   const t=document.getElementById('taptip');if(!t||!TAP)return;
-  t.textContent=TAP.tool==='smart'
-    ?'點一下，或沿著要留下的東西「畫一筆」，AI 會幫你圈出來。毛絨娃娃建議畫一筆，比點一下準。'
-    :'直接用手指塗：「留下」把漏掉的塗回來，「去掉」擦掉多選的。細節可以把筆刷調小。';
+  t.textContent=(TAP.tool==='smart'
+    ?'點一下，或沿著要留下的東西畫一筆，AI 會幫你圈出來。'
+    :'用手指塗：「留下」塗回漏掉的，「去掉」擦掉多的。')+' 兩指可以放大、移動。';
 }
 function tapTool(t){
   if(!TAP)return;TAP.tool=t;
@@ -1477,31 +1525,81 @@ function tapSign(m){
   if(!TAP)return;TAP.sign=m;
   document.querySelectorAll('#tapsign button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(m==='add')));
 }
+// 放大縮小：畫布用 CSS transform 疊在視窗上，筆刷粗細跟著螢幕走，放大後就能塗細節
+function tapApply(){
+  const cv=document.getElementById('tapc');if(!cv||!TAP)return;
+  cv.style.transform=`translate(${TAP.tx}px,${TAP.ty}px) scale(${TAP.z})`;
+  const z=document.getElementById('tapz');if(z)z.textContent=Math.round(TAP.z*100)+'%';
+}
+function tapFit(){
+  const vp=document.getElementById('tapvp'),cv=document.getElementById('tapc');if(!vp||!cv||!TAP)return;
+  const r=vp.getBoundingClientRect(),f=Math.min(r.width/TAP.W,r.height/TAP.H)*.94;
+  cv.style.width=TAP.W*f+'px';cv.style.height=TAP.H*f+'px';
+  TAP.fit=f;TAP.z=1;TAP.tx=(r.width-TAP.W*f)/2;TAP.ty=(r.height-TAP.H*f)/2;tapApply();
+}
+function tapZoomAt(z,cx,cy){
+  if(!TAP)return;z=Math.max(1,Math.min(10,z));
+  const px=(cx-TAP.tx)/TAP.z,py=(cy-TAP.ty)/TAP.z;
+  TAP.z=z;TAP.tx=cx-px*z;TAP.ty=cy-py*z;tapApply();
+}
+function tapZoomBy(k){const vp=document.getElementById('tapvp');if(!vp||!TAP)return;const r=vp.getBoundingClientRect();tapZoomAt(TAP.z*k,r.width/2,r.height/2)}
+function tapPanMode(){if(!TAP)return;TAP.pan=!TAP.pan;const b=document.getElementById('tappan');if(b)b.classList.toggle('on',TAP.pan);toast(TAP.pan?'移動模式：一指拖曳畫面，再按一次 ✋ 回到塗抹':'回到塗抹')}
+function tapSizeDot(){const d=document.getElementById('tapdot');if(d){const s=Math.max(6,Math.min(40,TAP_SIZE*.5));d.style.width=d.style.height=s+'px'}}
 function tapBind(){
-  const cv=document.getElementById('tapc');if(!cv)return;
-  cv.style.touchAction='none';
-  let pts=null,last=null;
+  const cv=document.getElementById('tapc'),vp=document.getElementById('tapvp'),ring=document.getElementById('tapring');if(!cv||!vp)return;
+  const P=new Map();let pts=null,last=null,pinch=null,drag=null,hold=false;
   const pos=e=>{const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height,k:TAP.W/r.width}};
-  cv.onpointerdown=e=>{
-    if(!TAP||TAP.busy)return;e.preventDefault();cv.setPointerCapture(e.pointerId);
-    const p=pos(e);pts=[p];
+  const local=e=>{const r=vp.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
+  const showRing=e=>{if(!ring)return;if(!TAP||TAP.tool!=='brush'||TAP.pan){ring.style.display='none';return}
+    const l=local(e);ring.style.display='block';ring.style.left=l.x+'px';ring.style.top=l.y+'px';ring.style.width=ring.style.height=TAP.size+'px'};
+  // 第二根手指放下：取消剛開始的那一筆，改成放大／移動
+  const cancelStroke=()=>{
+    if(!pts)return;
+    if(TAP.tool==='brush'&&TAP.hist.length){const h=TAP.hist.pop();TAP.a=h.a}
+    pts=null;last=null;tapDraw();
+  };
+  const startPinch=()=>{const [a,b]=[...P.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,z:TAP.z,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,tx:TAP.tx,ty:TAP.ty}};
+  vp.onpointerdown=e=>{
+    if(!TAP||TAP.busy||e.target.closest('.tedzoom'))return;e.preventDefault();try{vp.setPointerCapture(e.pointerId)}catch(_){}
+    P.set(e.pointerId,local(e));
+    if(P.size===2){cancelStroke();drag=null;startPinch();hold=true;if(ring)ring.style.display='none';return}
+    if(P.size>2||hold)return;
+    if(TAP.pan){drag={x:e.clientX,y:e.clientY,tx:TAP.tx,ty:TAP.ty};return}
+    const p=pos(e);pts=[p];showRing(e);
     if(TAP.tool==='brush'){tapPush();if(!TAP.a)TAP.a=new Uint8ClampedArray(TAP.W*TAP.H);last=p;tapPaint(p,p)}
   };
-  cv.onpointermove=e=>{
-    if(!pts||!TAP)return;const p=pos(e);pts.push(p);
+  vp.onpointermove=e=>{
+    if(!TAP)return;
+    if(P.has(e.pointerId))P.set(e.pointerId,local(e));
+    if(pinch&&P.size>=2){
+      const [a,b]=[...P.values()],d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      const z=Math.max(1,Math.min(10,pinch.z*d/pinch.d)),px=(pinch.mx-pinch.tx)/pinch.z,py=(pinch.my-pinch.ty)/pinch.z;
+      TAP.z=z;TAP.tx=mx-px*z;TAP.ty=my-py*z;tapApply();return;
+    }
+    if(drag){TAP.tx=drag.tx+e.clientX-drag.x;TAP.ty=drag.ty+e.clientY-drag.y;tapApply();return}
+    if(e.pointerType==='mouse'&&!pts)showRing(e);
+    if(!pts)return;
+    const p=pos(e);pts.push(p);showRing(e);
     if(TAP.tool==='brush'){tapPaint(last,p);last=p}
-    else{const x=cv.getContext('2d');x.strokeStyle=TAP.sign==='sub'?'#2F2529':'#fff';x.lineWidth=Math.max(4,TAP.W/120);x.lineCap='round';
+    else{const x=cv.getContext('2d');x.strokeStyle=TAP.sign==='sub'?'#2F2529':'#fff';x.lineWidth=Math.max(3,4*p.k);x.lineCap='round';
       const a=pts[pts.length-2];x.beginPath();x.moveTo(a.x*TAP.W,a.y*TAP.H);x.lineTo(p.x*TAP.W,p.y*TAP.H);x.stroke()}
   };
-  cv.onpointerup=cv.onpointercancel=()=>{
-    if(!pts||!TAP){pts=null;return}
+  const up=e=>{
+    P.delete(e.pointerId);
+    if(P.size<2)pinch=null;
+    if(P.size===0){hold=false;drag=null;if(ring&&e.pointerType!=='mouse')ring.style.display='none'}
+    if(!pts||!TAP||P.size){return}
     const s=pts;pts=null;
     if(TAP.tool==='brush'){tapDraw();return}
-    const span=Math.hypot(s[s.length-1].x-s[0].x,s[s.length-1].y-s[0].y);
-    tapSmart(span<.02?[s[0]]:s.filter((_,i)=>i%Math.ceil(s.length/40)===0));
+    const inside=s.filter(q=>q.x>=0&&q.y>=0&&q.x<=1&&q.y<=1);if(!inside.length){tapDraw();return}
+    const span=Math.hypot(inside[inside.length-1].x-inside[0].x,inside[inside.length-1].y-inside[0].y);
+    tapSmart(span<.02/TAP.z?[inside[0]]:inside.filter((_,i)=>i%Math.ceil(inside.length/40)===0));
   };
+  vp.onpointerup=vp.onpointercancel=up;
+  vp.onpointerleave=e=>{if(e.pointerType==='mouse'&&ring)ring.style.display='none'};
+  vp.onwheel=e=>{e.preventDefault();const l=local(e);tapZoomAt(TAP.z*(e.deltaY<0?1.15:1/1.15),l.x,l.y)};
 }
-function tapPush(){TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});if(TAP.hist.length>25)TAP.hist.shift()}
+function tapPush(){TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});if(TAP.hist.length>30)TAP.hist.shift();TAP.fut=[]}
 // 筆刷：沿著手指畫過的線蓋上圓點
 function tapPaint(p0,p1){
   const {W,H,a}=TAP,r=TAP.size/2*p1.k,sub=TAP.sign==='sub';
@@ -1563,9 +1661,11 @@ function tapDraw(x0=0,y0=0,x1,y1){
   }
   const ok=document.getElementById('tapok'),hn=document.getElementById('taphint');
   if(ok)ok.disabled=!a;
-  if(hn)hn.textContent=a?'亮的部分會留下':'還沒選';
+  if(hn)hn.textContent=a?'亮的部分會留下，暗的會去掉':'還沒選';
+  const u=document.getElementById('tapundo'),r=document.getElementById('tapredo');if(u)u.disabled=!TAP.hist.length;if(r)r.disabled=!TAP.fut.length;
 }
-function tapUndo(){if(!TAP||!TAP.hist.length)return;const h=TAP.hist.pop();TAP.a=h.a;TAP.pts.length=h.n;tapDraw()}
+function tapUndo(){if(!TAP||!TAP.hist.length)return;TAP.fut.push({a:TAP.a&&TAP.a.slice(),pts:TAP.pts.slice()});const h=TAP.hist.pop();TAP.a=h.a;TAP.pts.length=Math.min(TAP.pts.length,h.n);tapDraw()}
+function tapRedo(){if(!TAP||!TAP.fut.length)return;const f=TAP.fut.pop();TAP.hist.push({a:TAP.a&&TAP.a.slice(),n:TAP.pts.length});TAP.a=f.a;TAP.pts=f.pts;tapDraw()}
 function tapReset(){if(!TAP)return;tapPush();TAP.pts=[];TAP.a=null;tapSign('add');tapDraw()}
 async function tapDone(){
   if(!TAP||!TAP.a)return;
@@ -1973,7 +2073,7 @@ function openSheet(html,onClose){
   // 換內容時，先通知上一個畫面它被關掉了（例如點選去背還在等結果）
   const prev=NAV.onClose;NAV.onClose=onClose||null;if(prev&&prev!==onClose)prev();
   document.getElementById('sheetBody').innerHTML=html;
-  sh.querySelector('.panel').classList.remove('full');
+  sh.querySelector('.panel').classList.remove('full','editor');
   if(!NAV.open){
     NAV.open=true;sh.classList.add('on');sh.querySelector('.panel').scrollTop=0;lockScroll(true);
     history.pushState({sheet:1},'');
@@ -2089,11 +2189,13 @@ function renderHome(){
 }
 /* ---- 首頁：今天穿什麼（每天固定一套，按「換一套」才會變） ---- */
 function seeded(seed){let x=0;for(const c of String(seed))x=(x*31+c.charCodeAt(0))>>>0;return ()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296}}
+// 娃衣要有標這隻娃娃的尺寸才算合身（10cm 只配 10cm、20cm 只配 20cm）
+const fitsDoll=(i,d)=>!d||!d.size||(i.sizes||[]).includes(d.size);
 function todayPick(){
   const d=mainDoll(),n=S.settings.pickN||0;
   if((S.settings.pickDay||'')!==today()){S.settings.pickDay=today();S.settings.pickN=0}
   let pool=S.items.filter(i=>i.category!=='套裝'&&img(i));
-  if(d&&d.size){const f=pool.filter(i=>(i.sizes||[]).includes(d.size));if(f.length>=2)pool=f}
+  pool=pool.filter(i=>fitsDoll(i,d));
   if(pool.length<2)return null;
   const r=seeded(today()+(d?d.id:'')+':'+(S.settings.pickN||0)),one=l=>l.length?l[Math.floor(r()*l.length)]:null,by=sl=>pool.filter(i=>slotOf(i.category)===sl);
   const dress=by('dress'),top=by('top'),bottom=by('bottom'),out=[];
@@ -2104,7 +2206,9 @@ function todayPick(){
   return out.filter(Boolean);
 }
 function todayPickHTML(){
-  const its=todayPick(),d=mainDoll();if(!its)return '';
+  const its=todayPick(),d=mainDoll();
+  if(!its)return d&&d.size&&S.items.length>=2?`<section class="hcard pick-today"><div class="hct"><b>今天穿這套？</b><span>${esc(d.name)}・${esc(d.size)}</span></div>
+    <p class="hint" style="margin:0">衣櫃裡 ${esc(d.size)} 的娃衣還不到兩件，建檔時記得選尺寸，這裡就會每天幫 ${esc(d.name)} 搭一套。</p></section>`:'';
   return `<section class="hcard pick-today">
     <div class="hct"><b>今天穿這套？</b><span>${d?esc(d.name)+'・':''}每天一套</span></div>
     <div class="ptrow">${its.map(i=>`<button onclick="openItem('${i.id}')"><img src="${img(i)}" alt=""><small>${esc(i.name)}</small></button>`).join('')}</div>
@@ -4071,18 +4175,38 @@ function comboToCanvas(a,b){
   UI.canvas=[...UI.canvas.filter(p=>p.dollId),{itemId:a,x:50,y:32,scale:130,rot:0},{itemId:b,x:50,y:68,scale:130,rot:0}];UI.selPc=null;
   renderCanvas();window.scrollTo({top:0,behavior:'smooth'});toast('已放到畫布上，調整好再存成 Look');
 }
+// 會員說明：每個功能寫清楚「做什麼」，免費／會員各能用多少
+const AI_DESC={
+  tag:['📸','拍照後自動填好名稱、類型、顏色、風格；套裝會自動拆成單品'],
+  img:['🤖','AI 重畫一張乾淨的貼圖，手、娃娃和雜物都會清掉，什麼背景都可以'],
+  wearid:['🔍','記錄穿搭時上傳娃娃的照片，AI 依衣櫃裡的名稱、類型、顏色，猜照片裡穿的是哪幾件，再由你確認勾選'],
+  idea:['✨','選地點或主題（咖啡廳、聖誕節、在家…），AI 從你的衣櫃搭一套'],
+  buy:['🛍️','想買之前比對：衣櫃裡有沒有幾乎一樣、同款不同色、以前賣掉過的，還有在路上的訂單']
+};
+const MEMBER_ONLY=[
+  ['🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合、每隻娃娃最愛的那件'],
+  ['🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色'],
+  ['📅','穿搭習慣','換裝的星期分佈、每月穿搭趨勢、最近喜歡的風格有沒有改變'],
+  ['🎯','適合給哪隻娃娃','買前檢查時，依每隻娃娃平常穿的風格推薦買給誰'],
+  ['💰','花費分析','每月花多少、每穿一次的成本、最划算和買了還沒穿的、賣掉回血多少']
+];
+const FREE_ALL=[['👗','衣櫃與建檔','不限件數，分類、標籤、尺寸、批次修改'],['✂️','點選去背・筆刷修補','在手機上做，不用 AI、不花次數'],
+  ['🪄','搭配畫布・隨機搭一套','把衣服拖到娃娃身上試穿，存成 Look'],['📝','穿搭紀錄・足跡','記每天穿什麼、去了哪裡，做成回憶小卡'],
+  ['🧸','娃娃櫃','紀念日提醒、整理紀錄、配件、等待到家'],['📦','考慮中・購買中・壓箱底・出售貼文・回憶箱',''],['💾','完整備份','']];
 function openMember(){
-  openSheet(`<h3>會員功能</h3>
-    <div class="qcomp">
-      <div class="qh"><span></span><b>免費</b><b>會員</b></div>
-      ${Object.values(QUOTA).map(q=>`<div><span>${q.name}／月</span><b>${q.free||'—'}</b><b>${q.member}</b></div>`).join('')}
-      <div><span>搭配分析</span><b>—</b><b>✓</b></div>
-      <div><span>穿搭習慣分析</span><b>—</b><b>✓</b></div>
-      <div><span>花費分析</span><b>—</b><b>✓</b></div>
-    </div>
-    <p class="hint" style="margin:10px 0 0">不想訂閱也可以用點數：建檔分析、穿搭辨識 1 點，AI 出圖 5 點。買前檢查是會員限定（會員額度用完後 3 點一次）。會員每月多出的額度大約等於 ${memberValue()} 點。</p>
-    <p class="hint" style="margin:10px 0 0">衣櫃、建檔、簡易去背、修補筆刷、搭配、穿搭紀錄、娃娃櫃、考慮中、分享小卡、備份都一直免費。</p>
-    <div class="note" style="margin-top:12px">網頁版目前是測試階段，可以直接開啟會員功能試用。之後上架成 App 時，這裡會換成正式的訂閱方案。</div>
+  const row=(k)=>{const q=QUOTA[k],[ico,desc]=AI_DESC[k]||['✦',''];
+    return `<div class="mfeat"><i>${ico}</i><div><b>${q.name}${q.memberOnly?'<span class="pro">PRO</span>':''}</b><small>${desc}</small></div>
+      <div class="mq"><span>${q.memberOnly?'—':q.free?q.free+' 次':'—'}</span><span class="on">${q.member} 次</span></div></div>`};
+  openSheet(`<h3>免費版和會員差在哪？</h3>
+    <div class="mhead"><span></span><span>免費</span><span class="on">會員</span></div>
+    <p class="mlabel">AI 功能（每月次數，1 號重置）</p>
+    <div class="mbox">${Object.keys(QUOTA).map(row).join('')}</div>
+    <p class="hint" style="margin:6px 2px 0">次數用完也可以用點數：建檔分析、穿搭辨識、搭配建議 1 點，AI 出圖 5 點，買前檢查 3 點（會員限定）。</p>
+    <p class="mlabel">只有會員看得到的分析</p>
+    <div class="mbox">${MEMBER_ONLY.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b><small>${d}</small></div><div class="mq"><span>—</span><span class="on">✓</span></div></div>`).join('')}</div>
+    <p class="mlabel">一直免費</p>
+    <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
+    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。<br>網頁版目前是測試階段，可以直接開啟會員試用；上架成 App 後會換成正式的訂閱方案。</div>
     <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
 }
 async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
@@ -4118,7 +4242,7 @@ const SCENE_TIP={
 let IDEA={};
 function ideaPool(){
   const d=S.dolls.find(x=>x.id===IDEA.dollId);
-  return S.items.filter(i=>i.category!=='套裝'&&img(i)&&(!d||!d.size||!(i.sizes||[]).length||i.sizes.includes(d.size)));
+  return S.items.filter(i=>i.category!=='套裝'&&img(i)&&fitsDoll(i,d));
 }
 // opt.theme：從節日提醒進來時帶節日，優先挑那個節日的娃衣和節日配色
 function openIdea(opt){
