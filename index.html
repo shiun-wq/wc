@@ -478,6 +478,14 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .setrow:active{background:var(--swatch)}
 .setrow i{font-style:normal;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--swatch);font-size:16px;flex:0 0 32px}
 .setrow b{font-size:14.5px;font-weight:600}
+.setrow.warn b{color:#B4443C}
+.bigthumbs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.bigthumbs .th{width:46px;height:46px;flex:0 0 46px;border-radius:10px;overflow:hidden;background:var(--swatch)}
+.bigthumbs .th img{width:100%;height:100%;object-fit:contain}
+.bigthumbs .more{width:46px;height:46px;border-radius:10px;display:grid;place-items:center;background:var(--swatch);color:var(--muted);font-size:13px}
+.btn.warn{background:#B4443C;border-color:#B4443C;color:#fff}
+.btn.warn:disabled{opacity:.4}
+.bigstep{font-size:12px;color:var(--muted);margin:-8px 0 10px}
 .setlabel{font-size:12px;color:var(--muted);margin:16px 4px 6px;letter-spacing:.05em}
 .sethead{margin:-6px 0 2px}.sethead button{color:var(--berry-deep);font-size:14px;padding:4px 0}
 .cfam{display:flex;flex-wrap:wrap;gap:7px}
@@ -3106,6 +3114,7 @@ function batchIds(){
 function openBatchMenu(){
   const n=UI.msel.size;if(!n)return;
   const row=(k,ico,t,sub)=>`<button class="setrow" onclick="openBatch('${k}')"><i>${ico}</i><span><b>${t}</b><small>${sub}</small></span><em>›</em></button>`;
+  const big=(k,ico,t,sub)=>`<button class="setrow ${k==='del'?'warn':''}" onclick="openBatchBig('${k}')"><i>${ico}</i><span><b>${t}</b><small>${sub}</small></span><em>›</em></button>`;
   openSheet(`<h3>批次修改 ${n} 件</h3>
     <div class="setgroup">
       ${row('tag','🏷️','加標籤','例如 戀與深空、日卡、同人')}
@@ -3118,7 +3127,95 @@ function openBatchMenu(){
       ${row('origin','🌏','產地','')}
       ${row('buy','📅','購入日期','壓箱底會從購入日期開始算')}
     </div>
+    <div class="setgroup" style="margin-top:10px">
+      ${big('press','📦','壓箱底','一起放進壓箱底，或拿出來')}
+      ${big('sell','💰','出售','做出售貼文，或賣掉了移到回憶箱')}
+      ${big('del','🗑️','刪除','永久刪除，不能復原')}
+    </div>
     ${batchHasSet()?`<label class="remember" style="margin:12px 0 0"><input type="checkbox" ${UI.batchSet!==false?'checked':''} onchange="UI.batchSet=this.checked"> 選到的套裝，拆出來的單品也一起改</label>`:''}`);
+}
+/* ---- 批次大動作：壓箱底、出售、刪除。動到很多件，所以一步一步確認 ---- */
+let BIG={};
+function bigThumbs(ids){
+  const its=ids.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  return `<div class="bigthumbs">${its.slice(0,12).map(i=>`<div class="th">${img(i)?`<img src="${img(i)}" alt="">`:''}</div>`).join('')}${its.length>12?`<div class="more">+${its.length-12}</div>`:''}</div>`;
+}
+function openBatchBig(kind){
+  const ids=batchIds();if(!ids.length)return;
+  BIG={kind,ids,step:1,press:'on',reason:'賣掉了',date:today(),price:'',word:''};
+  drawBig();
+}
+function bigBack(){if(BIG.step>1){BIG.step--;drawBig()}else openBatchMenu()}
+function bigNext(){
+  if(BIG.kind==='sell'&&BIG.step===1&&BIG.reason==='賣掉了'&&BIG.price&&!(money(BIG.price)>=0)){toast('價格要是數字');return}
+  BIG.step++;BIG.word='';drawBig();
+}
+function drawBig(){
+  const {kind,ids,step}=BIG,n=ids.length,its=ids.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  const back=`<div class="sethead"><button onclick="bigBack()">‹ ${step>1?'上一步':'批次修改'}</button></div>`;
+  const total=kind==='del'?3:2,stepTx=`<p class="bigstep">第 ${step} 步，共 ${total} 步</p>`;
+  const names=`<div class="hint" style="margin:0 0 12px">${its.slice(0,8).map(i=>esc(i.name)).join('、')}${its.length>8?` 等 ${its.length} 件`:''}</div>`;
+  const pressTx={on:'放進壓箱底',off:'從壓箱底拿出來',auto:'改回自動判斷'};
+  let h='';
+  if(kind==='press'){
+    if(step===1)h=`<h3>批次壓箱底</h3>${stepTx}${bigThumbs(ids)}
+      <div class="swap" id="bigPress" style="margin-bottom:10px">${Object.entries(pressTx).map(([k,l])=>`<button data-k="${k}" class="${BIG.press===k?'on':''}" onclick="BIG.press='${k}';document.querySelectorAll('#bigPress button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div>
+      <p class="hint" style="margin:0 0 12px">壓箱底的娃衣會出現在首頁提醒和出售貼文裡。之後隨時可以拿出來。</p>
+      <button class="btn wide" onclick="bigNext()">下一步</button>`;
+    else h=`<h3>確定要把 ${n} 件${pressTx[BIG.press]}？</h3>${stepTx}${names}
+      <div class="row"><button class="btn ghost grow" onclick="bigBack()">再想想</button><button class="btn grow" onclick="bigDo()">確定${pressTx[BIG.press]}</button></div>`;
+  }
+  if(kind==='sell'){
+    if(step===1)h=`<h3>批次出售</h3>${stepTx}${bigThumbs(ids)}
+      <button class="setrow" style="border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:10px" onclick="closeSheet();setTimeout(()=>openSell(${JSON.stringify(ids).replace(/"/g,"'")}),50)"><i>📝</i><span><b>做出售貼文</b><small>還在賣，先做圖和文字，衣櫃不會變</small></span><em>›</em></button>
+      <div class="note" style="margin:0 0 12px"><b>已經賣掉／送走了</b>
+        <div class="parts" id="bigR" style="margin:8px 0">${MEM_REASONS.map(r=>`<button type="button" class="${r===BIG.reason?'on':''}" onclick="BIG.reason='${r}';drawBig()">${r}</button>`).join('')}</div>
+        <div class="split">
+          <label class="f" style="margin:0"><span>日期</span><input type="date" value="${BIG.date}" max="${today()}" onchange="BIG.date=this.value"></label>
+          ${BIG.reason==='賣掉了'?`<label class="f" style="margin:0"><span>總共賣了（選填）</span><input type="number" inputmode="decimal" placeholder="會平均算進每件" value="${esc(BIG.price)}" oninput="BIG.price=this.value"></label>`:''}
+        </div></div>
+      <button class="btn wide" onclick="bigNext()">下一步：移到回憶箱</button>`;
+    else h=`<h3>確定把 ${n} 件移到回憶箱？</h3>${stepTx}${names}
+      <div class="note" style="margin:0 0 12px">原因：${esc(BIG.reason)}・${esc(BIG.date)}${BIG.reason==='賣掉了'&&BIG.price?`・總共 ${fmt$(money(BIG.price))}`:''}<br>移過去後衣櫃、搭配、分析都不會再算它們，穿搭紀錄會保留。之後可以在回憶箱找回來。</div>
+      <div class="row"><button class="btn ghost grow" onclick="bigBack()">再想想</button><button class="btn grow" onclick="bigDo()">確定移到回憶箱</button></div>`;
+  }
+  if(kind==='del'){
+    if(step===1)h=`<h3>批次刪除 ${n} 件</h3>${stepTx}${bigThumbs(ids)}
+      <div class="note" style="margin:0 0 12px">刪除後<b>不能復原</b>，照片、貼圖都會一起刪掉，穿搭紀錄裡也會拿掉它們。<br>如果是賣掉或送人，建議改用「出售 → 移到回憶箱」，可以留下紀錄。</div>
+      <div class="row"><button class="btn ghost grow" onclick="openBatchBig('sell')">改移到回憶箱</button><button class="btn warn grow" onclick="bigNext()">我要刪除</button></div>`;
+    else if(step===2)h=`<h3>真的要刪除這 ${n} 件？</h3>${stepTx}${names}
+      <div class="row"><button class="btn ghost grow" onclick="bigBack()">不要刪</button><button class="btn warn grow" onclick="bigNext()">是，繼續</button></div>`;
+    else h=`<h3>最後確認</h3>${stepTx}
+      <label class="f"><span>請輸入「刪除」兩個字</span><input type="text" id="bigWord" autocomplete="off" oninput="BIG.word=this.value.trim();document.getElementById('bigGo').disabled=BIG.word!=='刪除'"></label>
+      <button class="btn warn wide" id="bigGo" disabled onclick="bigDo()">永久刪除 ${n} 件</button>`;
+  }
+  openSheet(back+h);
+}
+async function bigDo(){
+  const {kind,ids}=BIG,set=new Set(ids),its=ids.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  if(!its.length)return;
+  if(kind==='del'&&BIG.word!=='刪除')return;
+  if(kind==='press')its.forEach(i=>{i.press=BIG.press==='auto'?'':BIG.press});
+  if(kind==='sell'){
+    // 套裝和它拆出來的單品一起移時，單品收在套裝那張回憶卡片裡，價格只算在套裝上
+    const host=x=>x.setId&&x.category!=='套裝'&&its.find(y=>y.setId===x.setId&&y.category==='套裝');
+    const payers=its.filter(x=>!host(x)),tot=BIG.reason==='賣掉了'?money(BIG.price):0,each=Math.floor(tot/payers.length);
+    its.forEach(x=>{
+      const h=host(x),k=payers.indexOf(x);
+      Object.assign(x,{archivedAt:BIG.date||today(),reason:BIG.reason,soldPrice:tot&&!h?String(k===0?tot-each*(payers.length-1):each):'',memo:'',groupOf:h?h.id:null});
+      S.memory.push(x);
+    });
+    S.items=S.items.filter(x=>!set.has(x.id));
+  }
+  if(kind==='del'){
+    S.items=S.items.filter(x=>!set.has(x.id));
+    S.wears.forEach(w=>w.itemIds=w.itemIds.filter(x=>!set.has(x)));
+    S.looks.forEach(l=>{l.itemIds=l.itemIds.filter(x=>!set.has(x));l.layout=(l.layout||[]).filter(p=>!set.has(p.itemId))});
+  }
+  if(kind!=='press')UI.canvas=UI.canvas.filter(p=>!set.has(p.itemId));
+  UI.msel=new Set();BIG={};
+  await save();closeSheet();renderCloset();if(UI.tab==='home')renderHome();
+  toast(kind==='press'?`已更新 ${its.length} 件`:kind==='sell'?`${its.length} 件移到回憶箱了`:`已刪除 ${its.length} 件`);
 }
 const BATCH={brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
 function openBatch(kind){
@@ -3379,7 +3476,7 @@ function renderQueue(){
       <div class="bd">
         <input type="text" placeholder="名稱（可留給 AI 填）" value="${esc(q.name)}" oninput="UI.queue[${n}].name=this.value">
         <div class="split" style="margin-top:6px">
-          <select onchange="UI.queue[${n}].category=this.value;UI.queue[${n}].isSet=(this.value==='套裝');renderQueue()">
+          <select onchange="UI.queue[${n}].category=this.value;UI.queue[${n}].isSet=(this.value==='套裝');UI.queue[${n}].kindOk=true;if(UI.queue[${n}].isSet)dropOneCut(UI.queue[${n}]);renderQueue()">
             ${allCats().map(c=>`<option ${c===q.category?'selected':''}>${esc(c)}</option>`).join('')}
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
@@ -3395,7 +3492,7 @@ function renderQueue(){
             </div>`).join('')}</div>
           <button class="btn sm quiet" style="margin-top:7px" onclick="makePartStickers(${n})" ${q.working?'disabled':''}>
             ${q.working?'<span class="spin"></span>處理中':'逐件做貼圖'}</button>`:''}
-          ${q.parts.length?`<div class="hint" style="margin-top:5px">點上面任一件可以手動去背或修補</div>`:''}
+          ${q.parts.length?`<div class="hint" style="margin-top:5px">點上面任一件可以手動去背或修補</div>`:`<div class="hint" style="margin-top:5px">點上面選這套有哪幾件（不用 AI 也可以），再一件一件點選去背</div>`}
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
@@ -3459,11 +3556,12 @@ async function makePartStickers(n){
     prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
     try{
       pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
-      setCut(pt,await cutout(pt.crop,mode,PIECE_PROMPT(pt.name)),'img');
+      // 沒有框的單品（自己選的）用簡易去背會整張一起留下，改成點選
+      setCut(pt,await cutout(pt.crop,!pt.box&&mode==='local'?'tap':mode,PIECE_PROMPT(pt.name)),'img');
     }catch(e){ if(e.message==='已取消')break; bad.push(pt.name+'：'+e.message) }
     renderQueue();
   }
-  q.working=false;renderQueue();
+  await setCover(q);q.working=false;renderQueue();
   toast(bad.length?`${bad.length} 件沒做成（${bad[0]}）。點那件的小方框可以單獨重做`:`${q.parts.length} 件單品各自的貼圖完成`);
 }
 // AI 整套一張：請 AI 把套裝每件分開平鋪成一排，只出 1 張圖，再在手機上依位置切開、照順序對應到每一件
@@ -3480,7 +3578,7 @@ async function aiSetCut(n){
     const groups=splitGroups(a,W,H,q.parts.length);
     if(!groups.length)throw new Error('AI 這次沒有畫出衣服，不扣次數，再試一次');
     // 整套的貼圖也順便有了（所有單品一起）
-    if(!q.cutout){const all=Uint8ClampedArray.from(a);cleanMask(all,W,H);try{setCut(q,{sticker:await composeSticker(data,all,W,H),src:encSrc(data),mask:encMask(all,W,H)})}catch(e){}}
+    if(!q.cutout||q.cutKind!=='set'){const all=Uint8ClampedArray.from(a);cleanMask(all,W,H);try{setCut(q,{sticker:await composeSticker(data,all,W,H),src:encSrc(data),mask:encMask(all,W,H)});q.cutKind='set'}catch(e){}}
     groups.forEach((g,k)=>{
       const pt=q.parts[k];if(!pt)return;
       const pad=6,x0=Math.max(0,g.x0-pad),y0=Math.max(0,g.y0-pad),x1=Math.min(W-1,g.x1+pad),y1=Math.min(H-1,g.y1+pad);
@@ -3537,14 +3635,50 @@ async function editPart(n,k){
     const has=pt.img&&pt.cutSrc&&pt.cutMask;
     if(!has)pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
     const r=await tapCutout(has?pt.cutSrc:pt.crop,has?{mask:pt.cutMask,title:'修補　'+pt.name,brush:true}:{title:'去背　'+pt.name});
-    setCut(pt,r,'img');renderQueue();toast(pt.name+' 的貼圖好了');
+    setCut(pt,r,'img');await setCover(q);renderQueue();toast(pt.name+' 的貼圖好了');
   }catch(e){if(e.message!=='已取消')toast(e.message)}
 }
 async function cutQ(n,mode){
-  const q=UI.queue[n];
+  const q=UI.queue[n];if(!q)return;
+  // 還沒分析過就先問是不是套裝：套裝要逐件做，不然整套只會剩一件
+  if(!mode&&!q.isSet&&!q.kindOk&&!(q.styles||[]).length)return askKind(n);
   mode=mode||await pickCut();
   toast(mode==='ai'?'製作貼圖中，AI 出圖要等幾秒…':'製作貼圖中…');
-  try{setCut(q,await cutout(q.photo,mode,q.isSet?WHOLESET_PROMPT:null));renderQueue();toast('完成')}catch(e){toast(e.message)}
+  const paid=()=>[usage().img||0,wallet().points].join(),before=paid();
+  try{setCut(q,await cutout(q.photo,mode,q.isSet?WHOLESET_PROMPT:null));q.cutKind=q.isSet?'set':'one';q.cutPaid=paid()!==before;renderQueue();toast('完成')}catch(e){toast(e.message)}
+}
+function askKind(n){
+  const q=UI.queue[n];
+  openSheet(`<h3>這張是單件還是套裝？</h3>
+    <p class="hint" style="margin:-6px 0 12px">套裝要一件一件做貼圖，之後才能分開搭配。</p>
+    <button class="cutopt" onclick="kindPick(${n},'one')"><div><b>單件</b><span>直接做成貼圖</span></div></button>
+    <button class="cutopt" onclick="kindPick(${n},'ai')" ${aiReady()?'':'disabled'}><div><b>套裝：AI 幫我拆</b><span>AI 認出有哪幾件、各自在哪裡</span></div><em>${aiReady()?`剩 ${quotaLeft('tag')} 次`:'暫停服務'}</em></button>
+    <button class="cutopt" onclick="kindPick(${n},'hand')"><div><b>套裝：我自己選</b><span>點選有哪幾件，再一件一件點選去背</span></div><em>免費</em></button>`);
+}
+async function kindPick(n,k){
+  const q=UI.queue[n];if(!q)return;
+  closeSheet();q.kindOk=true;
+  if(k==='one')return cutQ(n);
+  if(k==='hand'){q.category='套裝';q.isSet=true;renderQueue();toast('點「帽子、上衣…」選出這套有哪幾件');return}
+  if(await analyze(n)===false)return;
+  toast(q.isSet?'是套裝，按「逐件做貼圖」每件各自做':'AI 看起來是單件，可以直接做成貼圖');
+}
+// 套裝的封面：沒有 AI 整套圖時，把每件的貼圖拼在一起，才不會只看到其中一件
+async function setCover(q){
+  if(!q||!q.isSet||(q.cutout&&q.cutKind==='set'))return;
+  const ps=q.parts.filter(p=>p.img);if(!ps.length)return;
+  try{
+    const ims=await Promise.all(ps.map(p=>loadImg(p.img)));
+    const cols=ims.length<=2?ims.length:ims.length<=4?2:3,rows=Math.ceil(ims.length/cols),cell=360,gap=16;
+    const c=document.createElement('canvas');c.width=cols*cell+(cols-1)*gap;c.height=rows*cell+(rows-1)*gap;
+    const x=c.getContext('2d');
+    ims.forEach((im,k)=>{
+      const r=Math.min(cell/im.width,cell/im.height),w=im.width*r,h=im.height*r;
+      const cx=(k%cols)*(cell+gap),cy=((k/cols)|0)*(cell+gap);
+      x.drawImage(im,cx+(cell-w)/2,cy+(cell-h)/2,w,h);
+    });
+    q.cutout=c.toDataURL('image/png');q.cutSrc=null;q.cutMask=null;q.cutKind='cover';
+  }catch(e){}
 }
 async function cutAll(){
   const todo=UI.queue.map((q,i)=>q.cutout?-1:i).filter(i=>i>=0);
@@ -3567,8 +3701,21 @@ async function analyze(n){
       .filter(x=>x.name).map(x=>({name:x.name,box:x.box,img:null,crop:null}));
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
     q.season=r.season||'';q.material=r.material||'';q.holiday=HOL_NAMES.includes(r.holiday)?r.holiday:'';
+    // 先做了貼圖才發現是套裝：那張是當單件做的（常常只剩一件），拿掉改逐件做；花掉的 AI 次數退回
+    if(q.isSet)dropOneCut(q);
   }catch(e){toast('分析失敗：'+e.message)}
   q.analyzing=false;renderQueue();return true;
+}
+function dropOneCut(q){
+  if(!q.cutout||q.cutKind!=='one')return;
+  const paid=q.cutPaid;if(paid)refundImg();
+  q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.cutPaid=false;
+  setTimeout(()=>toast(`是套裝！剛剛的貼圖是當單件做的，已拿掉${paid?'（AI 次數退回了）':''}，按「逐件做貼圖」每件各自做`),400);
+}
+function refundImg(){
+  const u=usage();
+  if(u.img>0)u.img--;else addPoints(POINT_COST.img,'退回：套裝改逐件做貼圖');
+  save();updateWalletChip();
 }
 async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length&&await analyze(i)===false)break}}
 
@@ -3584,6 +3731,7 @@ async function commitQueue(){
   }
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
+  for(const q of UI.queue)await setCover(q);
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
@@ -5028,7 +5176,7 @@ function mcap(el){
 /* ---- 使用說明：每個主題一張卡，上面是步驟圖（圖示 → 圖示），下面是小撇步 ---- */
 const HELP=[
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['可以一次選很多張照片。','放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','套裝可以「逐件做貼圖」，或用「AI 整套一張」只扣 1 次。','尺寸一定要選，之後分析和推薦都會用到。']],
+    ['可以一次選很多張照片。','放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。','還沒分析就按「做成貼圖」，會先問你是單件還是套裝。','「AI 整套一張」幾件都只扣 1 次。','尺寸一定要選，之後分析和推薦都會用到。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
     ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
@@ -5044,7 +5192,7 @@ const HELP=[
   ['📦','壓箱底・狀況・出售',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['買來 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','賣掉後移到回憶箱，會記下賣了多少錢。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
-    ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期。','作品、系列、活動（例如 戀與深空、日卡）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
+    ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空、日卡）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料都存在這支手機上，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟。']],
 ];
