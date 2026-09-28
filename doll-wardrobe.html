@@ -344,7 +344,7 @@ dl.meta dd{margin:0}
   background:
     radial-gradient(circle at 1px 1px,rgba(151,138,144,.28) 1px,transparent 1.4px) 0 0/18px 18px,
     radial-gradient(120% 80% at 50% 0,var(--hi) 0,var(--blush) 100%);
-  border:1px solid var(--line);border-radius:22px;overflow:hidden;touch-action:none;box-shadow:var(--sh-2)}
+  border:1px solid var(--line);border-radius:22px;overflow:hidden;touch-action:pan-y;box-shadow:var(--sh-2)}
 .pc{position:absolute;width:120px;transform-origin:center;touch-action:none;user-select:none;-webkit-user-select:none}
 .pc img{width:100%;pointer-events:none;filter:drop-shadow(0 6px 10px rgba(47,37,41,.16))}
 .pc.sel{outline:1.5px dashed var(--berry);outline-offset:4px;border-radius:6px}
@@ -411,6 +411,24 @@ dl.meta dd{margin:0}
 .qsize.shake{animation:shake .45s}
 .sellstrip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -4px;padding:0 4px 6px}
 .sellstrip .scwrap{flex:0 0 86%;scroll-snap-align:center}
+.wpicked{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px}
+.wpicked button{position:relative;flex:0 0 52px;width:52px;height:52px;border-radius:12px;background:var(--swatch);border:1.5px solid var(--berry)}
+.wpicked img{width:100%;height:100%;object-fit:contain;padding:3px}
+.wpicked i{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--berry);color:#fff;font-size:12px;line-height:18px;font-style:normal}
+.wchips{margin:0 -2px 2px;flex-wrap:nowrap;overflow-x:auto}
+.setmember{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border:1px solid rgba(179,144,96,.25);margin:4px 0 14px}
+.setmember i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:#B39060;font-size:20px;box-shadow:var(--sh-1)}
+.setmember span,.setrow span{flex:1;min-width:0;display:flex;flex-direction:column}
+.setmember b{font-size:16px}.setmember small,.setrow small{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setmember em,.setrow em{font-style:normal;color:var(--muted);font-size:20px}
+.setgroup{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:6px}
+.setrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 16px;border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:0}
+.setrow:active{background:var(--swatch)}
+.setrow i{font-style:normal;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--swatch);font-size:16px;flex:0 0 32px}
+.setrow b{font-size:14.5px;font-weight:600}
+.setlabel{font-size:12px;color:var(--muted);margin:16px 4px 6px;letter-spacing:.05em}
+.sethead{margin:-6px 0 2px}.sethead button{color:var(--berry-deep);font-size:14px;padding:4px 0}
 .cfam{display:flex;flex-wrap:wrap;gap:7px}
 .cfam span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
 .cfam i{width:12px;height:12px;border-radius:50%;border:1px solid var(--line-2)}
@@ -1979,7 +1997,7 @@ function homeCards(){
   const st=S.settings,h=[];
   // 0. 到家紀念日
   st.annHide=st.annHide||{};
-  dollAnniv().forEach(a=>{
+  if(st.annOn!==false)dollAnniv().forEach(a=>{
     const key=annKey(a),nm=esc(a.d.name);
     if(st.annHide[key+':'+annStage(a)])return;
     const what=annWhat(a);
@@ -2065,7 +2083,7 @@ async function setNotify(on){
     const p=await Notification.requestPermission().catch(()=>'denied');
     if(p!=='granted'){toast('通知權限被拒絕了，要到手機的設定裡打開');return}
   }
-  S.settings.notify=on;await save();openSettings();
+  S.settings.notify=on;await save();openSettings('notify');
   if(on){toast('已開啟通知');notifyAnniv(true)}
 }
 async function notifyAnniv(test){
@@ -2076,12 +2094,12 @@ async function notifyAnniv(test){
     try{new Notification(title,{body,tag,icon:'icons/icon-192.png'})}catch(e){}
   };
   let n=0;
-  if(S.settings.notifyOut!==false)for(const x of idleDolls()){
+  for(const x of idleDolls()){
     const k='idle:'+x.d.id+':'+x.last+':'+outRemind();if(done[k])continue;
     await show(`🌿 ${x.d.name} 已經 ${x.n} 天沒出門了`,`帶 ${x.d.name} 出去走走吧，順便記錄今天的穿搭`,k);
     done[k]=Date.now();n++;
   }
-  if(S.settings.notifyAnn!==false)for(const a of dollAnniv()){
+  if(S.settings.annOn!==false)for(const a of dollAnniv()){
     const k=annKey(a)+':'+annStage(a);if(done[k])continue;
     const nm=a.d.name,what=annWhat(a);
     if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`今天帶 ${nm} 出去看看吧，也可以做一張紀念小卡`,k);
@@ -3461,7 +3479,7 @@ function ideaToCanvas(){
 let WEAR={date:today(),doll:'',photo:null,picked:[],cands:null};
 function openWear(){
   const d=mainDoll();
-  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:[],cands:null};
+  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:[],cands:null,cat:'全部',sort:WEAR.sort||'new',q:'',fit:true};
   drawWearSheet();
 }
 function drawWearSheet(){
@@ -3480,10 +3498,7 @@ function drawWearSheet(){
     </div>
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
-    <div class="hint" style="margin-bottom:6px">手動勾選（${WEAR.picked.length} 件已選）</div>
-    <div class="pick">${S.items.filter(i=>i.category!=='套裝').map(i=>
-      `<button class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
-        <img src="${img(i)}" alt=""><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>
+    <div id="wpick">${wearPickHTML()}</div>
     <button class="btn wide" style="margin-top:14px" onclick="commitWear()">存入穿著紀錄</button>
   `);
 }
@@ -3530,9 +3545,36 @@ ${cat}
     toast(WEAR.cands.length?'請確認辨識結果':'沒有找到相符的娃衣');
   }catch(e){toast('辨識失敗：'+e.message)}
 }
+// 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋；只重畫這一塊，不會跳回最上面
+function wearPickHTML(){
+  const d=S.dolls.find(x=>x.id===WEAR.dollId),FM=fmap();
+  const cats=visibleFilters().filter(f=>f!=='套裝');
+  let list=S.items.filter(i=>i.category!=='套裝');
+  const fitOn=!!(d&&d.size&&WEAR.fit);
+  if(fitOn)list=list.filter(i=>(i.sizes||[]).includes(d.size));
+  if(WEAR.cat!=='全部'&&FM[WEAR.cat])list=list.filter(i=>FM[WEAR.cat].includes(i.category));
+  const q=(WEAR.q||'').trim().toLowerCase();
+  if(q)list=list.filter(i=>[i.name,setName(i.setId),(i.colors||[]).join(),i.category].join(' ').toLowerCase().includes(q));
+  const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),name:(a,b)=>String(a.name).localeCompare(String(b.name),'zh-Hant'),worn:(a,b)=>wearCount(b.id)-wearCount(a.id)}[WEAR.sort]||(()=>0);
+  list.sort(srt);
+  const picked=WEAR.picked.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
+  return `<div class="row" style="margin:4px 0 8px"><b class="grow" style="font-size:13.5px">手動勾選</b><span class="hint">${picked.length} 件已選</span></div>
+    ${picked.length?`<div class="wpicked">${picked.map(i=>`<button onclick="togglePick('${i.id}')" title="取消"><img src="${img(i)}" alt=""><i>×</i></button>`).join('')}</div>`:''}
+    <input type="text" enterkeyhint="search" placeholder="🔍 搜尋名稱、套裝、顏色" value="${esc(WEAR.q||'')}" oninput="WEAR.q=this.value;clearTimeout(WEAR.t);WEAR.t=setTimeout(()=>{const p=this.selectionStart;document.getElementById('wpick').innerHTML=wearPickHTML();const e=document.querySelector('#wpick input[enterkeyhint]');e.focus();e.setSelectionRange(p,p)},250)" style="margin-bottom:8px">
+    <div class="chips wchips">${cats.map(c=>`<button class="chip ${WEAR.cat===c?'on':''}" onclick="WEAR.cat=decodeURIComponent('${encodeURIComponent(c)}');wearPickRedraw()">${esc(c)}</button>`).join('')}</div>
+    <div class="row" style="gap:8px;margin:6px 0 10px;flex-wrap:wrap">
+      <div class="swap" style="margin:0;flex:1;min-width:220px">${[['new','最新入櫃'],['name','名稱'],['worn','最常穿']].map(([k,l])=>`<button class="${WEAR.sort===k?'on':''}" onclick="WEAR.sort='${k}';wearPickRedraw()">${l}</button>`).join('')}</div>
+      ${d&&d.size?`<label class="remember" style="margin:0"><input type="checkbox" ${WEAR.fit?'checked':''} onchange="WEAR.fit=this.checked;wearPickRedraw()"> 只看 ${esc(d.size)}</label>`:''}
+    </div>
+    ${list.length?`<div class="pick">${list.map(i=>
+      `<button class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
+        <img src="${img(i)}" alt=""><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
+      :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`}`;
+}
+function wearPickRedraw(){const el=document.getElementById('wpick');if(el)el.innerHTML=wearPickHTML()}
 function togglePick(id){
   WEAR.picked=WEAR.picked.includes(id)?WEAR.picked.filter(x=>x!==id):[...WEAR.picked,id];
-  drawWearSheet();
+  if(WEAR.cands)drawWearSheet();else wearPickRedraw();
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
@@ -4350,41 +4392,147 @@ function mcap(el){
 /* ============================================================
    11. 設定 / 備份
    ============================================================ */
-function openSettings(){
+// 設定：第一層是分類清單，點進去才是各自的設定（像手機的設定 App）
+const SET_PAGES={member:'會員與 AI',notify:'提醒與通知',look:'外觀',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
+function openSettings(page){
   const st=S.settings,c=cfg();
-  setTimeout(showUsage,50);
   const th=st.theme||'light';
-  openSheet(`
+  if(!page){
+    const row=(k,ico,t,sub)=>`<button class="setrow" onclick="readForm();openSettings('${k}')"><i>${ico}</i><span><b>${t}</b>${sub?`<small>${sub}</small>`:''}</span><em>›</em></button>`;
+    const ago=st.lastBackup?Math.floor((Date.now()-st.lastBackup)/864e5):null;
+    const smode={ask:'每次詢問',tap:'點選去背',local:'簡易去背',ai:'AI 出圖',api:'去背服務'}[st.stickerMode||'ask'];
+    openSheet(`
     <h3 onclick="devTap()">設定</h3>
-
-    <h2 class="sec" style="margin-top:4px">外觀</h2>
-    <div class="swap" id="s_theme">
-      ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
+    <button class="setmember" onclick="readForm();openSettings('member')">
+      <i>♛</i><span><b>${isMember()?'會員':'免費版'}</b><small>點數 ${wallet().points}・${aiReady()?'AI 服務正常':'AI 暫時無法使用'}</small></span><em>›</em></button>
+    <div class="setgroup">
+      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'提醒中':'關閉'}・出門${outRemind()?outRemind()+' 天':'不提醒'}`)}
     </div>
-
-    <h2 class="sec">提醒</h2>
-    <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">手機通知 ${st.notify&&canNotify()&&Notification.permission==='granted'?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
-        <button class="btn sm ${st.notify?'ghost':'quiet'}" onclick="readForm();setNotify(${!st.notify})">${st.notify?'關閉':'開啟'}</button></div>
-      ${st.notify?`<label class="remember" style="margin:10px 0 0"><input type="checkbox" ${st.notifyAnn!==false?'checked':''} onchange="S.settings.notifyAnn=this.checked;save()"> 紀念日（前 7 天、前一天、當天）</label>
-      <label class="remember" style="margin:6px 0 0"><input type="checkbox" ${st.notifyOut!==false?'checked':''} onchange="S.settings.notifyOut=this.checked;save()"> 很久沒帶娃娃出門</label>`:''}
-      <div class="f" style="margin:12px 0 0"><span>多久沒出門要提醒</span>
-        <div class="swap">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="readForm();S.settings.outRemind=${v};save().then(openSettings)">${l}</button>`).join('')}</div></div>
-      <p class="hint" style="margin:8px 0 0">首頁一定會顯示提醒卡片；開了手機通知才會另外跳通知。網頁版是在打開娃衣衣櫃時檢查${isIOS()?'，iPhone 要先加到主畫面才能開通知':''}；之後做成 App 會改成準時提醒。</p>
+    <p class="setlabel">我的衣櫃</p>
+    <div class="setgroup">
+      ${row('cats','🗂️','衣櫃類別',`顯示 ${filterNames().filter(f=>!(st.hiddenCats||[]).includes(f)).length} 個類別`)}
+      ${row('sizes','📏','娃衣尺寸',sizes().join('、'))}
+      ${row('sticker','✂️','貼圖製作',smode)}
     </div>
-
-    <h2 class="sec">AI 服務</h2>
+    <p class="setlabel">其他</p>
+    <div class="setgroup">
+      ${row('look','🎨','外觀',{light:'淺色',dark:'深色',auto:'跟隨系統'}[th])}
+      ${row('data','💾','備份與資料',ago===null?'還沒備份過':ago===0?'今天備份過':`${ago} 天前備份`)}
+      ${devMode()?row('dev','🛠️','開發者模式','AI 連線設定'):''}
+    </div>`);
+    return;
+  }
+  const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${SET_PAGES[page]}</h3>`;
+  let body='';
+  if(page==='member')body=`
     <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span>
+      <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
+        <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
+      <p class="hint" style="margin:8px 0 10px">測試期間可以直接開關。本月 AI 使用次數：</p>
+      ${quotaTable()}
+      <button class="btn ghost wide sm" style="margin-top:10px" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points} 點</button>
+    </div>
+    <div class="card">
+      <div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span>
         <button class="btn sm quiet" onclick="testAPI(this)">測試</button></div>
+    </div>`;
+  if(page==='notify'){
+    const on=st.notify&&canNotify()&&Notification.permission==='granted';
+    body=`
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:14px">手機通知</b><div class="hint">${on?'已開啟':'建議開啟，才不會錯過娃娃的生日和到家紀念日'}</div></span>
+        <button class="btn sm ${st.notify?'ghost':''}" onclick="setNotify(${!st.notify})">${st.notify?'關閉':'開啟'}</button></div>
+      ${!canNotify()&&isIOS()?`<p class="hint" style="margin:8px 0 0">要先把娃衣衣櫃加到主畫面，從主畫面打開才能開通知。</p>`:''}
     </div>
-    ${devMode()?`
-    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:14px">🎂 紀念日提醒</b><div class="hint">到家日、生日、自己設定的紀念日<br>前 7 天、前一天和當天提醒</div></span>
+        <button class="btn sm ${st.annOn!==false?'ghost':''}" onclick="S.settings.annOn=${st.annOn===false};save().then(()=>openSettings('notify'))">${st.annOn!==false?'關閉':'開啟'}</button></div>
+      <p class="hint" style="margin:8px 0 0">紀念日在「娃娃櫃」點進娃娃設定：填到家日，或在「紀念日」加生日。</p>
+    </div>
+    <div class="card">
+      <b style="font-size:14px">🌿 很久沒帶娃娃出門</b>
+      <div class="hint" style="margin:2px 0 10px">超過這麼多天沒出門、也沒記錄穿搭就提醒</div>
+      <div class="swap" style="margin:0">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="S.settings.outRemind=${v};save().then(()=>openSettings('notify'))">${l}</button>`).join('')}</div>
+    </div>
+    <p class="hint">提醒會出現在首頁；開了手機通知，也會跳通知給你。</p>`;
+  }
+  if(page==='look')body=`<div class="swap" id="s_theme">
+      ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
+    </div>`;
+  if(page==='cats')body=`
+    <div class="card">
+      <p class="hint" style="margin:0 0 8px">點一下可以在衣櫃裡隱藏／顯示這個類別（深色的是顯示中）。</p>
+      <div class="parts" id="s_cats" style="margin-top:0">${filterNames().map(f=>`<button type="button" class="${(st.hiddenCats||[]).includes(f)?'':'on'}" onclick="toggleCat(this,decodeURIComponent('${encodeURIComponent(f)}'))">${esc(f)}</button>`).join('')}</div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="s_newcat" class="grow" placeholder="例如 和服、泳裝、內搭" maxlength="10" onkeydown="if(event.key==='Enter')addCat()">
+        <button class="btn sm quiet" onclick="addCat()">新增</button>
+      </div>
+      ${customCats().length?`<p class="hint" style="margin:12px 0 6px">自訂的類別（點一下刪除）</p>
+      <div class="parts" style="margin-top:0">${customCats().map(c=>`<button type="button" class="on sizetag" onclick="delCat(decodeURIComponent('${encodeURIComponent(c)}'))">${esc(c)}<i>×</i></button>`).join('')}</div>`:''}
+      <p class="hint" style="margin:10px 0 0">新增的類別也會出現在建檔的類型選單，AI 分析時也會用。</p>
+    </div>
+`;
+  if(page==='sizes')body=`
+    <div class="card">
+      <div class="parts" id="s_sizes" style="margin-top:0">${sizes().map(z=>`<button type="button" class="on sizetag" onclick="delSize(decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}<i>×</i></button>`).join('')}</div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="s_newsize" class="grow" placeholder="例如 OB11、BJD、30cm" onkeydown="if(event.key==='Enter')addSize()">
+        <button class="btn sm quiet" onclick="addSize()">新增</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">建檔、衣櫃篩選和娃娃資料都會用這份清單。點尺寸可以刪除。</p>
+    </div>
+`;
+  if(page==='sticker')body=`
+    <div class="card">
+      <label class="f"><span>製作方式</span>
+        <select id="s_smode" onchange="toggleSticker(this.value)">
+          <option value="ask" ${(st.stickerMode||'ask')==='ask'?'selected':''}>每次詢問　做貼圖時自己選</option>
+          <option value="tap" ${st.stickerMode==='tap'?'selected':''}>一律點選去背　免費，點一下衣服</option>
+          <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
+          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
+          ${devMode()||st.stickerMode==='api'?`<option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>`:''}
+        </select></label>
+
+      <div id="sk_ai" style="display:${devMode()&&['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
+        <label class="f"><span>出圖模型</span>
+          <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
+        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。只在「直接連 API」時有用，走後台時用後台設定的出圖模型。</p>
+      </div>
+
+      <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
+        <label class="f"><span>服務網址</span><input type="text" id="s_bgurl" value="${esc(st.bgUrl||'')}" autocapitalize="off"></label>
+        <label class="f"><span>服務密鑰</span><input type="password" id="s_bgkey" value="${esc(st.bgKey||'')}" autocapitalize="off"></label>
+      </div>
+
+      <label class="f" style="margin-bottom:4px"><span>白邊粗細　<b id="s_edgev">${st.stickerEdge??6}</b></span>
+        <input type="range" id="s_edge" min="0" max="16" value="${st.stickerEdge??6}" oninput="document.getElementById('s_edgev').textContent=this.value"></label>
+      <p class="hint" style="margin:0 0 12px">像 LINE 貼圖那樣加一圈白框。設 0 就沒有白邊。</p>
+
+      <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
+        <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
+      <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。簡易去背不花錢，但照片要拍在素色背景上，建檔頁有拍照小撇步。</p>
+      ${st.tipHidden?`<button class="btn sm ghost" style="margin-top:10px" onclick="S.settings.tipHidden=false;S.settings.tipSeen=false;save();toast('建檔頁會再顯示拍照小撇步')">重新顯示拍照小撇步</button>`:''}
+    </div>
+`;
+  if(page==='data'){setTimeout(showUsage,50);body=`
+    <div class="card">
+      <p class="hint" style="margin:0 0 10px">資料全部存在這台裝置上。清掉瀏覽器資料就會消失，請定期匯出一份。<br>上次完整備份：<b>${st.lastBackup?new Date(st.lastBackup).toLocaleDateString():'還沒有'}</b><span id="s_usage"></span></p>
+      <div class="row">
+        <button class="btn ghost grow" onclick="exportBackup(true)">完整備份（含照片）</button>
+        <button class="btn ghost grow" onclick="exportBackup(false)">輕量備份（無照片）</button>
+      </div>
+      <button class="btn quiet wide" style="margin-top:8px" onclick="document.getElementById('imp').click()">從備份檔還原</button>
+      <input type="file" id="imp" accept=".json,application/json" hidden onchange="importBackup(event)">
+      <p class="hint" style="margin-top:10px">儲存方式：${DB.mode==='host'?'App 儲存空間':DB.mode==='idb'?'瀏覽器 IndexedDB':'僅此工作階段（無法保存，請務必匯出）'}</p>
+    </div>
+    <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>
+    <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>`;}
+  if(page==='dev')body=`    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
     <div class="card" style="margin-top:6px">
       <label class="f"><span>後台網址</span>
         <input type="text" id="s_backend" value="${esc(st.backendUrl||'')}" placeholder="${esc(BACKEND||'https://xxx.workers.dev')}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
       <div class="swap">
-        ${[['backend','走後台'],['direct','直接連 API']].map(([k,l])=>`<button class="${(st.aiRoute||'backend')===k?'on':''}" onclick="readForm();S.settings.aiRoute='${k}';save().then(openSettings)">${l}</button>`).join('')}
+        ${[['backend','走後台'],['direct','直接連 API']].map(([k,l])=>`<button class="${(st.aiRoute||'backend')===k?'on':''}" onclick="readForm();S.settings.aiRoute='${k}';save().then(()=>openSettings('dev'))">${l}</button>`).join('')}
       </div>
       <p class="hint" style="margin:8px 0 0">後台網址留空 = 用程式裡寫好的正式後台。「直接連 API」只給自己測試，用下面這組設定。</p>
     </div>
@@ -4421,84 +4569,8 @@ function openSettings(){
     </div>
     <button class="btn ghost wide" style="margin-top:8px" onclick="diagnose(this)">連不上？跑一次診斷</button>
     <p class="warn" style="margin-top:8px">${window.self!==window.top?'注意：這個頁面目前嵌在別的視窗裡執行。如果是在 Claude 的預覽視窗，對外連線會被沙箱擋掉，必須把 HTML 下載後用瀏覽器開啟。':'密鑰只存在這台裝置。'}</p>
-    `:''}
-
-    <h2 class="sec">會員（測試）</h2>
-    <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
-        <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="readForm();setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 10px">網頁版測試用。本月 AI 使用次數：</p>
-      ${quotaTable()}
-    </div>
-
-    <h2 class="sec">衣櫃類別</h2>
-    <div class="card">
-      <p class="hint" style="margin:0 0 8px">點一下可以在衣櫃裡隱藏／顯示這個類別（深色的是顯示中）。</p>
-      <div class="parts" id="s_cats" style="margin-top:0">${filterNames().map(f=>`<button type="button" class="${(st.hiddenCats||[]).includes(f)?'':'on'}" onclick="toggleCat(this,decodeURIComponent('${encodeURIComponent(f)}'))">${esc(f)}</button>`).join('')}</div>
-      <div class="row" style="margin-top:12px">
-        <input type="text" id="s_newcat" class="grow" placeholder="例如 和服、泳裝、內搭" maxlength="10" onkeydown="if(event.key==='Enter')addCat()">
-        <button class="btn sm quiet" onclick="addCat()">新增</button>
-      </div>
-      ${customCats().length?`<p class="hint" style="margin:12px 0 6px">自訂的類別（點一下刪除）</p>
-      <div class="parts" style="margin-top:0">${customCats().map(c=>`<button type="button" class="on sizetag" onclick="delCat(decodeURIComponent('${encodeURIComponent(c)}'))">${esc(c)}<i>×</i></button>`).join('')}</div>`:''}
-      <p class="hint" style="margin:10px 0 0">新增的類別也會出現在建檔的類型選單，AI 分析時也會用。</p>
-    </div>
-
-    <h2 class="sec">娃衣尺寸</h2>
-    <div class="card">
-      <div class="parts" id="s_sizes" style="margin-top:0">${sizes().map(z=>`<button type="button" class="on sizetag" onclick="delSize(decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}<i>×</i></button>`).join('')}</div>
-      <div class="row" style="margin-top:12px">
-        <input type="text" id="s_newsize" class="grow" placeholder="例如 OB11、BJD、30cm" onkeydown="if(event.key==='Enter')addSize()">
-        <button class="btn sm quiet" onclick="addSize()">新增</button>
-      </div>
-      <p class="hint" style="margin:8px 0 0">建檔、衣櫃篩選和娃娃資料都會用這份清單。點尺寸可以刪除。</p>
-    </div>
-
-    <h2 class="sec">貼圖</h2>
-    <div class="card">
-      <label class="f"><span>製作方式</span>
-        <select id="s_smode" onchange="toggleSticker(this.value)">
-          <option value="ask" ${(st.stickerMode||'ask')==='ask'?'selected':''}>每次詢問　做貼圖時自己選</option>
-          <option value="tap" ${st.stickerMode==='tap'?'selected':''}>一律點選去背　免費，點一下衣服</option>
-          <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
-          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
-          ${devMode()||st.stickerMode==='api'?`<option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>`:''}
-        </select></label>
-
-      <div id="sk_ai" style="display:${devMode()&&['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
-        <label class="f"><span>出圖模型</span>
-          <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
-        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。只在「直接連 API」時有用，走後台時用後台設定的出圖模型。</p>
-      </div>
-
-      <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
-        <label class="f"><span>服務網址</span><input type="text" id="s_bgurl" value="${esc(st.bgUrl||'')}" autocapitalize="off"></label>
-        <label class="f"><span>服務密鑰</span><input type="password" id="s_bgkey" value="${esc(st.bgKey||'')}" autocapitalize="off"></label>
-      </div>
-
-      <label class="f" style="margin-bottom:4px"><span>白邊粗細　<b id="s_edgev">${st.stickerEdge??6}</b></span>
-        <input type="range" id="s_edge" min="0" max="16" value="${st.stickerEdge??6}" oninput="document.getElementById('s_edgev').textContent=this.value"></label>
-      <p class="hint" style="margin:0 0 12px">像 LINE 貼圖那樣加一圈白框。設 0 就沒有白邊。</p>
-
-      <label class="f" style="margin-bottom:4px"><span>去底強度　<b id="s_tolv">${st.bgTol||42}</b></span>
-        <input type="range" id="s_bgtol" min="15" max="95" value="${st.bgTol||42}" oninput="document.getElementById('s_tolv').textContent=this.value"></label>
-      <p class="hint" style="margin:0">簡易去背會用到。底色沒清乾淨就調高，娃衣被吃掉就調低。簡易去背不花錢，但照片要拍在素色背景上，建檔頁有拍照小撇步。</p>
-      ${st.tipHidden?`<button class="btn sm ghost" style="margin-top:10px" onclick="S.settings.tipHidden=false;S.settings.tipSeen=false;save();toast('建檔頁會再顯示拍照小撇步')">重新顯示拍照小撇步</button>`:''}
-    </div>
-
-    <h2 class="sec">備份</h2>
-    <div class="card">
-      <p class="hint" style="margin:0 0 10px">資料全部存在這台裝置上。清掉瀏覽器資料就會消失，請定期匯出一份。<br>上次完整備份：<b>${st.lastBackup?new Date(st.lastBackup).toLocaleDateString():'還沒有'}</b><span id="s_usage"></span></p>
-      <div class="row">
-        <button class="btn ghost grow" onclick="exportBackup(true)">完整備份（含照片）</button>
-        <button class="btn ghost grow" onclick="exportBackup(false)">輕量備份（無照片）</button>
-      </div>
-      <button class="btn quiet wide" style="margin-top:8px" onclick="document.getElementById('imp').click()">從備份檔還原</button>
-      <input type="file" id="imp" accept=".json,application/json" hidden onchange="importBackup(event)">
-      <p class="hint" style="margin-top:10px">儲存方式：${DB.mode==='host'?'App 儲存空間':DB.mode==='idb'?'瀏覽器 IndexedDB':'僅此工作階段（無法保存，請務必匯出）'}</p>
-    </div>
-    <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>
-  `);
+`;
+  openSheet(head+body);
 }
 function applyTheme(){
   const t=S.settings.theme||'light';
@@ -4523,7 +4595,7 @@ async function addCat(){
   const el=document.getElementById('s_newcat'),c=el.value.trim();
   if(!c)return;
   if(allCats().includes(c)||filterNames().includes(c)){toast('已經有這個類別');return}
-  readForm();S.settings.customCats=[...customCats(),c];await save();openSettings();toast('已新增 '+c);
+  readForm();S.settings.customCats=[...customCats(),c];await save();openSettings('cats');toast('已新增 '+c);
 }
 async function delCat(c){
   const used=S.items.filter(i=>i.category===c).length;
@@ -4532,13 +4604,13 @@ async function delCat(c){
   S.settings.customCats=customCats().filter(x=>x!==c);
   S.settings.hiddenCats=(S.settings.hiddenCats||[]).filter(x=>x!==c);
   S.items.forEach(i=>{if(i.category===c)i.category='其他'});
-  await save();openSettings();
+  await save();openSettings('cats');
 }
 async function addSize(){
   const el=document.getElementById('s_newsize'),z=el.value.trim();
   if(!z)return;
   if(sizes().includes(z)){toast('已經有這個尺寸');return}
-  readForm();S.settings.sizes.push(z);await save();openSettings();toast('已新增 '+z);
+  readForm();S.settings.sizes.push(z);await save();openSettings('sizes');toast('已新增 '+z);
 }
 async function delSize(z){
   const used=S.items.filter(i=>(i.sizes||[]).includes(z)).length;
@@ -4547,7 +4619,7 @@ async function delSize(z){
   S.settings.sizes=sizes().filter(x=>x!==z);
   S.items.forEach(i=>{if(i.sizes)i.sizes=i.sizes.filter(x=>x!==z)});
   S.dolls.forEach(d=>{if(d.size===z)d.size=''});
-  await save();openSettings();
+  await save();openSettings('sizes');
 }
 async function showUsage(){
   try{const e=await navigator.storage.estimate();const el=document.getElementById('s_usage');
@@ -4572,10 +4644,12 @@ function readForm(){
     c.model=v('s_model').trim();
     S.settings.backendUrl=v('s_backend').trim();
   }
-  S.settings.stickerMode=v('s_smode');
-  if(document.getElementById('s_smodel'))S.settings.stickerModel=v('s_smodel');
-  S.settings.bgTol=+v('s_bgtol')||42;S.settings.stickerEdge=+v('s_edge');
-  S.settings.bgUrl=v('s_bgurl')||S.settings.bgUrl;S.settings.bgKey=v('s_bgkey')||S.settings.bgKey;
+  const has=k=>!!document.getElementById(k);
+  if(has('s_smode'))S.settings.stickerMode=v('s_smode');
+  if(has('s_smodel'))S.settings.stickerModel=v('s_smodel');
+  if(has('s_bgtol'))S.settings.bgTol=+v('s_bgtol')||42;
+  if(has('s_edge'))S.settings.stickerEdge=+v('s_edge');
+  if(has('s_bgurl')){S.settings.bgUrl=v('s_bgurl')||S.settings.bgUrl;S.settings.bgKey=v('s_bgkey')||S.settings.bgKey}
 }
 async function refreshModels(btn){
   readForm();
@@ -4584,24 +4658,24 @@ async function refreshModels(btn){
   const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
   try{
     c.models=await listModels(c.endpoint,c.key);
-    await save();openSettings();toast(`找到 ${c.models.length} 個模型`);
+    await save();openSettings('dev');toast(`找到 ${c.models.length} 個模型`);
   }catch(e){toast(e.message);btn.innerHTML=old;btn.disabled=false}
 }
 async function newPreset(){
   readForm();
   const p={id:uid('p'),name:'New Preset',endpoint:'',key:'',model:'',models:[]};
   S.settings.presets.push(p);S.settings.activeId=p.id;
-  await save();openSettings();
+  await save();openSettings('dev');
 }
 async function delPreset(){
   if(S.settings.presets.length<2){toast('至少要保留一組');return}
   if(!confirm('刪除這組配置？'))return;
   S.settings.presets=S.settings.presets.filter(p=>p.id!==S.settings.activeId);
   S.settings.activeId=S.settings.presets[0].id;
-  await save();openSettings();
+  await save();openSettings('dev');
 }
 async function switchPreset(id){
-  readForm();S.settings.activeId=id;await save();openSettings();
+  readForm();S.settings.activeId=id;await save();openSettings('dev');
 }
 async function saveSettings(loud){
   readForm();await save();
@@ -4614,7 +4688,7 @@ function devTap(){
   if(DEVTAP.length>=7&&!devMode()){DEVTAP=[];readForm();setDev(true)}
 }
 async function setDev(on){
-  S.settings.devMode=on;await save();openSettings();
+  S.settings.devMode=on;await save();openSettings(on?'dev':undefined);
   toast(on?'開發者模式已開啟':'開發者模式已關閉');
 }
 async function testAPI(btn){
@@ -4679,7 +4753,7 @@ async function diagnose(btn){
   openSheet(`<h3>連線診斷</h3>
     ${out.map(([k,v])=>`<div class="rowitem" style="display:block"><b style="font-size:13px">${k}</b><div class="hint" style="word-break:break-all">${esc(v)}</div></div>`).join('')}
     ${advice?`<div class="note" style="margin-top:12px">${advice}</div>`:''}
-    <button class="btn wide" style="margin-top:12px" onclick="openSettings()">回設定</button>`);
+    <button class="btn wide" style="margin-top:12px" onclick="openSettings('dev')">回設定</button>`);
 }
 function exportBackup(withImages){
   const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,memory:S.memory,sizes:S.settings.sizes,customCats:customCats(),hiddenCats:S.settings.hiddenCats||[]}));
