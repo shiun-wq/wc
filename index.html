@@ -465,13 +465,19 @@ details.help summary i{font-style:normal;width:32px;height:32px;border-radius:9p
 details.help summary b{flex:1;font-size:14.5px}
 details.help summary em{font-style:normal;color:var(--muted);transition:transform .2s}
 details.help[open] summary em{transform:rotate(90deg)}
+.hshots{display:flex;gap:10px;overflow-x:auto;padding:2px 16px 12px;scroll-snap-type:x mandatory}
+.hshots figure{flex:0 0 58%;max-width:230px;margin:0;scroll-snap-align:start;cursor:zoom-in}
+.hshots img{width:100%;border-radius:14px;border:1px solid var(--line);box-shadow:var(--sh-1);display:block;background:var(--swatch)}
+.hshots figcaption{font-size:11.5px;color:var(--ink-2);margin-top:6px;line-height:1.4}
+.hzoom{position:fixed;inset:0;z-index:600;background:rgba(20,16,18,.86);display:grid;place-items:center;padding:20px;animation:fade .2s ease}
+.hzoom img{max-width:100%;max-height:100%;border-radius:18px}
 .hsteps{display:flex;align-items:flex-start;gap:4px;overflow-x:auto;padding:4px 16px 10px}
 .hsteps>div{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;width:64px;text-align:center}
 .hsteps span{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft))}
 .hsteps small{font-size:10.5px;color:var(--ink-2);line-height:1.3}
 .hsteps>i{font-style:normal;color:var(--muted);margin-top:14px}
 details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink-2);line-height:1.7}
-.accsel{width:auto;padding:4px 8px;font-size:12px;border-radius:10px;height:auto}
+.accsel{width:auto;padding:4px 26px 4px 10px;font-size:12px;border-radius:10px;height:auto;background-position:right 7px center;background-size:12px}
 .setmember{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border:1px solid rgba(179,144,96,.25);margin:4px 0 14px}
 .setmember i{font-style:normal;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:#B39060;font-size:20px;box-shadow:var(--sh-1)}
 .setmember span,.setrow span{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -2253,7 +2259,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.09.28-2';
+const APP_VER='2026.09.29-1';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5770,12 +5776,23 @@ const HELP=[
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料都存在這支手機上，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟。']],
 ];
+// 說明頁的截圖（help/ 資料夾，用示範資料自動產生）：key 是主題標題
+const HELP_SHOTS={
+  '娃娃櫃與紀念日':[['doll-home','首頁：主角娃娃站在舞台上，紀念日當天會提醒'],['doll-cabinet','娃娃櫃：每隻娃娃的尺寸、出門次數'],['doll-page','娃娃頁：來家裡第幾天、紀念日'],['doll-card','紀念小卡：一鍵做成分享圖']],
+  '娃娃的整理與配件':[['doll-care','記錄換骨架、交給手作娘，和配件在不在']],
+  '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-insight','洞察：去過幾個縣市、幾個國家']]
+};
 function helpHTML(){
   return `<p class="hint" style="margin:-6px 0 12px">點一個主題展開。不懂的地方也可以隨時回來看。</p>
-    ${HELP.map(([ic,t,steps,tips],k)=>`<details class="help" ${k===0?'open':''}><summary><i>${ic}</i><b>${t}</b><em>›</em></summary>
+    ${HELP.map(([ic,t,steps,tips],k)=>{const sh=HELP_SHOTS[t]||[];return `<details class="help" ${k===0?'open':''}><summary><i>${ic}</i><b>${t}</b><em>›</em></summary>
       <div class="hsteps">${steps.map(([e,l],n)=>`<div><span>${e}</span><small>${n+1}. ${l}</small></div>`).join('<i>→</i>')}</div>
-      <ul>${tips.map(x=>`<li>${x}</li>`).join('')}</ul></details>`).join('')}
+      ${sh.length?`<div class="hshots">${sh.map(([f,c])=>`<figure onclick="helpZoom('help/${f}.jpg')"><img src="help/${f}.jpg" alt="${esc(c)}" loading="lazy"><figcaption>${esc(c)}</figcaption></figure>`).join('')}</div>`:''}
+      <ul>${tips.map(x=>`<li>${x}</li>`).join('')}</ul></details>`}).join('')}
+    <p class="hint" style="margin:14px 2px 0;text-align:center">示範娃娃：尉霆・梁湛・小尉霆・小梁湛</p>
     <button class="btn ghost wide" style="margin-top:12px" onclick="closeSheet();setTimeout(openWelcome,300)">再看一次歡迎畫面</button>`;
+}
+function helpZoom(src){
+  const d=document.createElement('div');d.className='hzoom';d.innerHTML=`<img src="${src}" alt="">`;d.onclick=()=>d.remove();document.body.appendChild(d);
 }
 // 設定：第一層是分類清單，點進去才是各自的設定（像手機的設定 App）
 const SET_PAGES={help:'使用說明',member:'會員與 AI',notify:'提醒與通知',region:'我住在',look:'外觀',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
