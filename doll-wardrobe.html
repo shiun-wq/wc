@@ -902,7 +902,7 @@ nav.tabs button.plus.on{color:var(--berry)}
     <!-- 搭配 -->
     <section class="view" id="v-studio">
       <button class="buybar" onclick="openIdea()" style="margin-bottom:12px">
-        <i class="idea-ico"></i><span><b>今天去哪裡拍？</b>選個地點，隨機或讓 AI 幫你搭一套</span><em>›</em>
+        <i class="idea-ico"></i><span><b>不知道穿什麼？幫我搭一套</b>選地點或節日，隨機抽或讓 AI 幫你搭</span><em>›</em>
       </button>
       <div id="canvas"></div>
       <div class="ctrl" id="pcCtrl" style="display:none">
@@ -2047,12 +2047,12 @@ function homeCards(){
     if(x.its.length)h.push(`<section class="notice ${x.left===0?'party':''}">${hide}
       <b>${holIcon(n)} ${x.left===0?`今天是${n}！`:x.left===1?`明天就是${n}了`:`${n}還有 ${x.left} 天`}</b>
       <span>衣櫃裡有 ${x.its.length} 件${n}主題的娃衣，${x.left===0?'今天就讓它們出場吧':x.left===1?'今晚先把明天要穿的挑好吧':'可以先想想要怎麼搭'}。</span>
-      <div class="row"><button class="btn sm" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button><button class="btn sm ghost" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
       <b>${holIcon(n)} ${n}還有 ${x.left} 天</b>
       <span>衣櫃裡還沒有${n}主題的娃衣。不一定要買新的，${HOL_COLORS[n]||''}的娃衣也能搭出${n}的感覺。</span>
-      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(openIdea,200)">幫我搭一套</button></div>
+      <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button></div>
     </section>`);
   });
   // 0b. 很久沒出門（最多顯示一張，列出其他隻）
@@ -3633,13 +3633,20 @@ function ideaPool(){
   const d=S.dolls.find(x=>x.id===IDEA.dollId);
   return S.items.filter(i=>i.category!=='套裝'&&img(i)&&(!d||!d.size||!(i.sizes||[]).length||i.sizes.includes(d.size)));
 }
-function openIdea(){
-  IDEA=Object.assign({scene:IDEA.scene||SCENES[0],custom:'',dollId:(mainDoll()||{}).id||null,press:IDEA.press??true},{res:null});
+// opt.theme：從節日提醒進來時帶節日，優先挑那個節日的娃衣和節日配色
+function openIdea(opt){
+  opt=opt||{};
+  IDEA=Object.assign({scene:IDEA.scene||SCENES[0],custom:'',dollId:(mainDoll()||{}).id||null,press:IDEA.press??true,theme:opt.theme||''},{res:null});
   drawIdea();
 }
+const HOL_FAMS={'聖誕節':['紅','綠','白'],'新年':['黃','白'],'過年':['紅','黃'],'萬聖節':['黑','橘','紫'],'情人節':['粉','紅'],'中秋節':['黃','白']};
 function drawIdea(){
   const r=IDEA.res,n=ideaPool().length;
-  openSheet(`<h3>今天去哪裡拍？</h3>
+  const hols=HOL_NAMES.filter(n=>HOL_FAMS[n]);
+  openSheet(`<h3>幫我搭一套</h3>
+    <p class="mh" style="margin-top:0">節日主題（選填）</p>
+    <div class="parts" id="id_th" style="margin-top:0">${['',...hols].map(n=>`<button type="button" data-k="${n}" class="${IDEA.theme===n?'on':''}" onclick="IDEA.theme='${n}';document.querySelectorAll('#id_th button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${n}'))">${n?holIcon(n)+' '+n:'不限'}</button>`).join('')}</div>
+    <p class="mh">要去哪裡？</p>
     <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div>
     <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&b.textContent===IDEA.scene))">
     ${S.dolls.length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${S.dolls.map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
@@ -3672,7 +3679,8 @@ function showIdea(r){
 // 免費版：先挑一件主角，再挑同風格／同色系的其他部位；壓箱底加權
 function ideaRandom(){
   const pool=ideaPool();if(pool.length<2){toast('合身的娃衣還太少');return}
-  const w=i=>1+(IDEA.press&&isPressed(i)?3:0);
+  const tf=new Set(HOL_FAMS[IDEA.theme]||[]);
+  const w=i=>1+(IDEA.press&&isPressed(i)?3:0)+(IDEA.theme?(i.holiday===IDEA.theme?8:0)+(i.colors||[]).filter(c=>tf.has(colorFam(c))).length*2:0);
   const pick=(list,base)=>{
     if(!list.length)return null;
     const sc=list.map(i=>{let s=w(i);if(base){
@@ -3693,8 +3701,9 @@ function ideaRandom(){
   add('outer',.3);add('head',.6);add('socks',.3);add('shoes',.5);add('bag',.3);add('acc',.3);
   const styles=[...new Set(out.flatMap(i=>(i.styles||[]).map(x=>x.name)))].slice(0,2);
   const pressed=out.filter(isPressed);
-  showIdea({ai:false,ids:out.map(i=>i.id),title:`${sceneName()}的${styles[0]||'日常'}搭配`,
-    reason:`以「${base.name}」當主角${out.length>1?`，搭配${out.slice(1).map(i=>'「'+i.name+'」').join('、')}`:''}${styles.length?`，整體是${styles.join('、')}的感覺`:''}。${pressed.length?`其中 ${pressed.length} 件是壓箱底的，剛好讓它們出來透透氣。`:''}`,
+  const hol=IDEA.theme?out.filter(i=>i.holiday===IDEA.theme).length:0;
+  showIdea({ai:false,ids:out.map(i=>i.id),title:IDEA.theme?`${IDEA.theme}${sceneName()}搭配`:`${sceneName()}的${styles[0]||'日常'}搭配`,
+    reason:`以「${base.name}」當主角${out.length>1?`，搭配${out.slice(1).map(i=>'「'+i.name+'」').join('、')}`:''}${styles.length?`，整體是${styles.join('、')}的感覺`:''}。${IDEA.theme?(hol?`用了 ${hol} 件${IDEA.theme}主題的娃衣。`:`衣櫃裡沒有${IDEA.theme}主題的娃衣，所以挑了${(HOL_FAMS[IDEA.theme]||[]).map(f=>famLabel[f]).join('、')}比較多的搭出節日感。`):''}${pressed.length?`其中 ${pressed.length} 件是壓箱底的，剛好讓它們出來透透氣。`:''}`,
     tip:SCENE_TIP[IDEA.scene]&&!IDEA.custom?SCENE_TIP[IDEA.scene]:''});
 }
 async function ideaAI(btn){
@@ -3703,12 +3712,13 @@ async function ideaAI(btn){
   if(!needQuota('idea'))return;
   const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> 想一想…';btn.disabled=true;
   const d=S.dolls.find(x=>x.id===IDEA.dollId);
-  const list=pool.slice(0,150).map(i=>`${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.styles||[]).map(x=>x.name).join('/')}|${(i.motifs||[]).join('/')}|${isPressed(i)?'壓箱底':''}`).join('\n');
+  const list=pool.slice(0,150).map(i=>`${i.id}|${i.name}|${i.category}|${(i.colors||[]).join('/')}|${(i.styles||[]).map(x=>x.name).join('/')}|${(i.motifs||[]).join('/')}|${isPressed(i)?'壓箱底':''}${i.holiday?'|'+i.holiday:''}`).join('\n');
   const prompt=`你是娃衣穿搭顧問。使用者要帶娃娃${d?`「${d.name}」`:''}去「${sceneName()}」拍照。
 下面是衣櫃裡合身的娃衣，格式 id|名稱|類型|顏色|風格|圖案|是否壓箱底：
 ${list}
 
-請搭一套適合這個地點拍照的造型，只回傳 JSON，不要其他文字：
+${IDEA.theme?`這次是「${IDEA.theme}」主題：有${IDEA.theme}主題的娃衣請優先用，沒有的話用${(HOL_FAMS[IDEA.theme]||[]).map(f=>famLabel[f]).join('、')}等節日配色搭出節日感。
+`:''}請搭一套適合這個地點拍照的造型，只回傳 JSON，不要其他文字：
 {"title":"10字內的造型名稱","itemIds":["只能用清單裡的id"],"reason":"60字內，說明為什麼適合這個地點","tip":"40字內的拍照小建議"}
 規則：通常是 上衣+下身 或 洋裝，再視情況加帽子、外套、鞋子、配件，3到6件；不要同一個部位放兩件；${IDEA.press?'有標記「壓箱底」的請優先考慮，讓它們有機會出場；':''}每次給不一樣的組合。`;
   try{
