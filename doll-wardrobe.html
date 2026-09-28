@@ -409,6 +409,8 @@ dl.meta dd{margin:0}
 .needtip{color:var(--berry-deep);margin:4px 0 0;font-size:12px}
 @keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 .qsize.shake{animation:shake .45s}
+.sellstrip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -4px;padding:0 4px 6px}
+.sellstrip .scwrap{flex:0 0 86%;scroll-snap-align:center}
 .cfam{display:flex;flex-wrap:wrap;gap:7px}
 .cfam span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
 .cfam i{width:12px;height:12px;border-radius:50%;border:1px solid var(--line-2)}
@@ -2450,7 +2452,7 @@ function openSell(ids){
   const pressed=S.items.filter(isPressed).map(i=>i.id);
   const pool=[...new Set([...(ids||[]),...pressed])];
   if(!pool.length){toast('目前沒有壓箱底的娃衣');return}
-  SELL={pool,sel:new Set(ids&&ids.length?ids:pressed.slice(0,1)),info:SELL.info||{},showWear:SELL.showWear||false,showSet:SELL.showSet!==false,step:'pick'};
+  SELL={pool,sel:new Set(ids&&ids.length?ids:pressed.slice(0,1)),info:SELL.info||{},showWear:SELL.showWear||false,showSet:SELL.showSet!==false,lay:SELL.lay||'grid'};
   drawSell();
 }
 function sellInfo(id){return SELL.info[id]=SELL.info[id]||{price:'',cond:'良好',note:''}}
@@ -2468,6 +2470,9 @@ function drawSell(){
           <label class="f" style="margin:0"><span>衣況</span><select onchange="sellInfo('${i.id}').cond=this.value">${SELL_COND.map(x=>`<option ${x===f.cond?'selected':''}>${x}</option>`).join('')}</select></label></div>
           <input type="text" style="margin-top:8px" maxlength="40" placeholder="衣況補充（選填），例如 領口有一點起毛球" value="${esc(f.note)}" oninput="sellInfo('${i.id}').note=this.value">`:''}
       </div>`}).join('')}</div>
+    <div class="f" style="margin:14px 0 0"><span>圖片樣式</span>
+      <div class="swap" id="sellLay">${[['grid','多件放一張'],['single','每件一張大圖']].map(([k,l])=>`<button data-k="${k}" class="${SELL.lay===k?'on':''}" onclick="SELL.lay='${k}';document.querySelectorAll('#sellLay button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))">${l}</button>`).join('')}</div>
+      <small class="hint">多件放一張適合一次po很多件；每件一張大圖看得比較清楚，適合讓買家參考細節。</small></div>
     <label class="remember" style="margin:12px 0 0"><input type="checkbox" ${SELL.showWear?'checked':''} onchange="SELL.showWear=this.checked"> 讓買家知道穿過幾次</label>
     <label class="remember" style="margin:6px 0 0"><input type="checkbox" ${SELL.showSet?'checked':''} onchange="SELL.showSet=this.checked"> 標出是哪一套的（有的話）</label>
     <div class="note" style="margin-top:12px">出售圖用的是建檔時的貼圖，圖上會註明「實際衣況請以賣家說明為準」。賣之前建議再拍一張現在的實拍一起放。</div>
@@ -2490,18 +2495,23 @@ function sellText(list){
 }
 async function makeSell(){
   const list=sellList();if(!list.length){toast('先勾選要賣的娃衣');return}
-  SELL.canvas=await drawSellCard(list);SELL.text=sellText(list);
+  prog('製作出售圖中…');
+  SELL.canvases=SELL.lay==='single'?await Promise.all(list.map(i=>drawSellBig(i))):[await drawSellCard(list)];
+  SELL.text=sellText(list);
+  const many=SELL.canvases.length>1;
   openSheet(`<h3>出售圖和文字</h3>
-    <div class="scwrap"><img src="${SELL.canvas.toDataURL('image/png')}" alt="出售圖"></div>
+    ${many?`<p class="hint" style="margin:-6px 0 8px">共 ${SELL.canvases.length} 張，左右滑動看</p>`:''}
+    <div class="${many?'sellstrip':''}">${SELL.canvases.map((c,k)=>`<div class="scwrap"><img src="${c.toDataURL('image/png')}" alt="出售圖 ${k+1}"></div>`).join('')}</div>
     <label class="f" style="margin-top:12px"><span>貼文文字（可以直接改）</span><textarea id="sellTxt" rows="8" oninput="SELL.text=this.value">${esc(SELL.text)}</textarea></label>
     <div class="row">
-      <button class="btn ghost grow" onclick="sellDownload()">下載圖片</button>
+      <button class="btn ghost grow" onclick="sellDownload()">下載${many?' '+SELL.canvases.length+' 張':'圖片'}</button>
       <button class="btn ghost grow" onclick="sellCopy()">複製文字</button>
       ${navigator.share?`<button class="btn grow" onclick="sellShare()">分享</button>`:''}
     </div>
     <button class="btn ghost wide sm" style="margin-top:8px" onclick="drawSell()">回去修改</button>
     <p class="hint" style="margin:12px 0 6px">賣掉了嗎？移到回憶箱，會記下賣出價格。</p>
     <div class="parts" style="margin-top:0">${list.map(i=>`<button type="button" onclick="archiveItem('${i.id}');setTimeout(()=>{MV.price=sellInfo('${i.id}').price;const e=document.querySelector('#mv_p input');if(e)e.value=MV.price},50)">${esc(i.name)} 賣掉了</button>`).join('')}</div>`);
+  document.getElementById('toast').classList.remove('on');
 }
 async function drawSellCard(list){
   const T=CARD_THEMES.cream,W=1080,n=Math.min(list.length,9),cols=n===1?1:n<=4?2:3,rows=Math.ceil(n/cols);
@@ -2536,12 +2546,46 @@ async function drawSellCard(list){
   x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
   return c;
 }
-function sellBlob(){return new Promise(r=>SELL.canvas.toBlob(r,'image/png'))}
-async function sellDownload(){const a=document.createElement('a');a.href=URL.createObjectURL(await sellBlob());a.download=`娃衣出售-${today()}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('圖片已下載')}
+// 每件一張大圖：貼圖放大、下面是名稱、價格、衣況、尺寸，最下面一樣有衣況提醒
+async function drawSellBig(i){
+  const T=CARD_THEMES.cream,W=1080,H=1350,P=64,f=sellInfo(i.id);
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const serif='"Noto Serif TC","Songti TC",serif',num='"Cormorant Garamond","Noto Serif TC",serif',sans=getComputedStyle(document.body).fontFamily;
+  try{await document.fonts.ready}catch(e){}
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,T.bg[0]);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText('FOR SALE',P,P+34);x.letterSpacing='0px';
+  // 大圖
+  const AY=P+70,AH=720;
+  x.save();x.shadowColor='rgba(0,0,0,.08)';x.shadowBlur=30;x.shadowOffsetY=10;x.fillStyle=T.card;rrect(x,P,AY,W-P*2,AH,36);x.fill();x.restore();
+  const im=img(i)?await loadImg(img(i)).catch(()=>null):null;
+  if(im){const s=Math.min((W-P*2-80)/im.width,(AH-80)/im.height);x.drawImage(im,(W-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s)}
+  let y=AY+AH+86;
+  x.fillStyle=T.ink;x.font=`700 54px ${serif}`;x.fillText(fitText(x,i.name,W-P*2),P,y);
+  y+=84;x.fillStyle=T.accent;x.font=`700 72px ${num}`;const pr=f.price?'$'+money(f.price).toLocaleString():'私訊詢價';x.fillText(pr,P,y);
+  const pw=x.measureText(pr).width;x.font=`500 30px ${sans}`;const tag=f.cond+(SELL.showWear?`・穿過 ${wearCount(i.id)} 次`:'');const tw=x.measureText(tag).width+40;
+  x.fillStyle=T.soft;rrect(x,P+pw+24,y-42,tw,52,26);x.fill();x.fillStyle=T.accent;x.fillText(tag,P+pw+44,y-6);
+  const meta=[(i.sizes||[]).length?'尺寸 '+i.sizes.join(' / '):'',SELL.showSet&&i.setId&&!i.name.startsWith(setName(i.setId))?'套裝 '+setName(i.setId):'',f.note].filter(Boolean).join('・');
+  if(meta){y+=56;x.fillStyle=T.sub;x.font=`500 30px ${sans}`;x.fillText(fitText(x,meta,W-P*2),P,y)}
+  const fy=H-P-120;
+  x.fillStyle=T.soft;rrect(x,P,fy,W-P*2,98,20);x.fill();
+  x.fillStyle=T.ink;x.font=`600 26px ${sans}`;x.fillText('※ 此圖由「娃衣衣櫃」App 以建檔時的照片製作',P+26,fy+42);
+  x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('實際衣況請以賣家說明與實拍為準，購買前請再次確認',P+26,fy+78);
+  x.textAlign='right';x.fillStyle=T.sub;x.font=`600 26px ${serif}`;x.fillText('娃衣衣櫃',W-P,H-P+8);x.textAlign='left';
+  return c;
+}
+function sellBlob(c){return new Promise(r=>c.toBlob(r,'image/png'))}
+const sellName=k=>`娃衣出售-${today()}${SELL.canvases.length>1?'-'+(k+1):''}.png`;
+async function sellDownload(){
+  for(let k=0;k<SELL.canvases.length;k++){
+    const a=document.createElement('a');a.href=URL.createObjectURL(await sellBlob(SELL.canvases[k]));a.download=sellName(k);a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);await new Promise(r=>setTimeout(r,350));
+  }
+  toast(SELL.canvases.length>1?`已下載 ${SELL.canvases.length} 張`:'圖片已下載');
+}
 async function sellCopy(){try{await navigator.clipboard.writeText(SELL.text);toast('文字已複製')}catch(e){const t=document.getElementById('sellTxt');t.select();document.execCommand('copy');toast('文字已複製')}}
 async function sellShare(){
-  const f=new File([await sellBlob()],`娃衣出售-${today()}.png`,{type:'image/png'});
-  try{await navigator.share(navigator.canShare&&navigator.canShare({files:[f]})?{files:[f],text:SELL.text}:{text:SELL.text})}catch(e){}
+  const fs=await Promise.all(SELL.canvases.map(async(c,k)=>new File([await sellBlob(c)],sellName(k),{type:'image/png'})));
+  try{await navigator.share(navigator.canShare&&navigator.canShare({files:fs})?{files:fs,text:SELL.text}:{text:SELL.text})}catch(e){}
 }
 async function restoreItem(id){
   const k=S.memory.findIndex(x=>x.id===id);if(k<0)return;
