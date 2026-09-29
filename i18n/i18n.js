@@ -3,7 +3,7 @@
    做法：字典 {原文: 譯文}，原文裡的 {0}{1} 是變數；畫面每次更新時（MutationObserver）把文字節點、
    placeholder、title 換掉；toast、confirm、分享小卡的 canvas 文字也一起換。 */
 (function(){
-  const V='8';
+  const V='9';
   const pick=()=>{let l='';try{l=localStorage.getItem('lang')||''}catch(e){}
     if(l&&l!=='auto')return l;
     const n=(navigator.languages&&navigator.languages[0])||navigator.language||'zh-TW';

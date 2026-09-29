@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=8"></script>
+<script src="i18n/i18n.js?v=9"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -543,6 +543,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .cropbox{position:relative;width:100%;max-width:340px;aspect-ratio:1;margin:0 auto;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px var(--line);touch-action:none}
 .cropbox canvas{display:block;touch-action:none;cursor:grab}
 
+.mfoot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.mfoot .btn{white-space:nowrap;padding-left:8px;padding-right:8px;min-width:0}
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
@@ -2537,7 +2538,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-25';
+const APP_VER='2026.10.01-26';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5295,7 +5296,7 @@ function openMemberHub(){
       ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
       ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
     </div>
-    <div class="row" style="gap:8px;margin-top:14px"><button class="btn ghost grow" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points}</button><button class="btn ghost grow" onclick="openMember()">免費版和會員的差別</button></div>`);
+    <div class="mfoot"><button class="btn ghost" onclick="closeSheet();go('wallet')">💰 錢包・${wallet().points} 點</button><button class="btn ghost" onclick="openMember()">📋 方案比較</button></div>`);
 }
 async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
