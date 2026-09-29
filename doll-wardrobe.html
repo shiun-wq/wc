@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=6"></script>
+<script src="i18n/i18n.js?v=7"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -528,6 +528,16 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+
+/* 我的會員 */
+.mcard{padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));margin-bottom:6px}
+.mcard b{display:block;font-size:15px;margin-bottom:4px}.mcard span{font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.mhub{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:12px;border-bottom:1px solid var(--line)}
+.mhub:last-child{border-bottom:0}.mhub:active{background:var(--swatch)}
+.mhub>i{font-style:normal;font-size:20px;width:28px;text-align:center;flex:0 0 28px}
+.mhub b{font-size:14px;font-weight:600;display:block}.mhub small{display:block;font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+.mhub>em{font-style:normal;text-align:right;flex:0 0 auto;min-width:44px}.mhub>em b{font-family:var(--num);font-size:20px;color:var(--berry-deep);display:inline}
+.mhub>em small{display:inline;margin-left:2px}.mhub>em.arr{color:var(--muted);font-size:18px;min-width:0}
 
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -1099,7 +1109,7 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
     </button>
     <h1 id="title"><span class="wa">哇</span>娃衣櫃</h1>
     <span class="sub" id="topsub"></span>
-    <button class="wchip" id="wchip" onclick="go('wallet')" aria-label="錢包"></button>
+    <button class="wchip" id="wchip" onclick="isMember()?openMemberHub():go('wallet')" aria-label="錢包"></button>
     <button class="iconbtn" onclick="openSettings()" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -2522,7 +2532,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-23';
+const APP_VER='2026.10.01-24';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5110,7 +5120,7 @@ function renderMatch(){
   const el=document.getElementById('matchStats');if(el)el.innerHTML=matchSection();
 }
 function matchSection(){
-  const head=`<h2 class="sec">搭配分析 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="match">搭配分析 <span class="vip">會員</span></h2>`;
   if(!isMember()){
     return head+`<div class="locked">
       <div class="lk-blur">
@@ -5179,6 +5189,47 @@ function openMember(){
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
     <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。<br>網頁版目前是測試階段，可以直接開啟會員試用；上架成 App 後會換成正式的訂閱方案。</div>
     <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
+}
+
+/* ---- 我的會員：會員自己看的頁面 ----
+   本月 AI 還剩多少、每個會員功能在哪裡，點一下直接過去 */
+const MEMBER_GO={
+  tag:["closeSheet();go('intake')",'建檔時拍照，按「AI 分析」'],
+  img:["closeSheet();go('intake')",'建檔做貼圖時選「AI 出圖」'],
+  wearid:["closeSheet();openWear()",'記穿搭時放照片，按「AI 辨識」'],
+  idea:["closeSheet();openIdea()",'首頁「幫我搭一套」→ AI 建議'],
+  buy:["closeSheet();openBuyCheck()",'想買之前丟照片或商品截圖']
+};
+function goVip(k){closeSheet();UI.insTab='vip';go('insight');
+  setTimeout(()=>{const h=document.querySelector(`#insight h2[data-sec="${k}"]`),hd=document.querySelector('header.top');if(h)window.scrollTo(0,h.getBoundingClientRect().top+window.scrollY-(hd?hd.getBoundingClientRect().height:0)-8)},350)}
+function openMemberHub(){
+  if(!isMember())return openMember();
+  const u=usage(),nextM=(()=>{const d=new Date();return `${d.getMonth()===11?1:d.getMonth()+2}/1`})();
+  const q=k=>{const Q=QUOTA[k],used=u[k]||0,max=quotaMax(k),left=Math.max(0,max-used),[ico,desc]=AI_DESC[k]||['✦',''];
+    return `<button class="mhub" onclick="${MEMBER_GO[k][0]}"><i>${ico}</i><div class="grow"><b>${Q.name}${Q.memberOnly?'<span class="pro">PRO</span>':''}</b>
+      <small>${MEMBER_GO[k][1]}</small><div class="track" style="height:6px;margin-top:6px"><i class="worn" style="width:${max?left/max*100:0}%"></i></div></div>
+      <em><b>${left}</b><small>/ ${max}</small></em></button>`};
+  const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
+  openSheet(`<h3>♛ 我的會員</h3>
+    <div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>
+    <p class="mlabel">本月 AI 額度・點一下直接去用</p>
+    <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
+    <p class="mlabel">會員專屬功能</p>
+    <div class="mbox">
+      ${go('📸','截圖匯入購買中','丟購物 App 的訂單截圖，一次記進購買中',"closeSheet();UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)")}
+      ${go('🛍️','買前檢查','衣櫃裡有沒有很像的、以前賣掉過的、還在路上的',"closeSheet();openBuyCheck()")}
+      ${go('🎯','適合給哪隻娃娃','買前檢查的結果裡，依娃娃平常的風格推薦',"closeSheet();openBuyCheck()")}
+    </div>
+    <p class="mlabel">會員分析・在「洞察 → 👑 會員分析」</p>
+    <div class="mbox">
+      ${go('🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合',"goVip('match')")}
+      ${go('🏆','套裝排行','最常整套出場、常常只拿一部分出來搭的套裝',"goVip('set')")}
+      ${go('🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色',"goVip('doll')")}
+      ${go('🎄','季節・節日・配色','季節服、節日服穿過幾件，你最常用的配色',"goVip('use')")}
+      ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
+      ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
+    </div>
+    <div class="row" style="gap:8px;margin-top:14px"><button class="btn ghost grow" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points}</button><button class="btn ghost grow" onclick="openMember()">免費版和會員的差別</button></div>`);
 }
 async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
@@ -6423,7 +6474,7 @@ function dollProfile(d){
 }
 // 會員：每隻娃娃都穿什麼、適合什麼
 function dollStyleSection(){
-  const head=`<h2 class="sec">每隻娃娃的穿搭 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="doll">每隻娃娃的穿搭 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>梁湛：常穿上衣、外套</b><span>休閒・酷帥・黑色系</span></div></div>
@@ -6458,7 +6509,7 @@ function setWearStats(){
   });
 }
 function setSection(){
-  const head=`<h2 class="sec">套裝排行 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="set">套裝排行 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>🏆 英倫偵探套裝</b><span>整套穿了 6 次</span></div></div>
@@ -6492,7 +6543,7 @@ function colorPairs(){
   return cnt;
 }
 function useSection(items){
-  const head=`<h2 class="sec">季節・節日・配色 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="use">季節・節日・配色 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>聖誕節服 5 件，穿過 2 件</b><span>節日服使用率 40%</span></div></div>
@@ -6518,7 +6569,7 @@ function useSection(items){
   return h;
 }
 function habitSection(items){
-  const head=`<h2 class="sec">穿搭習慣 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="habit">穿搭習慣 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>最常在星期六換裝</b><span>週末佔 62%</span></div></div>
@@ -6929,7 +6980,7 @@ function soldSection(){
     <div class="tx"><b>${esc(i.name)}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
 }
 function spendSection(){
-  const head=`<h2 class="sec">花費分析 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="spend">花費分析 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>娃衣花費 $12,480</b><span>平均每穿一次 $86</span></div></div>
@@ -7094,6 +7145,7 @@ function openSettings(page){
   const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${SET_PAGES[page]}</h3>`;
   let body='';
   if(page==='member')body=`
+    <button class="btn wide" style="margin-bottom:12px" onclick="${isMember()?'openMemberHub()':'openMember()'}">${isMember()?'♛ 我的會員：可以用哪些功能':'看看會員可以做什麼'}</button>
     <div class="card">
       <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
         <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
