@@ -521,6 +521,16 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.resume{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);margin-bottom:12px}
+.resume .rph{flex:0 0 38%;aspect-ratio:3/4;border-radius:14px;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%);display:grid;place-items:center;overflow:hidden}
+.resume .rph img{width:100%;height:100%;object-fit:contain;padding:8px}
+.resume dl{flex:1;margin:0;display:flex;flex-direction:column;gap:7px;min-width:0}
+.resume dl div{display:flex;gap:8px;font-size:13.5px;line-height:1.4}
+.resume dt{flex:0 0 3.2em;color:var(--muted);font-size:12.5px}
+.resume dd{margin:0;flex:1;min-width:0;word-break:break-word}.resume dd small{margin-left:6px;color:var(--berry-deep);font-size:11.5px}
+.dlinks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 6px}
+.dlinks button{padding:12px 10px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:left}
+.dlinks b{display:block;font-family:var(--num);font-size:24px;font-weight:600;line-height:1.1}.dlinks span{font-size:11.5px;color:var(--muted)}
 .candset{margin-top:12px;padding:12px;border-radius:14px;background:var(--berry-soft)}
 .candset>b{display:block;font-size:13.5px}.candset>.hint{display:block;margin:2px 0 6px}
 .candset .rowitem{background:none}
@@ -2255,8 +2265,10 @@ function renderHome(){
 
   <div class="hstat hsplit">
     <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣 ›</span></button>
-    <button onclick="openWearsOf(${d?`'${d.id}'`:"''"})"><b>${mw}</b><span>${d?esc(d.name)+' ':''}本月穿搭 ›</span></button>
-    <button onclick="go('insight')"><b>${used}<small>%</small></b><span>${d?'穿過的比例':'衣櫃使用率'} ›</span></button>
+    ${d?`<button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>出門 ›</span></button>
+    <button onclick="openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>穿搭紀錄 ›</span></button>
+    <button onclick="openAlbum('${d.id}',null,null,()=>closeSheet())"><b>${wearPhotos(d).length}</b><span>相簿 ›</span></button>`
+    :`<button onclick="openWearsOf('')"><b>${S.wears.length}</b><span>穿搭紀錄 ›</span></button>`}
   </div>
 
   ${todayPickHTML()}
@@ -2349,7 +2361,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-8';
+const APP_VER='2026.10.01-9';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2823,36 +2835,43 @@ function dollNextDates(d){
   (d.dates||[]).forEach(x=>out.push({ic:'🎂',label:x.label,md:x.md,left:next(x.md)}));
   return out.sort((a,b)=>a.left-b.left);
 }
+// 娃娃頁像一張履歷：照片＋基本資料，下面是紀念日、整理紀錄（手術、清洗…）、有的話才列配件
 function drawDollPage(d){
-  const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0,nd=dollNextDates(d),out=(d.outs||[]).includes(today());
+  const nd=dollNextDates(d),row=(k,v)=>v?`<div><dt>${k}</dt><dd>${v}</dd></div>`:'';
+  const acc=d.acc||[];
   openSheet(`<div class="dprof">
-    <div class="dhead"><h3>${esc(d.name)}${d.size?`<small>${esc(d.size)}</small>`:''}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
+    <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
     ${d.gone?`<div class="note">👋 ${esc(d.gone.date.replace(/-/g,'/'))} ${esc(d.gone.reason)}${d.gone.price?`・$${(+d.gone.price).toLocaleString()}`:''}。回憶都留在這裡。</div>`:d.archived?`<div class="note">📦 ${esc(d.archived.date.replace(/-/g,'/'))} 收進封存櫃，不會出現在首頁和提醒裡。</div>`:''}
-    <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
+    <div class="resume">
+      <div class="rph">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}</div>
+      <dl>
+        ${row('姓名',esc(d.name))}
+        ${row('尺寸',esc(d.size||''))}
+        ${row('到家',d.home?`${esc(d.home.replace(/-/g,'/'))}${homeDays(d)>=0&&isLive(d)?`<small>第 ${homeDays(d)+1} 天</small>`:''}`:'')}
+        ${(d.dates||[]).map(x=>row(esc(x.label),`${+x.md.slice(0,2)}/${+x.md.slice(3)}${x.year?`<small>${x.year}</small>`:''}`)).join('')}
+        ${row('來源',esc([d.src,d.from].filter(Boolean).join('・')))}
+        ${d.attr==='has'?row('屬性',esc([d.work,d.chara].filter(Boolean).join(' '))):''}
+        ${row('紀念',d.keepsake?esc(d.keepsakeReason||'紀念收藏'):'')}
+      </dl>
+    </div>
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
-      :`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`}
-    <div class="stat" style="grid-template-columns:1fr 1fr 1fr">
-      <div><b>${outCount(d)}</b><span>出門次數</span></div>
-      <div><b>${dollWears(d).length}</b><span>穿搭紀錄</span></div>
-      <div><b>${fit}</b><span>合身娃衣</span></div></div>
-    ${isLive(d)?'':'<!--'}<div class="row" style="margin-bottom:6px">
-      <button class="btn ${out?'ghost':''} grow" onclick="dollOut()">${out?'今天出門了 ✓':'🚶 今天帶出門'}</button>
-      <button class="btn ghost grow" onclick="setMainDoll('${d.id}').then(openWear)">👗 記錄穿搭</button></div>${isLive(d)?'':'-->'}
+      :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
+    <div class="dlinks">
+      <button onclick="openDollFoot('${d.id}',1)"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
+      <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
+      <button onclick="openAlbum('${d.id}')"><b>${wearPhotos(d).length}</b><span>📷 相簿 ›</span></button>
+    </div>
     ${nd.length&&isLive(d)?`<p class="dsec">紀念日</p><div class="danns">${nd.slice(0,4).map(x=>`<div><span>${x.ic}</span><b>${esc(x.label)}</b><em>${+x.md.slice(0,2)}/${+x.md.slice(3)}・${x.left===0?'就是今天':x.left===1?'明天':`再 ${x.left} 天`}</em></div>`).join('')}</div>`:''}
-    <p class="dsec">回憶</p>
-    ${dollAlbumBlock(d)}
-    ${dollFootBlock(d)}
-    <p class="dsec">整理</p>
-    ${dollCareBlock(d)+dollAccBlock(d)}
-    ${d.keepsake&&d.keepsakeReason?`<p class="dsec">紀念收藏</p><div class="care"><p style="margin:0;font-size:13.5px">💝 ${esc(d.keepsakeReason)}</p></div>`:''}
+    <p class="dsec">整理紀錄</p>
+    ${dollCareBlock(d)}
+    ${acc.length?`<p class="dsec">附的配件</p><div class="care"><div class="carelist">${acc.map(a=>`<div class="ci ${a.state==='不見了'?'done':''}"><span>${(ACC_STATE.find(x=>x[0]===a.state)||[])[1]||'✓'}</span><div class="grow"><b>${esc(a.name)}</b><small>${esc(a.state)}${a.note?'・'+esc(a.note):''}</small></div></div>`).join('')}</div><p class="hint" style="margin:8px 0 0">要改配件，按右上「編輯」。</p></div>`:''}
     ${d.note?`<p class="dsec">備註</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.note)}</p></div>`:''}
     ${d.gone&&d.gone.note?`<p class="dsec">道別的話</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.gone.note)}</p></div>`:''}
-    ${isLive(d)?`<div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
-      <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>
-      <button class="btn sm ghost wide" style="margin-top:8px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷（到家日、整理紀錄、配件）</button>`
+    ${isLive(d)?`<button class="btn sm ghost wide" style="margin-top:18px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷（到家日、整理紀錄、配件）</button>
+      <div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
+      <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>`
       :`<button class="btn quiet wide" style="margin-top:14px" onclick="unarchiveDoll('${d.id}')">${d.gone?'其實還在身邊（放回娃娃櫃）':'拿出來'}</button>`}
   </div>`);
-  fillMaps();
 }
 function drawDollEdit(){
   const d=DD,saved=d.id?S.dolls.find(x=>x.id===d.id):null;
@@ -2896,6 +2915,7 @@ function drawDollEdit(){
       </div>
       <small class="hint">提前 7 天和前一天會預告，當天首頁會慶祝。填了年份會顯示第幾歲。</small>
     </div>
+    ${d.id?`<div class="f"><span>附的配件</span>${dollAccBlock(d)}</div>`:''}
     <label class="f"><span>紀念收藏</span>
       <div class="parts" style="margin-top:0"><button type="button" class="${d.keepsake?'on':''}" onclick="DD.keepsake=!DD.keepsake;drawDoll()">💝 標記為紀念收藏娃娃</button></div>
       <small class="hint">紀念收藏的娃娃不會被問要不要收進封存櫃。</small></label>
@@ -5132,7 +5152,15 @@ function footCount(sps){
 }
 const footSummary=({regs,cts})=>`${regs.size?`・去過 ${regs.size} 個${unitOf(homeCountry())}`:''}${cts.size?`・${cts.size} 個國家`:''}`;
 // 娃娃頁的足跡
-function dollFootBlock(d){
+// 一隻娃娃的足跡頁（首頁點「出門」、娃娃頁點足跡）
+function openDollFoot(id,back){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  openSheet(`${back?`<div class="sethead"><button onclick="openDoll('${id}')">‹ ${esc(d.name)}</button></div>`:''}<h3>${esc(d.name)} 的足跡</h3>
+    ${isLive(d)?`<button class="btn ${(d.outs||[]).includes(today())?'ghost':''} wide" style="margin-bottom:12px" onclick="DD={...S.dolls.find(x=>x.id==='${id}')};dollOut()">${(d.outs||[]).includes(today())?'今天出門了 ✓':`🚶 今天帶 ${esc(d.name)} 出門`}</button>`:''}
+    ${dollFootBlock(d,true)}`);
+  fillMaps();
+}
+function dollFootBlock(d,full){
   const ts=(d.outs||[]).slice().sort().reverse(),P=d.outPlaces||{};
   const sps=ts.map(t=>spNorm(P[t])),cnt={};sps.forEach(sp=>{const k=sp&&spKey(sp);if(k)cnt[k]=(cnt[k]||0)+1});
   const cts=[...new Set(sps.filter(sp=>sp&&isAbroad(sp)).map(sp=>sp.c))];
@@ -5140,8 +5168,8 @@ function dollFootBlock(d){
     ${ts.length?`<div class="hint" style="margin:4px 0 6px">出門 ${ts.length} 次${footSummary(footCount(sps))}</div>
     ${homeCountry()==='台灣'&&Object.keys(cnt).some(k=>k.startsWith('r:'))?mapBox('tw',footCounts(sps).reg,{small:true,doll:d.id}):''}
     ${cts.length?mapBox('world',footCounts(sps).ct,{small:true,home:homeCountry(),doll:d.id})+`<div class="parts" style="margin:0 0 8px">${cts.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)}</button>`).join('')}</div>`:''}
-    ${ts.slice(0,5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?(isAbroad(spNorm(P[t]))?'✈️ ':'')+esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
-    ${ts.length>5?`<div class="hint">還有 ${ts.length-5} 次，全部可以在「娃娃櫃 → 足跡」看</div>`:''}`
+    ${ts.slice(0,full?ts.length:5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?(isAbroad(spNorm(P[t]))?'✈️ ':'')+esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
+    ${!full&&ts.length>5?`<button class="btn sm ghost wide" style="margin-top:8px" onclick="openDollFoot('${d.id}',1)">看全部 ${ts.length} 次</button>`:''}`
     :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，去過的地方會標在地圖上。</div>`}</div>`;
 }
 // 足跡地圖：maps/ 裡是預先投影好的 SVG 路徑（台灣縣市、世界各國）。去越多次顏色越深
@@ -6386,7 +6414,7 @@ const HELP=[
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
   ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['🧸','娃娃櫃 → 足跡']],
-    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位和拍攝日期的話，會建議拍攝地和日期，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位和拍攝日期的話，會建議拍攝地和日期，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','點進娃娃是一張履歷（姓名、尺寸、到家日、生日、來源），下面是紀念日和整理紀錄；足跡、穿搭紀錄、相簿點上面的格子進去。要改資料或配件，按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
   ['📷','相簿：娃娃的照片',[['📝','記穿搭放照片'],['🧸','娃娃頁 → 相簿'],['🗺️','地圖點地方看照片'],['⬇️','存到手機']],
     ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
