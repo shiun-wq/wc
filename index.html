@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=4"></script>
+<script src="i18n/i18n.js?v=5"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2504,7 +2504,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-21';
+const APP_VER='2026.10.01-22';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -3363,7 +3363,7 @@ function ordersHTML(){
     ${UI.omulti?`<i class="ochk">${on?'✓':''}</i>`:''}
     <div class="th">${o.photo?`<img src="${o.photo}" alt="">`:`<span class="oph">${dl?'🧸':esc((o.category||'?').slice(0,2))}</span>`}</div>
     <div class="bd"><b>${dl?'🧸 ':''}${esc(o.name||'未命名')}${dl?'<small style="color:var(--muted);font-weight:400">　等待到家</small>':''}</b>
-      <span>${[dl?o.size:[o.size,o.category].filter(Boolean).join(' '),o.price?'$'+money(o.price).toLocaleString():'',o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
+      <span>${[dl?o.size:[o.size,o.category].filter(Boolean).join(' '),o.price?'$'+money(o.price).toLocaleString():'',o.brand,o.brand&&o.brand===o.shop?'':o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
       <div class="ostage">${ORDER_STAGES.map((st,i)=>`<i class="${i<=k?'on':''}" title="${st}"></i>`).join('')}</div>
       <span class="wl">${esc(o.stage)}${orderEta(o)?'・'+orderEta(o):''}</span>
       ${o.note?`<span class="wn">${esc(o.note)}</span>`:''}
@@ -3383,17 +3383,21 @@ function renderOrderBar(){
     <button class="btn sm" ${n?'':'disabled'} onclick="openOrderBatch()">批次修改</button>`;
 }
 // 一次記多筆：每行一件，最後面的數字當金額；購買管道、進度、預計到貨一起套用
+// 品牌建議：衣櫃和購買中用過的品牌
+const brandOpts=()=>[...new Set([...S.items,...S.orders].map(i=>(i.brand||'').trim()).filter(Boolean))];
+const brandDL=id=>`<datalist id="${id}">${brandOpts().map(b=>`<option value="${esc(b)}">`).join('')}</datalist>`;
 let OB={};
 function openOrderBulk(){
-  OB={lines:'',category:'',size:defaultSizes()[0]||'',shop:'',origin:'',stage:'開團中',eta:'',orderDate:today()};
+  OB={lines:'',category:'',size:defaultSizes()[0]||'',brand:'',shop:'',origin:'',stage:'開團中',eta:'',orderDate:today()};
   openSheet(`<h3>一次記多筆</h3>
     <p class="hint" style="margin:-6px 0 12px">同一團、同一家買的，一行寫一件。最後面寫數字就會當成金額。</p>
     <label class="f"><span>品項（一行一件）</span><textarea id="ob_lines" rows="6" placeholder="草莓蕾絲洋裝 680&#10;小熊斗篷 450&#10;白色襪子" oninput="OB.lines=this.value"></textarea></label>
     <label class="f"><span>尺寸</span><div class="parts" id="ob_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${OB.size===z?'on':''}" onclick="OB.size=OB.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#ob_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OB.size))">${esc(z)}</button>`).join('')}</div></label>
     <div class="split">
       <label class="f"><span>類型（選填）</span><select onchange="OB.category=this.value"><option value="">各自不同</option>${allCats().map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>
-      <label class="f"><span>購買管道／團主</span><input type="text" oninput="OB.shop=this.value"></label>
+      <label class="f"><span>品牌</span><input type="text" list="brandDL3" oninput="OB.brand=this.value">${brandDL('brandDL3')}</label>
     </div>
+    <label class="f"><span>購買管道／團主</span><input type="text" oninput="OB.shop=this.value"></label>
     <div class="split">
       <label class="f"><span>產地</span><input type="text" list="originDL3" oninput="OB.origin=this.value"><datalist id="originDL3">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
       <label class="f"><span>下單日期</span><input type="date" value="${today()}" max="${today()}" onchange="OB.orderDate=this.value"></label>
@@ -3411,14 +3415,14 @@ function parseBulk(txt){
 }
 async function saveOrderBulk(){
   const rows=parseBulk(OB.lines);if(!rows.length){toast('先寫至少一件');return}
-  rows.forEach(r=>S.orders.push({id:uid('o'),kind:'item',name:r.name,price:r.price,category:OB.category,size:OB.size,shop:OB.shop.trim(),origin:OB.origin.trim(),stage:OB.stage,eta:OB.eta,orderDate:OB.orderDate,photo:null,note:'',createdAt:Date.now()}));
+  rows.forEach(r=>S.orders.push({id:uid('o'),kind:'item',name:r.name,price:r.price,category:OB.category,size:OB.size,brand:OB.brand.trim(),shop:OB.shop.trim(),origin:OB.origin.trim(),stage:OB.stage,eta:OB.eta,orderDate:OB.orderDate,photo:null,note:'',createdAt:Date.now()}));
   await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');toast(`已記下 ${rows.length} 筆`);
 }
-// 批次修改：進度、預計到貨、尺寸、購買管道、產地、類型，到貨的一起拿去建檔，或刪除
+// 批次修改：進度、預計到貨、尺寸、品牌、購買管道、產地、類型，到貨的一起拿去建檔，或刪除
 let OBT={};
 function openOrderBatch(){
   const ids=[...UI.osel].filter(id=>S.orders.some(o=>o.id===id));if(!ids.length)return;
-  OBT={ids,stage:'',eta:'',shop:'',origin:'',category:'',size:''};
+  OBT={ids,stage:'',eta:'',brand:'',shop:'',origin:'',category:'',size:''};
   const arrived=ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o.kind!=='doll'&&o.stage==='已到貨');
   openSheet(`<h3>批次修改 ${ids.length} 筆</h3>
     <p class="hint" style="margin:-6px 0 12px">只會改你有動到的欄位，沒填的保持原樣。</p>
@@ -3426,8 +3430,12 @@ function openOrderBatch(){
     <label class="f"><span>預計到貨</span><div class="parts" style="margin:0 0 6px">${[1,2,3,4,6].map(m=>`<button type="button" onclick="OBT.eta=addMonths(${m});document.getElementById('obt_eta').value=OBT.eta">${m} 個月</button>`).join('')}</div>
       <input type="date" id="obt_eta" onchange="OBT.eta=this.value"></label>
     <div class="split">
+      <label class="f"><span>品牌</span><input type="text" list="brandDL4" oninput="OBT.brand=this.value">${brandDL('brandDL4')}</label>
       <label class="f"><span>購買管道／團主</span><input type="text" oninput="OBT.shop=this.value"></label>
+    </div>
+    <div class="split">
       <label class="f"><span>產地</span><input type="text" list="originDL4" oninput="OBT.origin=this.value"><datalist id="originDL4">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
+      <span></span>
     </div>
     <label class="f"><span>尺寸</span><div class="parts" id="obt_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${OBT.size===z?'on':''}" onclick="OBT.size=OBT.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#obt_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OBT.size))">${esc(z)}</button>`).join('')}</div></label>
     <label class="f"><span>類型</span><select onchange="OBT.category=this.value"><option value="">不改</option>${allCats().map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>
@@ -3438,7 +3446,7 @@ function openOrderBatch(){
 async function applyOrderBatch(){
   const {ids}=OBT;let n=0;
   ids.forEach(id=>{const o=S.orders.find(x=>x.id===id);if(!o)return;
-    if(OBT.stage)setStage(o,OBT.stage);if(OBT.eta)o.eta=OBT.eta;if(OBT.shop.trim())o.shop=OBT.shop.trim();if(OBT.origin.trim())o.origin=OBT.origin.trim();
+    if(OBT.stage)setStage(o,OBT.stage);if(OBT.eta)o.eta=OBT.eta;if(OBT.shop.trim())o.shop=OBT.shop.trim();if(OBT.brand.trim()&&o.kind!=='doll')o.brand=OBT.brand.trim();if(OBT.origin.trim())o.origin=OBT.origin.trim();
     if(OBT.category&&o.kind!=='doll')o.category=OBT.category;if(OBT.size)o.size=OBT.size;n++});
   UI.osel=new Set();await save();closeSheet();renderWish();toast(`已更新 ${n} 筆`);
 }
@@ -3451,7 +3459,7 @@ async function batchOrderIntake(){
   const os=OBT.ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&o.kind!=='doll'&&o.stage==='已到貨');
   const ok=os.filter(o=>o.photo),no=os.length-ok.length;
   ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
+    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
   UI.osel=new Set();UI.omulti=false;await save();closeSheet();
   if(ok.length){go('intake');toast(`${ok.length} 筆加入建檔${no?`，另外 ${no} 筆沒有照片，要拍照後再建檔`:''}`)}
   else{renderWish();toast('這幾筆都還沒有照片，按「拿去建檔」會請你拍一張')}
@@ -3459,7 +3467,7 @@ async function batchOrderIntake(){
 let OD={};
 function openOrder(id){
   const o=id?S.orders.find(x=>x.id===id):null;
-  OD=o?{...o}:{id:null,kind:UI.orderKind||'item',name:'',category:'',size:UI.orderKind==='doll'?'':(defaultSizes()[0]||''),price:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
+  OD=o?{...o}:{id:null,kind:UI.orderKind||'item',name:'',category:'',size:UI.orderKind==='doll'?'':(defaultSizes()[0]||''),price:'',brand:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
   drawOrder();
 }
 function drawOrder(){
@@ -3479,6 +3487,7 @@ function drawOrder(){
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price)}" placeholder="例如 680" oninput="OD.price=this.value"></label>
     </div>
     ${isDoll?'':`<label class="f"><span>尺寸</span><div class="parts" id="o_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${d.size===z?'on':''}" onclick="OD.size=OD.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#o_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OD.size))">${esc(z)}</button>`).join('')}</div></label>`}
+    ${isDoll?'':`<label class="f"><span>品牌</span><input type="text" list="brandDL2" value="${esc(d.brand||'')}" placeholder="例如 月亮軟糕（跟購買管道不同才需要填）" oninput="OD.brand=this.value">${brandDL('brandDL2')}</label>`}
     <div class="split">
       <label class="f"><span>${isDoll?'團主／作者／娃媽':'購買管道／團主'}</span><input type="text" value="${esc(d.shop)}" oninput="OD.shop=this.value"></label>
       <label class="f"><span>產地</span><input type="text" list="originDL2" value="${esc(d.origin)}" oninput="OD.origin=this.value"><datalist id="originDL2">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
@@ -3529,7 +3538,7 @@ function orderToIntake(id){
   }
   o.filed=true;save();
   UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
+    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
   go('intake');toast('已加入建檔，選好尺寸、做成貼圖就完成了');
 }
 async function setWish(id,st){const w=S.wish.find(x=>x.id===id);w.status=st;w.decidedAt=st==='wait'?null:Date.now();await save();renderWish()}
@@ -4661,7 +4670,7 @@ async function commitQueue(){
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
-      season:q.season,holiday:q.holiday||'',material:q.material,sizes:(q.sizes||[]).slice(),brand:'',shop:q.shop||'',origin:q.origin||'',buyDate:q.buyDate||'',homeDate:q.homeDate||'',note:'',
+      season:q.season,holiday:q.holiday||'',material:q.material,sizes:(q.sizes||[]).slice(),brand:q.brand||'',shop:q.shop||'',origin:q.origin||'',buyDate:q.buyDate||'',homeDate:q.homeDate||'',note:'',
       keepsake:false,keepsakeReason:'',createdAt:Date.now()};
     if(q.isSet){
       const sid=uid('s'),nm=q.name||'未命名套裝';
