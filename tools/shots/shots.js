@@ -67,7 +67,7 @@ const TRIP={};for(const n of ['wt_flower','lz10_camellia','small_cafe','lz_rock'
   await p.waitForTimeout(800);await shot('doll-care',{x:0,y:80,width:390,height:700});
   // 紀念小卡
   const card=await p.evaluate(async()=>{closeSheet();openAnnCard(annKey(dollAnniv().find(a=>a.d.id==='wt'&&a.kind==='year')));await new Promise(r=>setTimeout(r,300));SC.lay='classic';SC.theme='cream';SC.ratio='post';SC.cap='謝謝你來到我身邊';const c=await scDraw();closeSheet();return c.toDataURL('image/jpeg',.82)});
-  fs.writeFileSync(OUT+'doll-card.jpg',Buffer.from(card.split(',')[1],'base64'));console.log('saved doll-card');
+  if(want('doll-card'))fs.writeFileSync(OUT+'doll-card.jpg',Buffer.from(card.split(',')[1],'base64'));if(want('doll-card'))console.log('saved doll-card');
   // 娃娃櫃的足跡地圖
   await p.evaluate(()=>{UI.dollTab='foot';go('dolls');window.scrollTo(0,0)});await p.waitForTimeout(1500);await p.evaluate(()=>{const e=document.querySelector('#dollList .mh');window.scrollTo(0,e.getBoundingClientRect().top+scrollY-70)});
   await shot('foot-map',{x:0,y:60,width:390,height:700});
@@ -120,8 +120,8 @@ const TRIP={};for(const n of ['wt_flower','lz10_camellia','small_cafe','lz_rock'
   await p.evaluate(async()=>{closeSheet();
     const u=id=>S.items.find(i=>i.id===id).cutout;
     S.orders=[
-      {id:'o1',kind:'item',name:'條紋針織背心',category:'上衣',price:'350',shop:'娃衣團購',stage:'已到貨',arrived:'2026-12-22',orderDate:'2026-10-02',photo:u('c_sweater'),note:''},
-      {id:'o2',kind:'item',name:'牛仔吊帶短褲',category:'褲子',price:'480',shop:'娃衣團購',stage:'運送中',eta:'2026-12-28',orderDate:'2026-10-02',photo:u('c_overall'),note:''},
+      {id:'o1',kind:'item',name:'條紋針織背心',category:'上衣',price:'350',series:'秋日學院',brand:'棉花星球',shop:'娃衣團購',stage:'已到貨',arrived:'2026-12-22',orderDate:'2026-10-02',photo:u('c_sweater'),note:''},
+      {id:'o2',kind:'item',name:'牛仔吊帶短褲',category:'褲子',price:'480',series:'秋日學院',brand:'棉花星球',shop:'娃衣團購',stage:'運送中',eta:'2026-12-28',orderDate:'2026-10-02',photo:u('c_overall'),note:''},
       {id:'o3',kind:'item',name:'焦糖色貝雷帽',category:'帽子',price:'220',shop:'二手',stage:'製作中',eta:'2027-02-10',orderDate:'2026-11-15',photo:u('c_beret'),note:''},
       {id:'o4',kind:'item',name:'毛絨小熊耳罩',category:'配件',price:'180',shop:'二手',stage:'已付款',eta:'2027-03-01',orderDate:'2026-12-01',photo:null,note:''}];
     await save();UI.wishTab='order';go('wish');window.scrollTo(0,0)});
