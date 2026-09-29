@@ -523,6 +523,16 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.awaycar{width:min(62vw,300px);height:auto;z-index:1}
+.awaycar .car{animation:drive 2.4s ease-in-out infinite}
+.awaycar .road{animation:road 1s linear infinite}
+@keyframes drive{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes road{to{stroke-dashoffset:-22}}
+.stage .awaycar{margin-bottom:6px}
+.dswitch .away{font-size:20px}
+.awaybox{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:var(--r);background:var(--gold-soft);border:1px solid rgba(179,144,96,.25);margin-bottom:12px}
+.awaybox .awaycar{flex:0 0 110px;width:110px}
+.awaybox b{display:block;font-size:14px}.awaybox span{font-size:12.5px;color:var(--ink-2);line-height:1.6}
 .wgrid{grid-template-columns:repeat(3,1fr);gap:14px 10px}.wgrid .nm{font-size:12px}
 .pkset{margin-left:auto;font-size:11.5px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
 .resume{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);margin-bottom:12px}
@@ -2232,6 +2242,16 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&NAV.open)closeSheet()});
    ============================================================ */
 // 封存（收起來暫時不玩）或已經離開（賣掉、送人）的娃娃，不會出現在首頁、提醒和挑娃娃的地方，回憶都留著
 const isLive=d=>d&&!d.archived&&!d.gone;
+// 暫時離家（送去手術、出國沒帶、借朋友、放在外地…）：還在娃娃櫃，但不提醒換裝，回家那天重新起算
+const isAway=d=>!!(d&&d.away);
+const AWAY_REASONS=[['手術','🪡','送去手作娘那裡'],['出國沒帶','✈️','我出門了，他在家等'],['借給朋友','🤝','借給朋友照顧'],['放在外地','🏠','放在別的地方'],['其他','📦','暫時不在身邊']];
+const awayIcon=r=>(AWAY_REASONS.find(x=>x[0]===r)||AWAY_REASONS[4])[1];
+const awayLeft=d=>d.away&&d.away.back?dayNum(d.away.back)-dayNum(today()):null;
+const AWAY_SVG=`<svg class="awaycar" viewBox="0 0 220 130" aria-hidden="true"><g class="car"><rect x="70" y="18" width="46" height="36" rx="5" fill="#E8C07A" stroke="#A8862F" stroke-width="3"/><path d="M70 30h46M93 18v36" stroke="#A8862F" stroke-width="3"/>
+  <path d="M28 64 Q40 44 70 44 H128 Q150 44 164 64 H192 Q204 64 204 78 V92 Q204 100 196 100 H24 Q16 100 16 92 V78 Q16 64 28 64Z" fill="var(--berry)"/>
+  <path d="M60 50 H104 V66 H48 Q52 54 60 50Z M112 50 H130 Q144 52 152 66 H112Z" fill="#FFF6F2" opacity=".9"/>
+  <circle cx="58" cy="100" r="15" fill="#3A2E33"/><circle cx="58" cy="100" r="6" fill="#DDD"/><circle cx="160" cy="100" r="15" fill="#3A2E33"/><circle cx="160" cy="100" r="6" fill="#DDD"/>
+  <circle cx="196" cy="76" r="5" fill="#FFE8A8"/></g><path class="road" d="M4 118 H216" stroke="var(--line-2)" stroke-width="3" stroke-dasharray="12 10"/></svg>`;
 const liveDolls=()=>S.dolls.filter(isLive);
 function mainDoll(){const L=liveDolls();return L.find(d=>d.id===S.settings.mainDoll)||L[0]||null}
 function dollWears(d){return S.wears.filter(w=>w.dollId===d.id||(!w.dollId&&w.dollName&&w.dollName===d.name))}
@@ -2259,15 +2279,16 @@ function renderHome(){
   el.innerHTML=`
   <section class="hhero">
     <div class="stage" onclick="${d?`openDoll('${d.id}')`:'openDoll()'}">
-      ${d&&d.photo?`<img src="${d.photo}" alt="${esc(d.name)}">`:`<div class="ph">${DOLL_SVG}</div>`}
+      ${isAway(d)?AWAY_SVG:d&&d.photo?`<img src="${d.photo}" alt="${esc(d.name)}">`:`<div class="ph">${DOLL_SVG}</div>`}
       <i class="floor"></i>
     </div>
     ${d?`<div class="hname"><b>${esc(d.name)}</b>${d.size?`<span>${esc(d.size)}</span>`:''}</div>
-      <p class="hgreet">今天要幫 ${esc(d.name)} 穿什麼？</p>`
+      <p class="hgreet">${isAway(d)?`${awayIcon(d.away.reason)} ${esc(d.name)} 暫時不在家（${esc(d.away.reason)}）${awayLeft(d)!=null?(awayLeft(d)>0?`・再 ${awayLeft(d)} 天回家`:awayLeft(d)===0?'・今天回家！':`・預計回家日過了 ${-awayLeft(d)} 天`):''}`:`今天要幫 ${esc(d.name)} 穿什麼？`}</p>
+      ${isAway(d)?`<div class="row" style="justify-content:center;margin-top:6px"><button class="btn sm" onclick="event.stopPropagation();dollBack('${d.id}')">🏠 ${esc(d.name)} 回家了</button></div>`:''}`
       :`<div class="hname"><b>把你的娃娃放在這裡</b></div>
       <p class="hgreet">新增娃娃後，首頁就會是娃娃的專屬舞台</p>
       <button class="btn" style="margin-top:4px" onclick="openDoll()">新增我的娃娃</button>`}
-    ${liveDolls().length>1?(()=>{const hs=homeDolls(d);return `<div class="dswitch">${hs.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}"><i>${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</i><small>${esc(x.name)}</small></button>`).join('')}
+    ${liveDolls().length>1?(()=>{const hs=homeDolls(d);return `<div class="dswitch">${hs.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}"><i>${isAway(x)?'<span class="away">📦</span>':x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</i><small>${esc(x.name)}</small></button>`).join('')}
       ${liveDolls().length>hs.length?`<button onclick="go('dolls')" aria-label="全部娃娃"><i><span>+${liveDolls().length-hs.length}</span></i><small>全部</small></button>`:''}</div>`})():''}
   </section>
 
@@ -2384,7 +2405,7 @@ function todayPick(){
 function todayPickHTML(){
   const d=mainDoll();
   // 今天已經記錄過穿搭的娃娃，就不用再推薦
-  if(d&&dollWears(d).some(w=>w.date===today()))return '';
+  if(d&&(isAway(d)||dollWears(d).some(w=>w.date===today())))return '';
   const its=todayPick();
   if(!its)return d&&d.size&&S.items.length>=2?`<section class="hcard pick-today"><div class="hct"><b>今天穿這套？</b><span>${esc(d.name)}・${esc(d.size)}</span></div>
     <p class="hint" style="margin:0">衣櫃裡 ${esc(d.size)} 的娃衣還不到兩件，建檔時記得選尺寸，這裡就會每天幫 ${esc(d.name)} 搭一套。</p></section>`:'';
@@ -2427,7 +2448,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-14';
+const APP_VER='2026.10.01-15';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2490,6 +2511,13 @@ function homeCards(){
       <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button></div>
     </section>`);
   });
+  // 0a-0. 暫時離家的娃娃：回家前 3 天倒數、回家當天提醒
+  S.dolls.filter(d=>isLive(d)&&isAway(d)&&d.away.back).forEach(d=>{const n=awayLeft(d),k='away:'+d.id+':'+d.away.back+':'+(n<=0?'day':n);
+    if(n>3||st.annHide[k])return;const nm=esc(d.name);
+    h.push(`<section class="notice ${n<=0?'party':''}"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>${n>0?`🚗 再 ${n} 天就能見到 ${nm}`:n===0?`🏠 今天 ${nm} 回家！`:`🚗 ${nm} 預計 ${-n} 天前回家`}</b>
+      <span>${n>0?`${nm} ${esc(d.away.reason==='手術'?'在手作娘那裡':'暫時不在身邊')}，快要重逢了。`:`回到身邊的話按「回家了」，可以做一張歡迎回家的小卡。`}</span>
+      ${n<=0?`<div class="row"><button class="btn sm" onclick="dollBack('${d.id}')">🏠 回家了</button></div>`:''}</section>`)});
   // 0a-1. 到貨提醒：詳細的在建檔頁，首頁只放一張小卡
   if(arrOn()){const a=arrivedOrders(),sn=soonOrders(),k='arr:'+today()+':'+a.length+':'+sn.length;
     if((a.length||sn.length)&&!st.annHide[k])h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
@@ -2627,7 +2655,7 @@ function lastActive(d){
 function idleDolls(){
   const lim=outRemind();if(!lim)return [];
   const st=S.settings,sn=st.idleSnooze||{},nv=st.idleNever||{};
-  return liveDolls().filter(d=>!nv[d.id]&&!(sn[d.id]&&sn[d.id]>today())).map(d=>({d,last:lastActive(d),n:dayNum(today())-dayNum(lastActive(d))})).filter(x=>x.n>=lim).sort((a,b)=>b.n-a.n);
+  return liveDolls().filter(d=>!isAway(d)&&!nv[d.id]&&!(sn[d.id]&&sn[d.id]>today())).map(d=>{const last=[lastActive(d),d.backAt||''].sort().pop();return {d,last,n:dayNum(today())-dayNum(last)}}).filter(x=>x.n>=lim).sort((a,b)=>b.n-a.n);
 }
 const annKey=a=>a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4);
 const annStage=a=>a.left===0?'today':a.left===1?'tomorrow':'week';
@@ -2729,7 +2757,7 @@ const ARCH_DAYS=90;
 function sleepyDolls(){
   if(S.settings.archAsk===false)return [];
   const ymdOf=t=>ymd(t||Date.now());
-  return liveDolls().filter(d=>!d.keepsake).map(d=>{const last=[lastActive(d),ymdOf(d.createdAt),d.backAt||''].sort().pop();return {d,last,n:dayNum(today())-dayNum(last)}})
+  return liveDolls().filter(d=>!d.keepsake&&!isAway(d)).map(d=>{const last=[lastActive(d),ymdOf(d.createdAt),d.backAt||''].sort().pop();return {d,last,n:dayNum(today())-dayNum(last)}})
     .filter(x=>x.n>=ARCH_DAYS).sort((a,b)=>b.n-a.n);
 }
 /* ---- 相簿：不另外存照片，只是把穿搭紀錄裡的照片排出來 ---- */
@@ -2787,6 +2815,45 @@ function placePhotos(kind,name,dollId){
   const d=dollId?S.dolls.find(x=>x.id===dollId):null;
   return (d?dollWears(d):S.wears).filter(w=>w.photo&&w.place==='出門'&&w.spot).filter(w=>{const sp=spNorm(w.spot);return sp&&(kind==='world'?sp.c===name:(!isAbroad(sp)&&sp.r===name))})
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+}
+let AW={};
+function openAway(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  const a=d.away||{};
+  const surg=dollOpen(d).find(c=>c.who==='手作娘');
+  AW={id,reason:a.reason||(surg?'手術':'出國沒帶'),since:a.since||today(),back:a.back||(surg&&surg.eta)||'',note:a.note||(surg&&!a.reason?`${surg.type}${surg.maker?'・'+surg.maker:''}`:'')};
+  openSheet(`<div class="sethead"><button onclick="openDoll('${id}')">‹ ${esc(d.name)}</button></div><h3>${esc(d.name)} 暫時離家</h3>
+    <div class="awaybox" style="margin-bottom:12px">${AWAY_SVG}<div><span>離家期間不會提醒換裝，首頁的 ${esc(d.name)} 會變成 📦，回家那天重新起算。</span></div></div>
+    <p class="mh" style="margin-top:0">為什麼不在身邊？</p>
+    <div class="parts" id="aw_r" style="margin-top:0">${AWAY_REASONS.map(([r,ic,sub])=>`<button type="button" data-k="${r}" class="${AW.reason===r?'on':''}" onclick="AW.reason='${r}';document.querySelectorAll('#aw_r button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${r}'))">${ic} ${r}</button>`).join('')}</div>
+    <div class="split" style="margin-top:12px">
+      <label class="f"><span>哪天出發</span><input type="date" value="${esc(AW.since)}" max="${today()}" onchange="AW.since=this.value"></label>
+      <label class="f"><span>預計回家（選填）</span><input type="date" id="aw_back" value="${esc(AW.back)}" onchange="AW.back=this.value"></label>
+    </div>
+    <div class="parts" style="margin:-4px 0 12px">${[[7,'1 週'],[14,'2 週'],[30,'1 個月'],[60,'2 個月']].map(([n,l])=>`<button type="button" onclick="const x=new Date();x.setDate(x.getDate()+${n});AW.back=ymd(x);document.getElementById('aw_back').value=AW.back">${l}後</button>`).join('')}</div>
+    <label class="f"><span>說明（選填）</span><input type="text" maxlength="40" value="${esc(AW.note)}" placeholder="例如 小熊手作換骨架、借給阿花拍照" oninput="AW.note=this.value"></label>
+    <button class="btn wide" onclick="saveAway()">${d.away?'儲存':'🚗 出發'}</button>
+    ${d.away?`<button class="btn ghost wide" style="margin-top:8px" onclick="dollBack('${id}')">🏠 其實已經回家了</button>`:''}`);
+}
+async function saveAway(){
+  const d=S.dolls.find(x=>x.id===AW.id);if(!d)return;
+  if(AW.back&&AW.back<AW.since){toast('回家日不能比出發早');return}
+  d.away={reason:AW.reason,since:AW.since||today(),back:AW.back||'',note:(AW.note||'').trim()};
+  await save();renderHome();if(UI.tab==='dolls')renderDolls();
+  DD={...d};drawDoll();toast(`${d.name} 出發了${d.away.back?`，${awayLeft(d)} 天後見`:''} 🚗`);
+}
+async function dollBack(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d||!d.away)return;
+  const a=d.away,days=Math.max(0,dayNum(today())-dayNum(a.since));
+  d.awayLog=[...(d.awayLog||[]),{...a,backDate:today()}];delete d.away;d.backAt=today();
+  // 手術回來：把交給手作娘、處理中的整理紀錄一起完成
+  if(a.reason==='手術')(d.care||[]).forEach(c=>{if(c.who==='手作娘'&&c.status==='處理中'){c.status='完成';c.doneDate=today()}});
+  await save();renderHome();if(UI.tab==='dolls')renderDolls();
+  // 歡迎回家小卡
+  SC.ann={tag:'WELCOME HOME',big:String(days),unit:'DAYS AWAY',line:`歡迎回家，${d.name}`,since:a.since,
+    stats:[['離家',days,'天'],['換裝',dollWears(d).length,'次'],['出門',outCount(d),'次']]};
+  if(SC.annStats===undefined)SC.annStats=S.settings.annStats!==false;
+  openShare('ann',d.id);toast(`歡迎回家，${d.name}！`);
 }
 // 讓娃娃離開（賣掉、送人）之前：整理一起走過的回憶，謝謝他
 let FW={};
@@ -2862,7 +2929,7 @@ function renderDolls(){
       ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
         const n=rank.indexOf(d.id);
         return `<button class="dcell" onclick="openDoll('${d.id}')">
-          <div class="dstand ${dollSmall(d)?'small':''}">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}${dollOpen(d).some(c=>c.status==='處理中')?'<span class="pin" style="left:6px;right:auto" title="在手作娘那裡">🪡</span>':dollOpen(d).length?'<span class="pin" style="left:6px;right:auto" title="有要處理的">⚠️</span>':''}
+          <div class="dstand ${dollSmall(d)?'small':''}">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}${isAway(d)?`<span class="pin" style="left:6px;right:auto" title="暫時離家">🚗</span>`:dollOpen(d).some(c=>c.status==='處理中')?'<span class="pin" style="left:6px;right:auto" title="在手作娘那裡">🪡</span>':dollOpen(d).length?'<span class="pin" style="left:6px;right:auto" title="有要處理的">⚠️</span>':''}
             ${n>=0&&srt==='out'?`<span class="rank r${n+1}">${n+1}</span>`:''}</div>
           <b>${esc(d.name)}</b>
           <span>${srt==='wear'?`換裝 ${dollWears(d).length} 次`:srt==='price'&&d.price?`$${(+d.price).toLocaleString()}`:`出門 ${outCount(d)} 次`}</span>
@@ -2914,6 +2981,9 @@ function drawDollPage(d){
   const acc=d.acc||[];
   openSheet(`<div class="dprof">
     <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
+    ${isAway(d)&&isLive(d)?`<div class="awaybox">${AWAY_SVG}<div><b>${awayIcon(d.away.reason)} 暫時離家・${esc(d.away.reason)}</b>
+      <span>${esc(d.away.since.replace(/-/g,'/'))} 出發${d.away.back?`・預計 ${esc(d.away.back.replace(/-/g,'/'))} 回家${awayLeft(d)>0?`（再 ${awayLeft(d)} 天）`:''}`:''}${d.away.note?`・${esc(d.away.note)}`:''}</span>
+      <div class="row" style="margin-top:8px"><button class="btn sm" onclick="dollBack('${d.id}')">🏠 回家了</button><button class="btn sm ghost" onclick="openAway('${d.id}')">修改</button></div></div></div>`:''}
     ${d.gone?`<div class="note">👋 ${esc(d.gone.date.replace(/-/g,'/'))} ${esc(d.gone.reason)}${d.gone.price?`・$${(+d.gone.price).toLocaleString()}`:''}。回憶都留在這裡。</div>`:d.archived?`<div class="note">📦 ${esc(d.archived.date.replace(/-/g,'/'))} 收進封存櫃，不會出現在首頁和提醒裡。</div>`:''}
     <div class="resume">
       <div class="rph">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}</div>
@@ -2940,6 +3010,8 @@ function drawDollPage(d){
     ${acc.length?`<p class="dsec">附的配件</p><div class="care"><div class="carelist">${acc.map(a=>`<div class="ci ${a.state==='不見了'?'done':''}"><span>${(ACC_STATE.find(x=>x[0]===a.state)||[])[1]||'✓'}</span><div class="grow"><b>${esc(a.name)}</b><small>${esc(a.state)}${a.note?'・'+esc(a.note):''}</small></div></div>`).join('')}</div><p class="hint" style="margin:8px 0 0">要改配件，按右上「編輯」。</p></div>`:''}
     ${d.note?`<p class="dsec">備註</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.note)}</p></div>`:''}
     ${d.gone&&d.gone.note?`<p class="dsec">道別的話</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.gone.note)}</p></div>`:''}
+    ${isLive(d)&&!isAway(d)?`<button class="btn ghost wide" style="margin-top:18px" onclick="openAway('${d.id}')">🚗 暫時離家（手術、出國、借朋友…）</button>`:''}
+    ${(d.awayLog||[]).length?`<p class="dsec">離家紀錄</p><div class="care"><div class="carelist">${d.awayLog.slice().reverse().slice(0,5).map(a=>`<div class="ci fin"><span>${awayIcon(a.reason)}</span><div class="grow"><b>${esc(a.reason)}</b><small>${esc(a.since)} 出發 → ${esc(a.backDate)} 回家（${dayNum(a.backDate)-dayNum(a.since)} 天）${a.note?'・'+esc(a.note):''}</small></div></div>`).join('')}</div></div>`:''}
     ${isLive(d)?`<button class="btn sm ghost wide" style="margin-top:18px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷（到家日、整理紀錄、配件）</button>
       <div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
       <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>`
@@ -5595,7 +5667,7 @@ function openShare(kind,id){
   SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
   if(kind!=='ann')SC.ann=null;
   SC.foot=kind==='foot'?id:null;
-  openSheet(`<h3>${SC.ann?'紀念小卡':SC.foot?'足跡小卡':'分享小卡'}</h3>
+  openSheet(`<h3>${SC.ann?(/WELCOME/.test(SC.ann.tag)?'歡迎回家小卡':'紀念小卡'):SC.foot?'足跡小卡':'分享小卡'}</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
     ${SC.photo&&!SC.ann?`<p class="hint" style="text-align:center;margin:6px 0 0">在預覽上拖曳照片，可以調整照片的位置</p>`:''}
     <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
@@ -5815,7 +5887,7 @@ async function scAnnPolaroid(x,T,W,H,P,serif,num,sans){
 // 紀念小卡・雜誌：刊頭 + 滿版娃娃 + 疊在上面的超大數字 + 標題
 async function scAnnMag(x,T,W,H,P,serif,num,sans){
   const A=SC.ann,story=SC.ratio==='story',d=new Date(SC.date+'T00:00:00');
-  x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText(/BIRTHDAY/.test(A.tag)?'BIRTHDAY  ISSUE':/SPECIAL/.test(A.tag)?'SPECIAL  ISSUE':'ANNIVERSARY  ISSUE',P,P+26);
+  x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText(/BIRTHDAY/.test(A.tag)?'BIRTHDAY  ISSUE':/WELCOME/.test(A.tag)?'WELCOME  HOME':/SPECIAL/.test(A.tag)?'SPECIAL  ISSUE':'ANNIVERSARY  ISSUE',P,P+26);
   x.textAlign='right';x.fillStyle=T.sub;x.fillText(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}`,W-P,P+26);x.letterSpacing='0px';x.textAlign='left';
   x.fillStyle=T.ink;x.font=`700 ${story?100:88}px ${serif}`;x.fillText(fitText(x,SC.doll?SC.doll.name:A.line,W-P*2),P,P+140);
   x.fillStyle=T.ink;x.fillRect(P,P+172,W-P*2,3);
@@ -6589,7 +6661,7 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
     ['在家換裝也算，不一定要出門。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。','首頁的資訊都是目前那隻娃娃自己的：點「本月穿搭」或最下面的「全部穿搭紀錄」，看的是他的紀錄。','所有娃娃的穿搭紀錄在「洞察」最上面，可以依娃娃、在家／出門篩選。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
-    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡；小卡可以放上來家裡幾天、換裝幾次、出門幾次（也可以隱藏）。','首頁第二排是目前這隻娃娃的出門、在家、穿搭紀錄和相簿，點了就進去看。','點首頁的「穿過的比例」，可以看這隻娃娃穿過哪些娃衣（越常穿越前面），也可以幫他選適合的風格，推薦穿搭會優先挑這些風格。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
+    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡；小卡可以放上來家裡幾天、換裝幾次、出門幾次（也可以隱藏）。','首頁第二排是目前這隻娃娃的出門、在家、穿搭紀錄和相簿，點了就進去看。','點首頁的「穿過的比例」，可以看這隻娃娃穿過哪些娃衣（越常穿越前面），也可以幫他選適合的風格，推薦穿搭會優先挑這些風格。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','娃娃送去手術、出國沒帶、借給朋友時，按娃娃頁的「🚗 暫時離家」：首頁的他會變成 📦，不會提醒換裝；可以設定回家日倒數，回家那天按「回家了」會做一張歡迎回家小卡。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','要賣掉或送人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字，可以直接貼給新主人。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
