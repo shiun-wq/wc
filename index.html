@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=9"></script>
+<script src="i18n/i18n.js?v=10"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -544,6 +544,14 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .cropbox canvas{display:block;touch-action:none;cursor:grab}
 
 .mfoot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.mfoot .btn{white-space:nowrap;padding-left:8px;padding-right:8px;min-width:0}
+/* 訂閱方案 */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.plancard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 12px 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);text-align:left}
+.plancard:active{transform:scale(.98)}
+.plancard b{font-size:14px}.plancard span{font-size:12.5px;color:var(--ink-2)}.plancard strong{font-family:var(--num);font-size:20px;color:var(--berry-deep)}
+.plancard small{font-size:11.5px;color:var(--muted)}
+.plancard em{position:absolute;top:-9px;right:10px;font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:linear-gradient(135deg,#F6D98A,#E3B85A);color:#5A3E12}
+
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
@@ -1896,14 +1904,15 @@ function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.m
    次數只在 AI 成功回應後才扣；每個月 1 號自動重置。上架時改這張表就好。
    ============================================================ */
 const QUOTA={
-  tag:{name:'AI 建檔分析',free:10,member:150},
-  buy:{name:'買前檢查',free:0,member:30,memberOnly:true},
-  img:{name:'AI 出圖去背',free:0,member:30},
-  wearid:{name:'穿搭照辨識',free:3,member:50},
-  idea:{name:'AI 搭配建議',free:3,member:50}
+  tag:{name:'AI 建檔分析',free:10,member:150,trial:20},
+  buy:{name:'買前檢查',free:0,member:30,trial:5,memberOnly:true},
+  img:{name:'AI 出圖去背',free:0,member:30,trial:5},
+  wearid:{name:'穿搭照辨識',free:3,member:50,trial:10},
+  idea:{name:'AI 搭配建議',free:3,member:50,trial:10}
 };
 function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
-const quotaMax=k=>isMember()?QUOTA[k].member:QUOTA[k].free;
+// 試用期間：分析全部打開，但 AI 次數比正式會員少，避免三天內把整個衣櫃都跑完
+const quotaMax=k=>S.settings.member?QUOTA[k].member:trialOn()?QUOTA[k].trial:QUOTA[k].free;
 const quotaLeft=k=>Math.max(0,quotaMax(k)-(usage()[k]||0));
 // 先用額度，額度用完才扣點數
 function spendQuota(k){
@@ -1954,7 +1963,7 @@ function addPoints(n,why){
 }
 function updateWalletChip(){
   const c=document.getElementById('wchip');if(!c)return;
-  c.innerHTML=isMember()?'<i>♛</i>會員':`<i>✦</i>${wallet().points}`;
+  c.innerHTML=S.settings.member?'<i>♛</i>會員':trialOn()?'<i>♛</i>試用':`<i>✦</i>${wallet().points}`;
 }
 // 會員每月額度，換算成點數大概值多少
 const memberValue=()=>Object.entries(QUOTA).reduce((a,[k,q])=>a+(q.member-q.free)*POINT_COST[k],0);
@@ -2538,7 +2547,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-26';
+const APP_VER='2026.10.01-27';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5160,7 +5169,25 @@ async function delLook(id){
    8b. 搭配分析（會員功能）
    用穿著紀錄算：最常穿的 Look、最萬搭的單品、固定組合、每隻娃娃的最愛。
    ============================================================ */
-const isMember=()=>!!S.settings.member;
+const isMember=()=>!!S.settings.member||trialOn();
+/* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
+const PLANS=[{id:'month',name:'月訂',price:90,per:'月'},{id:'year',name:'年訂',price:790,per:'年',tag:'最划算'}];
+const TRIAL_DAYS=3;
+const trialOn=()=>{const t=S.settings.trial;return !!(t&&Date.now()<t.end)};
+const trialLeft=()=>{const t=S.settings.trial;return t?Math.max(0,Math.ceil((t.end-Date.now())/864e5)):0};
+const trialEndText=()=>{const d=new Date(S.settings.trial.end);return `${d.getMonth()+1}/${d.getDate()}`};
+async function startTrial(){
+  if(S.settings.trial){toast('免費試用已經用過了');return}
+  S.settings.trial={start:Date.now(),end:Date.now()+TRIAL_DAYS*864e5};await save();updateWalletChip();closeSheet();
+  toast(`開始免費試用 ${TRIAL_DAYS} 天！`);setTimeout(openMemberHub,300);
+}
+// 上架前的佔位：這些按鈕之後接 App 內購
+function subscribe(id){const p=PLANS.find(x=>x.id===id);toast(`上架成 App 後，這裡會打開${p?p.name:''}訂閱付款（測試期間可以在最下面直接開啟會員）`)}
+function manageSub(){toast('上架成 App 後，這裡會打開 App Store／Google Play 的訂閱管理，取消或換方案都在那裡')}
+function restorePurchase(){toast('上架成 App 後，換手機或重裝時按這裡，就能把已經買的會員拿回來')}
+function openSubInfo(){openSheet(`<h3>訂閱說明</h3>
+  <div class="note">・會員是自動續訂的訂閱，月訂每個月、年訂每年自動扣款，會在到期前 24 小時內續訂。<br>・想取消的話，到 App Store／Google Play 的「訂閱」裡取消，當期結束前都還可以用。<br>・免費試用 ${TRIAL_DAYS} 天，每個帳號只有一次；試用結束前取消就不會扣款。<br>・衣櫃裡的資料都存在你的手機裡，會員到期不會刪掉任何東西，只是會員功能會先鎖起來。</div>
+  <button class="btn ghost wide" style="margin-top:12px" onclick="openSettings('member')">回會員與 AI</button>`)}
 function matchStats(){
   const items=S.items.filter(i=>i.category!=='套裝'),ok=new Set(items.map(i=>i.id));
   const partners={},wearN={},pair={},sid={};items.forEach(i=>{if(i.setId)sid[i.id]=i.setId});
@@ -5254,8 +5281,9 @@ function openMember(){
     <div class="mbox">${MEMBER_ONLY.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b><small>${d}</small></div><div class="mq"><span>—</span><span class="on">✓</span></div></div>`).join('')}</div>
     <p class="mlabel">一直免費</p>
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
-    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。<br>網頁版目前是測試階段，可以直接開啟會員試用；上架成 App 後會換成正式的訂閱方案。</div>
-    <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
+    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。${PLANS.map(p=>`${p.name} NT$${p.price}`).join('、')}（價格暫定）。</div>
+    ${!isMember()&&!S.settings.trial?`<button class="btn wide" style="margin-top:14px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`:''}
+    <button class="btn ghost wide" style="margin-top:8px" onclick="openSettings('member')">${S.settings.member?'會員與 AI 設定':'看訂閱方案'}</button>`);
 }
 
 /* ---- 我的會員：會員自己看的頁面 ----
@@ -5278,7 +5306,8 @@ function openMemberHub(){
       <em><b>${left}</b><small>/ ${max}</small></em></button>`};
   const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
   openSheet(`<h3>♛ 我的會員</h3>
-    <div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>
+    ${S.settings.member?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
+      :`<div class="mcard"><b>免費試用中・還剩 ${trialLeft()} 天</b><span>到 ${trialEndText()} 為止，所有會員分析都打開；試用期間 AI 次數比正式會員少一些。喜歡的話到「設定 → 會員與 AI」訂閱。</span><div style="margin-top:10px"><button class="btn sm" onclick="openSettings('member')">看訂閱方案</button></div></div>`}
     <p class="mlabel">本月 AI 額度・點一下直接去用</p>
     <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
     <p class="mlabel">會員專屬功能</p>
@@ -7211,19 +7240,38 @@ function openSettings(page){
   }
   const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${SET_PAGES[page]}</h3>`;
   let body='';
-  if(page==='member')body=`
-    <button class="btn wide" style="margin-bottom:12px" onclick="${isMember()?'openMemberHub()':'openMember()'}">${isMember()?'♛ 我的會員：可以用哪些功能':'看看會員可以做什麼'}</button>
+  if(page==='member'){
+    const paid=!!st.member,tr=trialOn();
+    const plan=p=>`<button class="plancard" onclick="subscribe('${p.id}')">${p.tag?`<em>${p.tag}</em>`:''}<b>${p.name}</b><span><strong>NT$${p.price}</strong> / ${p.per}</span>${p.per==='年'?`<small>平均每月 NT$${Math.round(p.price/12)}</small>`:'<small>&nbsp;</small>'}</button>`;
+    body=`
+    <p class="mlabel" style="margin-top:0">我的方案</p>
     <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
-        <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 10px">測試期間可以直接開關。本月 AI 使用次數：</p>
-      ${quotaTable()}
-      <button class="btn ghost wide sm" style="margin-top:10px" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points} 點</button>
+      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">下次續訂：上架後會顯示日期和金額</div></span></div>
+        <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm ghost grow" onclick="openMemberHub()">我的會員功能</button><button class="btn sm ghost grow" onclick="manageSub()">管理訂閱</button></div>`
+      :tr?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 免費試用中</b><div class="hint">還剩 ${trialLeft()} 天（到 ${trialEndText()}），試用結束前訂閱就不會中斷</div></span></div>
+        <div class="plans">${PLANS.map(plan).join('')}</div>
+        <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMemberHub()">我的會員功能</button>`
+      :`<div class="row"><span class="grow"><b style="font-size:15px">免費版</b><div class="hint">衣櫃、建檔、貼圖、穿搭紀錄都一直免費；會員多了 AI 額度和進階分析</div></span></div>
+        ${st.trial?'':`<button class="btn wide" style="margin-top:12px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`}
+        <div class="plans">${PLANS.map(plan).join('')}</div>
+        <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMember()">📋 免費版和會員的差別</button>`}
     </div>
-    <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span>
-        <button class="btn sm quiet" onclick="testAPI(this)">測試</button></div>
+    <p class="mlabel">本月 AI 使用次數・每月 1 號重置</p>
+    <div class="card">${quotaTable()}
+      <button class="btn ghost wide sm" style="margin-top:10px" onclick="closeSheet();go('wallet')">💰 錢包・點數 ${wallet().points} 點</button>
+    </div>
+    <div class="setgroup" style="margin-top:12px">
+      <button class="setrow" onclick="restorePurchase()"><i>🔄</i><span><b>恢復購買</b><small>換手機或重裝 App 後，把會員拿回來</small></span><em>›</em></button>
+      <button class="setrow" onclick="openSubInfo()"><i>📄</i><span><b>訂閱說明</b><small>自動續訂、怎麼取消、試用規則</small></span><em>›</em></button>
+      <button class="setrow" onclick="toast('上架前會放上服務條款')"><i>📜</i><span><b>服務條款</b></span><em>›</em></button>
+      <button class="setrow" onclick="toast('上架前會放上隱私權政策')"><i>🔒</i><span><b>隱私權政策</b></span><em>›</em></button>
+    </div>
+    <div class="card" style="margin-top:12px;border-style:dashed">
+      <p class="hint" style="margin:0 0 8px">測試用（上架後拿掉）</p>
+      <div class="row" style="gap:8px"><button class="btn sm ${paid?'ghost':'quiet'} grow" onclick="setMember(${!paid})">${paid?'關閉會員':'直接開啟會員'}</button>
+        ${st.trial?`<button class="btn sm ghost grow" onclick="S.settings.trial=null;save().then(()=>{updateWalletChip();openSettings('member')})">重置試用</button>`:''}</div>
     </div>`;
+  }
   if(page==='notify'){
     const on=st.notify&&canNotify()&&Notification.permission==='granted';
     body=`
@@ -7339,7 +7387,8 @@ function openSettings(page){
       <p class="hint" style="margin-top:10px">儲存方式：${DB.mode==='host'?'App 儲存空間':DB.mode==='idb'?'瀏覽器 IndexedDB':'僅此工作階段（無法保存，請務必匯出）'}</p>
     </div>
     <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>`;}
-  if(page==='dev')body=`    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
+  if(page==='dev')body=`    <div class="card"><div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span><button class="btn sm quiet" onclick="testAPI(this)">測試</button></div></div>
+    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
     <div class="card" style="margin-top:6px">
       <label class="f"><span>後台網址</span>
         <input type="text" id="s_backend" value="${esc(st.backendUrl||'')}" placeholder="${esc(BACKEND||'https://xxx.workers.dev')}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
