@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=13"></script>
+<script src="i18n/i18n.js?v=14"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2591,7 +2591,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-30';
+const APP_VER='2026.10.01-31';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2914,13 +2914,14 @@ function starAt(d,s){
   if(s.open==='now')return s.date;
   if(s.open==='anniv')return mdNext(d.home?d.home.slice(5):null,s.date);
   if(s.open==='bday')return mdNext(dollBday(d),s.date);
+  if(String(s.open).startsWith('d:')){const x=(d.dates||[]).find(y=>y.id===s.open.slice(2));return x?mdNext(x.md,s.date):(s.at||null)}
   return s.at||null;
 }
 const starsOf=d=>(d&&d.stars)||[];
 const starReady=(d,s)=>!s.opened&&(s.at||'9999')<=today();
 const starLocked=(d,s)=>!s.opened&&(s.at||'9999')>today();
 const readyStars=d=>starsOf(d).filter(s=>starReady(d,s));
-const starOpenLabel=(d,s)=>s.open==='anniv'?'到家紀念日':s.open==='bday'?'生日':s.open==='now'?'隨時':'約好的日子';
+const starOpenLabel=(d,s)=>s.open==='anniv'?'到家紀念日':s.open==='bday'?'生日':s.open==='now'?'隨時':String(s.open).startsWith('d:')?(((d.dates||[]).find(y=>y.id===s.open.slice(2))||{}).label||'紀念日'):'約好的日子';
 // 舊版「寫給娃娃的一句話」搬進星星罐
 function migrateLetters(){
   S.dolls.forEach(d=>{if(d.letter&&!d.stars){const date=d.letterAt||today();const s={id:uid('st'),text:d.letter,date,open:'anniv',opened:false};s.at=starAt(d,s);d.stars=[s]}
@@ -2936,18 +2937,22 @@ function drawJar(){
   const d=S.dolls.find(x=>x.id===JAR.id);if(!d)return;
   const st=starsOf(d).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')),ready=st.filter(s=>starReady(d,s)),locked=st.filter(s=>starLocked(d,s)),opened=st.filter(s=>s.opened);
   const e=JAR.edit?st.find(s=>s.id===JAR.edit):null;
-  const bd=dollBday(d),opts=[d.home?['anniv',`下一個到家紀念日（${+mdNext(d.home.slice(5),today()).slice(5,7)}/${+mdNext(d.home.slice(5),today()).slice(8)}）`]:null,bd?['bday',`生日（${+bd.slice(0,2)}/${+bd.slice(3)}）`]:null,['date','指定日期'],['now','不用等，現在就放著看']].filter(Boolean);
+  // 打開的日子：到家紀念日＋使用者自己加的每個紀念日，最後才是指定日期
+  const md2=md=>`${+md.slice(0,2)}/${+md.slice(3)}`;
+  const opts=[d.home?['anniv',`到家紀念日（${md2(d.home.slice(5))}）`]:null,...(d.dates||[]).map(x=>['d:'+x.id,`${x.label}（${md2(x.md)}）`]),['date','指定日期'],['now','不用等，現在就放著看']].filter(Boolean);
+  if(JAR.open==='bday'){const b=(d.dates||[]).find(x=>x.label==='生日');JAR.open=b?'d:'+b.id:JAR.open}
   if(!opts.some(o=>o[0]===JAR.open))JAR.open=opts[0][0];
   // 星星從罐底往上堆，每排 5 顆
   const rj=seeded(d.id+':jar'),stars=Array.from({length:Math.min(st.length,30)},(_,i)=>{const row=Math.floor(i/5),col=i%5;return `<i style="left:${6+col*18+rj()*6}%;bottom:${5+row*14+rj()*5}%;transform:rotate(${rj()*50-25}deg);font-size:${20+rj()*8}px">${i<ready.length?'🌟':'⭐'}</i>`}).join('');
   const card=(s,mode)=>{const at=s.at?s.at.replace(/-/g,'/'):'';
+    const acts=`<button class="btn sm ghost" onclick="JAR.edit='${s.id}';JAR.text=${esc(JSON.stringify(s.text))};JAR.open='${s.open}';JAR.at='${s.at||''}';drawJar();setTimeout(()=>{const t=document.getElementById('jar_t');t.scrollIntoView({block:'center'});t.focus()},200)">修改</button>
+      <button class="btn sm ghost" style="color:var(--muted)" onclick="delStar('${s.id}')">刪除</button>`;
     if(mode==='locked'&&!JAR.peek[s.id])return `<div class="jstar locked"><span>🔒 ${at} 打開・${starOpenLabel(d,s)}</span><small>寫於 ${s.date.replace(/-/g,'/')}</small>
-      <div class="row"><button class="btn sm ghost" onclick="JAR.peek['${s.id}']=1;drawJar()">偷看</button></div></div>`;
+      <div class="row"><button class="btn sm ghost" onclick="JAR.peek['${s.id}']=1;drawJar()">偷看</button>${acts}</div></div>`;
     if(mode==='ready')return `<button class="jstar ready" onclick="openStar('${s.id}')"><span>🌟 可以打開了！</span><small>${s.date.replace(/-/g,'/')} 寫的・點一下打開</small></button>`;
     return `<div class="jstar"><p>「${esc(s.text)}」</p><small>寫於 ${s.date.replace(/-/g,'/')}${s.opened&&s.openedAt&&s.open!=='now'?`・${s.openedAt.replace(/-/g,'/')} 打開`:!s.opened&&at?`・${at} 打開`:''}</small>
-      <div class="row"><button class="btn sm ghost" onclick="JAR.edit='${s.id}';JAR.text=${esc(JSON.stringify(s.text))};JAR.open='${s.open}';JAR.at='${s.at||''}';drawJar();setTimeout(()=>document.getElementById('jar_t').focus(),200)">修改</button>
-      <button class="btn sm ghost" style="color:var(--muted)" onclick="delStar('${s.id}')">刪除</button></div></div>`};
-  openSheet(`<div class="sethead"><button onclick="openDoll('${d.id}')">‹ ${esc(d.name)}</button></div>
+      <div class="row">${acts}</div></div>`};
+  openSheet(`<div class="sethead">${JAR.from==='list'?`<button onclick="closeSheet()">‹ 星星罐</button>`:`<button onclick="openDoll('${d.id}')">‹ ${esc(d.name)}</button>`}</div>
     <h3>⭐ ${esc(d.name)} 的星星罐</h3>
     <div class="jar"><div class="jarlid"></div><div class="jarbody">${stars||'<span class="jarempty">還是空的</span>'}</div></div>
     <p class="hint" style="text-align:center;margin:8px 0 14px">${st.length?`裡面有 ${st.length} 顆星星${ready.length?`，<b style="color:var(--berry-deep)">${ready.length} 顆可以打開了</b>`:locked.length?`，${locked.length} 顆在等約好的日子`:''}`:'想到什麼就寫給 '+esc(d.name)+'，放進罐子，約好的那天再打開'}</p>
@@ -2973,11 +2978,11 @@ async function saveStar(){
   if(s.open==='now'){s.opened=true;s.openedAt=s.openedAt||today()}else if(s.at>today()){s.opened=false;delete s.openedAt}
   const was=!!JAR.edit;await save();JAR.edit=null;JAR.text='';drawJar();
   toast(was?'已修改':s.open==='now'?'放進星星罐了 ⭐':`放進星星罐了，${s.at.replace(/-/g,'/')} 再打開 ⭐`);
-  if(UI.tab==='home')renderHome();
+  if(UI.tab==='home')renderHome();if(UI.tab==='dolls')renderDolls();
 }
 async function openStar(sid){
   const d=S.dolls.find(x=>x.id===JAR.id);const s=starsOf(d).find(x=>x.id===sid);if(!s)return;
-  s.opened=true;s.openedAt=today();await save();if(UI.tab==='home')renderHome();
+  s.opened=true;s.openedAt=today();await save();if(UI.tab==='home')renderHome();if(UI.tab==='dolls')renderDolls();
   openSheet(`<div class="starreveal"><div class="big">🌟</div>
     <small>${s.date.replace(/-/g,'/')}，你寫給 ${esc(d.name)}</small>
     <p>「${esc(s.text)}」</p>
@@ -2985,7 +2990,19 @@ async function openStar(sid){
 }
 async function delStar(sid){
   if(!confirm('刪除這顆星星？'))return;
-  const d=S.dolls.find(x=>x.id===JAR.id);d.stars=starsOf(d).filter(s=>s.id!==sid);await save();drawJar();
+  const d=S.dolls.find(x=>x.id===JAR.id);d.stars=starsOf(d).filter(s=>s.id!==sid);await save();drawJar();if(UI.tab==='dolls')renderDolls();
+}
+// 娃娃櫃 → 星星罐：每隻娃娃的罐子一覽
+function jarsHTML(){
+  const ds=[...liveDolls(),...S.dolls.filter(d=>!isLive(d)&&starsOf(d).length)];
+  if(!ds.length)return `<div class="empty"><strong>還沒有娃娃</strong>先把娃娃放進娃娃櫃，就能寫一句話給他</div>`;
+  const all=ds.flatMap(d=>starsOf(d)),rd=ds.reduce((a,d)=>a+readyStars(d).length,0);
+  const next=d=>{const l=starsOf(d).filter(s=>starLocked(d,s)).map(s=>s.at).sort()[0];return l?`下一顆 ${+l.slice(5,7)}/${+l.slice(8)} 打開`:''};
+  return `<p class="hint" style="margin:0 0 12px">想到什麼就寫給娃娃，放進他的星星罐，約好的那天再打開。${all.length?`目前一共 <b>${all.length}</b> 顆星星${rd?`，<b style="color:var(--berry-deep)">${rd} 顆可以打開了</b>`:''}。`:''}</p>
+    <div class="blist">${ds.map(d=>{const n=starsOf(d).length,r=readyStars(d).length;return `<div class="rowitem" onclick="openJar('${d.id}',{from:'list'})">
+      <div class="th">${d.photo?`<img src="${d.photo}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(d.name)}${isLive(d)?'':' <small style="color:var(--muted);font-weight:400">（封存）</small>'}</b><span>${n?`⭐ ${n} 顆${r?`・<i style="font-style:normal;font-weight:600;color:var(--berry-deep)">🌟 ${r} 顆可以打開</i>`:''}${next(d)?'・'+next(d):''}`:'還沒有星星，寫一句話給他吧'}</span></div>
+      <div class="rt">›</div></div>`}).join('')}</div>`;
 }
 // 說再見、收進封存櫃時：把罐子裡的話都拿出來看一次
 function starsFarewell(d){
@@ -3178,8 +3195,9 @@ function renderDolls(){
   // 依照「常帶出門」排出前三名
   const rank=L.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
   const rows=[];for(let i=0;i<list.length+1;i+=4)rows.push(list.slice(i,i+4));
-  const tabs=`<div class="swap dtabs">${[['doll','🧸 娃娃'],['foot','📍 足跡']].map(([k,l])=>`<button class="${(UI.dollTab||'doll')===k?'on':''}" onclick="UI.dollTab='${k}';renderDolls();window.scrollTo(0,0)">${l}</button>`).join('')}</div>`;
+  const tabs=`<div class="swap dtabs">${[['doll','🧸 娃娃'],['foot','📍 足跡'],['jar','⭐ 星星罐']].map(([k,l])=>`<button class="${(UI.dollTab||'doll')===k?'on':''}" onclick="UI.dollTab='${k}';renderDolls();window.scrollTo(0,0)">${l}</button>`).join('')}</div>`;
   setTimeout(fillMaps,0);
+  if(UI.dollTab==='jar'){el.innerHTML=tabs+jarsHTML();return}
   if(UI.dollTab==='foot'){el.innerHTML=tabs+(footSection()||`<div class="empty"><strong>還沒有出門紀錄</strong>帶娃娃出門時按「今天帶出門」，或記穿搭時選「出門」，去過的地方會標在地圖上</div>`);return}
   el.innerHTML=tabs+`
     <div class="stat">
@@ -7486,12 +7504,12 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['📷','放照片'],['☑️','勾選衣服']],
     ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
-    ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。']],
+    ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
   ['🏡','首頁：每隻娃娃的專屬頁',[['🧸','點頭像切換娃娃'],['📍','出門・在家'],['👗','穿搭紀錄'],['📷','相簿']],
     ['首頁上的資訊都是目前這隻娃娃自己的：第二排是他的出門、在家、穿搭紀錄、相簿；下面是他尺寸的娃衣、本月穿搭和穿過的比例。','點「穿過的比例」可以看他穿過哪些娃衣（越常穿越前面），也可以幫他選適合的風格。','「今天穿這套？」每天幫他搭一套，今天已經記錄過穿搭就不會出現。購買中、壓箱底也只列他尺寸的。','「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','首頁下方的切換列最多釘選 5 隻；所有娃娃的穿搭紀錄在「洞察」。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📋','娃娃履歷'],['🎂','紀念日慶祝']],
-    ['點進娃娃是一張履歷：姓名、尺寸、到家日、生日、來源；下面是紀念日和整理紀錄。要改資料或配件，按右上「編輯」。','到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','很珍惜的娃娃可以在「編輯」標記「💝 紀念收藏」，寫下紀念原因。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。']],
+    ['點進娃娃是一張履歷：姓名、尺寸、到家日、生日、來源；下面是紀念日和整理紀錄。要改資料或配件，按右上「編輯」。','到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','很珍惜的娃娃可以在「編輯」標記「💝 紀念收藏」，寫下紀念原因。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','想寫給娃娃的話，放進娃娃頁的「⭐ 星星罐」，約好的紀念日再打開（見「星星罐：寫給娃娃的話」）。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃頁的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','娃娃附的尾巴、耳朵、頭飾在「編輯」裡記在「附的配件」；有配件才會顯示在娃娃頁。','要交給新主人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字。']],
   ['🚗','暫時離家・封存・道別',[['🚗','暫時離家'],['🏠','回家了'],['📦','封存櫃'],['👋','道別']],
@@ -7500,22 +7518,32 @@ const HELP=[
     ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','首頁點「出門」是這隻娃娃的足跡頁：台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深。','以前的出門可以在足跡頁「補記出門」；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','娃娃櫃上方切到「足跡」，是所有娃娃一起的地圖和統計。','不是住在台灣的話，到 設定 → 我住在 選你的國家。幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。']],
   ['📷','相簿：娃娃的照片',[['📝','記穿搭放照片'],['📷','首頁點「相簿」'],['🗺️','地圖點地方看照片'],['⬇️','存到手機']],
     ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
+  ['⭐','星星罐：寫給娃娃的話',[['⭐','娃娃頁點 ⭐'],['✍️','寫一句話'],['📅','選打開的日子'],['🌟','那天打開']],
+    ['想到什麼就寫給娃娃：今天一起去了哪裡、想對他說的話，都可以放進他的星星罐。','打開的日子可以選到家紀念日、你幫他加的任何一個紀念日（生日、角色生日、第一次見面…），或指定日期；也可以不用等，現在就放著看。','到了那天，首頁和通知會提醒你「星星罐有星星可以打開了」，點一下星星就會打開。','還沒到日子的可以偷看，寫過的都可以修改、刪除。','娃娃櫃上方的「⭐ 星星罐」可以看所有娃娃的罐子；收進封存櫃或說再見時，罐子裡的話會再出現一次。']],
   // ── 購物
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
     ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
+  // ── 會員
+  ['♛','會員與免費試用',[['⚙️','設定 → 會員與 AI'],['🎁','免費試用 3 天'],['♛','右上「會員」'],['🔄','恢復購買']],
+    ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「♛ 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。']],
+  ['📸','截圖匯入購買中',[['📦','購買中 → 截圖匯入'],['🖼️','選訂單截圖'],['✨','AI 讀取'],['☑️','確認後存']],
+    ['會員功能。把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格、進度，順便剪下商品小圖、看顏色和風格。','人民幣等外幣會照當天匯率加上海外手續費換算，也可以改成自己填刷卡帳單上的匯率；原價會寫在備註。','確認畫面可以改名稱、類型、金額；退款的、已經記過的預設不勾。每張截圖用 1 次 AI 建檔分析，讀不出來的不扣。','商品圖剪歪了，打開那一筆按「✂️ 調整商品圖」重新框。']],
+  ['📅','娃娃的一年（年度回顧）',[['📊','洞察 → 👑 會員分析'],['🗓️','選年份'],['🧸','今年來到身邊的娃娃'],['🎉','做成年度小卡']],
+    ['會員功能。整理那一年穿了幾次、出門幾次、去過哪裡、新來的娃衣，還有年度最愛和出場最多的娃娃。','那一年來到身邊的娃娃會排排站，謝謝他們來到你身邊。','平常可以看「到目前為止」的紀錄；每年 12 月 20 日首頁會提醒年度回顧出爐，可以做成貼文或限動小卡分享。']],
   // ── 資料
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
     ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有年度回顧「娃娃的一年」（可以做成分享小卡）、搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
   ['🔔','提醒與通知',[['⚙️','設定'],['🔔','提醒與通知'],['📱','手機通知']],
-    ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；把哇娃衣櫃加到主畫面、開了手機通知，也會跳通知給你。','有新版本時畫面下方會出現「有新版本，點一下更新」。']],
+    ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；把哇娃衣櫃加到主畫面、開了手機通知，也會跳通知給你。','有新版本時畫面下方會出現「有新版本，點一下更新」。','會員另外有換季提醒：3、6、9、12 月的前兩週，提醒這一季的娃衣有幾件還沒穿過。星星罐約好打開的那天，也會提醒你。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
-    ['資料和照片都只存在這支手機上，沒有上傳到任何地方，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟；照片也可以在相簿「存到手機」多留一份。']],
+    ['資料和照片都只存在這支手機上，沒有上傳到任何地方，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟；照片也可以在相簿「存到手機」多留一份。','想存到雲端：iPhone 按「完整備份」後選「儲存到檔案」→「iCloud 雲端硬碟」；Android 把下載的檔案上傳到 Google 雲端硬碟。備份頁裡有步驟說明。']],
 ];
 // 說明頁先分大類，點了再看底下的主題
 const HELP_CATS=[['衣櫃','👗',['建檔：把娃衣放進衣櫃','貼圖怎麼做','整理衣櫃','壓箱底・出售・回憶箱']],
   ['穿搭','✨',['搭配：幫娃娃試穿','記錄今天的穿搭','分享小卡']],
-  ['娃娃','🧸',['首頁：每隻娃娃的專屬頁','娃娃櫃與紀念日','娃娃的整理與配件','暫時離家・封存・道別','足跡：娃娃陪你去過哪裡','相簿：娃娃的照片']],
+  ['娃娃','🧸',['首頁：每隻娃娃的專屬頁','娃娃櫃與紀念日','娃娃的整理與配件','暫時離家・封存・道別','星星罐：寫給娃娃的話','足跡：娃娃陪你去過哪裡','相簿：娃娃的照片']],
   ['購物','🛍️',['買前檢查・考慮中・購買中']],
+  ['會員','♛',['會員與免費試用','截圖匯入購買中','娃娃的一年（年度回顧）']],
   ['資料','💾',['洞察：衣櫃分析','提醒與通知','備份很重要']]];
 // 說明頁的截圖（help/ 資料夾，用示範資料自動產生）：key 是主題標題
 const HELP_SHOTS={
@@ -7535,6 +7563,10 @@ const HELP_SHOTS={
   '買前檢查・考慮中・購買中':[['buy-check','買前檢查：衣櫃裡幾乎一樣的排最前面'],['orders','購買中：每件的尺寸、進度和預計到貨']],
   '洞察：衣櫃分析':[['insight','洞察：購買中、所有穿搭紀錄和分析']],
   '提醒與通知':[['notify','設定 → 提醒與通知']],
+  '星星罐：寫給娃娃的話':[['star-jar','星星罐：寫一句話，選哪一天打開'],['jar-list','娃娃櫃 → 星星罐：每隻娃娃的罐子']],
+  '會員與免費試用':[['member-plan','設定 → 會員與 AI：方案和免費試用'],['member-hub','我的會員：AI 還剩幾次、功能在哪']],
+  '截圖匯入購買中':[['order-shot','截圖匯入：確認 AI 讀出來的品名和金額']],
+  '娃娃的一年（年度回顧）':[['year-card','年度回顧小卡'],['year-insight','洞察 → 會員分析：娃娃的一年']],
   '備份很重要':[['backup','設定 → 備份與資料']]
 };
 function helpHTML(){
