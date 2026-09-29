@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=11"></script>
+<script src="i18n/i18n.js?v=12"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -560,6 +560,19 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .bktip{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--swatch);font-size:13px;line-height:1.6}
 .bktip summary{cursor:pointer;font-weight:600;color:var(--ink)}
 .bktip p{margin:8px 0 0;color:var(--ink-2)}
+
+/* 寫給娃娃的一句話 */
+.dletter{display:block;width:100%;text-align:left;margin:12px 0;padding:12px 16px;border-radius:14px;background:var(--berry-soft);border-left:3px solid var(--berry)}
+.dletter small{display:block;font-size:12px;color:var(--muted)}
+.dletter p{margin:4px 0 0;font-family:var(--serif);font-size:15.5px;line-height:1.6;color:var(--ink)}
+.dletter.empty{background:transparent;border:1.5px dashed var(--line);color:var(--muted);font-size:13px}
+.nletter{margin:6px 0 4px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.55);font-size:13px;color:var(--ink-2);line-height:1.6}
+.nletter b{font-family:var(--serif);color:var(--ink)}
+[data-theme=dark] .nletter{background:rgba(0,0,0,.2)}
+.dline{display:flex;align-items:flex-end;justify-content:center;gap:4px;padding:14px 10px 0;border-radius:16px;background:linear-gradient(180deg,var(--card),var(--swatch));overflow-x:auto;margin-bottom:6px}
+.dline div{flex:0 0 auto;text-align:center;width:84px}
+.dline img{width:84px;height:110px;object-fit:contain;display:block}
+.dline span{display:block;font-size:12px;padding:6px 0 10px;color:var(--ink-2)}
 
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -2556,7 +2569,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-28';
+const APP_VER='2026.10.01-29';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2586,6 +2599,7 @@ function homeCards(){
     const hide=`<button class="x" onclick="S.settings.annHide['${key}:${annStage(a)}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
+      ${a.kind==='year'&&a.d.letter?`<div class="nletter">💌 ${a.d.letterAt?`${a.d.letterAt.replace(/-/g,'/')} `:''}你寫給 ${nm}：<b>「${esc(a.d.letter)}」</b></div>`:''}
       <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年。出門走走，或在家幫 ${nm} 換上最喜歡的衣服慶祝都好，拍張照留下紀念吧。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，在家慶祝或出門走走都好。`}</span>
       <div class="nacts">${out?`<button class="btn sm ghost" disabled>已出門 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">🚶 帶出門</button>`}
         <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
@@ -2647,7 +2661,7 @@ function homeCards(){
     h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['arch:${x.d.id}:${x.last}']=1;save();renderHome()" aria-label="隱藏">×</button>
       <b>🌙 ${nm} 已經 ${x.n} 天沒出場了</b>
       <span>要不要先收進封存櫃？收起來不會刪除，照片和回憶都在，想玩的時候隨時拿出來。</span>
-      <div class="row"><button class="btn sm" onclick="archiveDoll('${x.d.id}')">收進封存櫃</button><button class="btn sm ghost" onclick="S.settings.annHide['arch:${x.d.id}:${x.last}']=1;save();renderHome();toast('好，那就多陪陪 ${nm} 吧')">還想陪他</button></div></section>`)}
+      <div class="row"><button class="btn sm" onclick="archiveAsk('${x.d.id}')">收進封存櫃</button><button class="btn sm ghost" onclick="S.settings.annHide['arch:${x.d.id}:${x.last}']=1;save();renderHome();toast('好，那就多陪陪 ${nm} 吧')">還想陪他</button></div></section>`)}
   const sleepSet=new Set(sleepy.map(x=>x.d.id));
   // 好久沒換裝：只看首頁目前這隻娃娃；其他也很久沒換的列在下面
   const idle=idleDolls().filter(x=>!sleepSet.has(x.d.id)),md=mainDoll(),x=md&&idle.find(y=>y.d.id===md.id);
@@ -2863,6 +2877,16 @@ function archiveHTML(){
     ${gone.length?`<p class="mh">已經離開的</p><div class="shelf arch">${gone.map(cell).join('')}</div>`:''}
     <p class="hint">收起來的娃娃不會出現在首頁和提醒裡，想玩的時候點進去按「拿出來」。</p></details>`;
 }
+// 收進封存櫃前：寫過的話再看一次
+function archiveAsk(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  if(!d.letter){if(confirm(`把 ${d.name} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。`))archiveDoll(id);return}
+  openSheet(`<h3>把 ${esc(d.name)} 收進封存櫃？</h3>
+    <div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}${esc(d.name)} 剛來的時候，你寫下</small><p>「${esc(d.letter)}」</p></div>
+    <p class="hint">收起來不會刪除，想玩隨時拿出來。</p>
+    <button class="btn wide" onclick="archiveDoll('${d.id}')">收進封存櫃</button>
+    <button class="btn ghost wide" style="margin-top:8px" onclick="closeSheet()">再陪我一陣子</button>`);
+}
 async function archiveDoll(id){
   const d=S.dolls.find(x=>x.id===id);if(!d)return;
   d.archived={date:today()};d.pin=false;if(S.settings.mainDoll===id)S.settings.mainDoll='';
@@ -3005,6 +3029,7 @@ function openFarewell(id){
       <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
       <h3>謝謝 ${esc(d.name)} 陪你 ${days} 天</h3>
       <p class="hint">在說再見之前，看看你們一起留下的回憶。</p>
+      ${d.letter?`<div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}${esc(d.name)} 剛來的時候，你寫下</small><p>「${esc(d.letter)}」</p></div>`:''}
       <div class="fwlist">${mem.map(([ic,t])=>`<div><span>${ic}</span><p>${t}</p></div>`).join('')}</div>
       ${photos.length?`<p class="mh">一起拍的照片</p><div class="fwphotos">${photos.map(w=>`<img src="${w.photo}" alt="">`).join('')}</div>`:''}
       ${favs.length?`<p class="mh">最常穿的娃衣</p><div class="fwfav">${favs.map(x=>`<div><img src="${img(x.it)}" alt=""><small>${x.n} 次</small></div>`).join('')}</div>`:''}
@@ -3122,6 +3147,8 @@ function drawDollPage(d){
     </div>
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
+    ${d.letter?`<div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}寫給 ${esc(d.name)}</small><p>「${esc(d.letter)}」</p></div>`
+      :isLive(d)?`<button class="dletter empty" onclick="dollEdit();setTimeout(()=>{const e=document.getElementById('d_letter');if(e){e.scrollIntoView({block:'center'});e.focus()}},300)">💌 寫一句話給 ${esc(d.name)}，每年到家紀念日會拿出來看 ›</button>`:''}
     <div class="dlinks">
       <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
@@ -3136,7 +3163,7 @@ function drawDollPage(d){
     ${isLive(d)&&!isAway(d)?`<button class="btn ghost wide" style="margin-top:18px" onclick="openAway('${d.id}')">🚗 暫時離家（手術、出國、借朋友…）</button>`:''}
     ${(d.awayLog||[]).length?`<p class="dsec">離家紀錄</p><div class="care"><div class="carelist">${d.awayLog.slice().reverse().slice(0,5).map(a=>`<div class="ci fin"><span>${awayIcon(a.reason)}</span><div class="grow"><b>${esc(a.reason)}</b><small>${esc(a.since)} 出發 → ${esc(a.backDate)} 回家（${dayNum(a.backDate)-dayNum(a.since)} 天）${a.note?'・'+esc(a.note):''}</small></div></div>`).join('')}</div></div>`:''}
     ${isLive(d)?`<button class="btn sm ghost wide" style="margin-top:18px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷（到家日、整理紀錄、配件）</button>
-      <div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
+      <div class="dbye"><button class="btn ghost grow" onclick="archiveAsk('${d.id}')">📦 收進封存櫃</button>
       <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>`
       :`<button class="btn quiet wide" style="margin-top:14px" onclick="unarchiveDoll('${d.id}')">${d.gone?'其實還在身邊（放回娃娃櫃）':'拿出來'}</button>`}
   </div>`);
@@ -3158,6 +3185,8 @@ function drawDollEdit(){
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
       <label class="f"><span>到家日</span><input type="date" id="d_home" value="${esc(d.home||'')}" onchange="DD.home=this.value"></label>
     </div>
+    <label class="f"><span>💌 寫給${d.name?' '+esc(d.name)+' ':'他'}的一句話（選填）</span><textarea id="d_letter" rows="2" maxlength="80" placeholder="歡迎回家！希望我們一起去很多地方、拍很多照片" oninput="DD.letter=this.value">${esc(d.letter||'')}</textarea>
+      <small class="hint">每年到家紀念日會拿出來看；哪天要收進封存櫃或說再見時，也會再出現一次。</small></label>
     <div class="split">
       <label class="f"><span>來源</span><select onchange="DD.src=this.value"><option value="">未設定</option>${DOLL_SRC.map(x=>`<option ${x===d.src?'selected':''}>${x}</option>`).join('')}</select></label>
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price||'')}" placeholder="例如 450" oninput="DD.price=this.value"></label>
@@ -3315,6 +3344,7 @@ async function delAcc(id,aid){const d=S.dolls.find(x=>x.id===id);setDollField(id
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
   const {isMain,view,...d}=DD;d.name=d.name.trim();
+  d.letter=(d.letter||'').trim();if(d.letter&&!d.letterAt)d.letterAt=today();if(!d.letter)delete d.letterAt;
   if(d.id){const i=S.dolls.findIndex(x=>x.id===d.id);S.dolls[i]=Object.assign(S.dolls[i],d)}
   else{d.id=uid('d');d.createdAt=Date.now();S.dolls.push(d)}
   if(d.attr!=='has'){d.work='';d.chara=''}
@@ -5189,7 +5219,7 @@ async function delLook(id){
    ============================================================ */
 const isMember=()=>!!S.settings.member||trialOn();
 /* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
-const PLANS=[{id:'month',name:'月訂',price:90,per:'月'},{id:'year',name:'年訂',price:790,per:'年',tag:'最划算'}];
+const PLANS=[{id:'month',name:'月訂',price:90,per:'月'},{id:'year',name:'年訂',price:900,per:'年',tag:'最划算'}];
 const TRIAL_DAYS=3;
 const trialOn=()=>{const t=S.settings.trial;return !!(t&&Date.now()<t.end)};
 const trialLeft=()=>{const t=S.settings.trial;return t?Math.max(0,Math.ceil((t.end-Date.now())/864e5)):0};
@@ -6381,13 +6411,17 @@ function yearStats(y){
   const fp=footprints().filter(f=>f.date.startsWith(y)),places=new Set(fp.map(f=>spKey(f.sp)).filter(Boolean));
   const items=S.items.filter(i=>i.category!=='套裝'&&(i.homeDate||i.buyDate||ymd(i.createdAt||0)).startsWith(y));
   const dolls=S.dolls.filter(d=>(d.home||'').startsWith(y));
-  const ic={},dc={},mc={};
-  ws.forEach(w=>{(w.itemIds||[]).forEach(id=>ic[id]=(ic[id]||0)+1);if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1;const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
-  const fav=Object.entries(ic).map(([id,n])=>({it:anyItem(id),n})).filter(x=>x.it&&x.it.category!=='套裝').sort((a,b)=>b.n-a.n).slice(0,3);
+  const ic={},dc={},mc={},grp={};
+  // 同一套的零件合成一筆（一次穿搭只算一次）
+  ws.forEach(w=>{new Set((w.itemIds||[]).map(id=>{const it=anyItem(id);if(!it)return null;const k=it.setId?'set:'+it.setId:id;if(!grp[k])grp[k]=it;return k}).filter(Boolean)).forEach(k=>ic[k]=(ic[k]||0)+1);
+    if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1;const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
+  const fav=Object.entries(ic).map(([k,n])=>{let it=grp[k],name=it&&it.name;
+      if(k.startsWith('set:')){const sid=k.slice(4),par=S.items.find(i=>i.setId===sid&&i.category==='套裝');name=setName(sid)||(par&&par.name)||name;if(par&&img(par))it=par}
+      return {it,n,name}}).filter(x=>x.it&&!(x.it.category==='套裝'&&!x.name)).sort((a,b)=>b.n-a.n).slice(0,3);
   const mvp=Object.entries(dc).map(([id,n])=>({d:S.dolls.find(d=>d.id===id),n})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
   const busy=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
   const spend=items.reduce((a,i)=>a+money(i.price),0);
-  return {y:+y,months:Array.from({length:12},(_,i)=>mc[i+1]||0),wears:ws.length,outs:fp.length,places:places.size,items:items.length,dolls:dolls.length,fav,mvp,busy:busy?+busy[0]:0,spend};
+  return {y:+y,newDolls:dolls.slice().sort((a,b)=>(a.home||'').localeCompare(b.home||'')),months:Array.from({length:12},(_,i)=>mc[i+1]||0),wears:ws.length,outs:fp.length,places:places.size,items:items.length,dolls:dolls.length,fav,mvp,busy:busy?+busy[0]:0,spend};
 }
 // 有紀錄的年份（新的在前）
 function recapYears(){return [...new Set([...S.wears.map(w=>(w.date||'').slice(0,4)),...footprints().map(f=>f.date.slice(0,4))].filter(y=>/^\d{4}$/.test(y)))].sort().reverse()}
@@ -6402,14 +6436,17 @@ function yearSection(){
       <span>一年穿了幾次、去過哪裡、最愛的娃衣和出場最多的娃娃，做成可以分享的年度小卡</span>
       <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
   const ys=recapYears();if(!ys.length)return head+'<div class="hint">記錄穿搭或出門之後，這裡會整理出每一年的回顧。</div>';
-  const y=ys.includes(String(UI.recapY))?String(UI.recapY):ys[0],r=yearStats(y);
+  const y=ys.includes(String(UI.recapY))?String(UI.recapY):ys[0],r=yearStats(y),sofar=y===today().slice(0,4)&&today().slice(5)<'12-20';
   const th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
   return head+`${ys.length>1?`<div class="chips" style="margin:0 0 10px">${ys.map(k=>`<button class="chip ${k===y?'on':''}" onclick="UI.recapY='${k}';renderInsight()">${k}</button>`).join('')}</div>`:''}
+    ${sofar?`<p class="hint" style="margin:-4px 0 10px">${y} 到目前為止的紀錄，12 月 20 日會整理成完整的年度回顧。</p>`:''}
     <div class="stat">
       <div><b>${r.wears}</b><span>穿搭次數</span></div><div><b>${r.outs}</b><span>出門次數</span></div>
       <div><b>${r.places}</b><span>去過的地方</span></div><div><b>${r.items}</b><span>新來的娃衣</span></div></div>
-    ${r.fav.length?`<p class="mh">年度最愛</p><div class="blist">${r.fav.map((x,k)=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}<div class="tx"><b>${k===0?'👑 ':''}${esc(x.it.name)}</b><span>穿了 ${x.n} 次</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
-    ${r.mvp?`<div class="note">${r.y} 出場最多的是 <strong>${esc(r.mvp.d.name)}</strong>（${r.mvp.n} 次）${r.busy?`，最常換裝的是 <strong>${r.busy} 月</strong>`:''}${r.dolls?`；這一年有 ${r.dolls} 隻新娃娃來到家裡`:''}。</div>`:''}
+    ${r.newDolls.length?`<p class="mh">${y} 來到身邊的娃娃</p><div class="dline">${r.newDolls.map(d=>`<div onclick="openDoll('${d.id}')">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph" style="height:110px">${DOLL_SVG}</div>`}<span>${esc(d.name)}</span></div>`).join('')}</div>
+      <p class="hint" style="margin:0 0 12px;text-align:center">謝謝你們${sofar?'今年':'這一年'}來到我身邊 🤍</p>`:''}
+    ${r.fav.length?`<p class="mh">年度最愛</p><div class="blist">${r.fav.map((x,k)=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}<div class="tx"><b>${k===0?'👑 ':''}${esc(x.name)}</b><span>穿了 ${x.n} 次</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
+    ${r.mvp?`<div class="note" style="margin-top:14px">${r.y} 出場最多的是 <strong>${esc(r.mvp.d.name)}</strong>（${r.mvp.n} 次）${r.busy?`，最常換裝的是 <strong>${r.busy} 月</strong>`:''}${r.dolls?`；這一年有 ${r.dolls} 隻新娃娃來到家裡`:''}。</div>`:''}
     <button class="btn wide" style="margin-top:6px" onclick="openShare('year','${y}')">📅 做成 ${y} 年度回顧小卡</button>`;
 }
 async function scYear(x,T,W,H,P,serif,num,sans){
@@ -6418,21 +6455,40 @@ async function scYear(x,T,W,H,P,serif,num,sans){
   x.fillStyle=T.ink;x.font=`700 ${story?170:150}px ${num}`;x.fillText(String(r.y),P-6,P+(story?210:190));
   x.font=`700 ${story?68:60}px ${serif}`;x.fillText('娃娃的一年',P,P+(story?300:268));
   let y=P+(story?340:300);x.fillStyle=T.ink;x.fillRect(P,y,IW,3);y+=(story?40:30);
-  y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個']])+16;
-  y=drawAnnStats(x,T,P,y,IW,num,sans,[['新來的娃衣',r.items,'件'],['新來的娃娃',r.dolls,'隻'],['最常換裝',r.busy||'—',r.busy?'月':'']])+(story?60:40);
+  // 貼文比較短：有新娃娃（下面會排排站）就把統計收成一排
+  if(!story&&r.newDolls.length)y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個'],['新來的娃衣',r.items,'件']])+44;
+  else{y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個']])+16;
+    y=drawAnnStats(x,T,P,y,IW,num,sans,[['新來的娃衣',r.items,'件'],['新來的娃娃',r.dolls,'隻'],['最常換裝',r.busy||'—',r.busy?'月':'']])+(story?60:40)}
   const capH=SC.cap?80:0,footY=H-P-100-capH;
-  if(r.fav.length){
-    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('FAVORITES',P,y);x.letterSpacing='0px';
-    const fw=x.measureText('FAVORITES').width+60;x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('年度最愛',P+fw,y+2);y+=28;
-    const gap=24,n=r.fav.length,sz=Math.min((IW-gap*2)/3,story?300:270);
+  // 今年來到身邊的娃娃：排排站
+  if(r.newDolls.length){
+    const ims=(await Promise.all(r.newDolls.slice(0,6).map(d=>d.photo?loadImg(d.photo).catch(()=>null):null)));
+    const dh=story?230:120,n=ims.length,slot=Math.min(IW/n,dh*.95);
+    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('WELCOME HOME',P,y);const ww=x.measureText('WELCOME HOME').width+28;x.letterSpacing='0px';
+x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText(`${r.y} 來到身邊的娃娃`,P+ww,y+2);
+    const top=y+22,fy=top+dh;
+    x.fillStyle=T.card;x.globalAlpha=.85;rrect(x,P,top+dh*.55,IW,dh*.45+52,28);x.fill();x.globalAlpha=1;
+    const x0=P+(IW-slot*n)/2;
+    ims.forEach((im,i)=>{const cx=x0+slot*i+slot/2;
+      if(im){const s=Math.min(slot*.95/im.width,dh/im.height);x.save();x.shadowColor='rgba(0,0,0,.14)';x.shadowBlur=18;x.shadowOffsetY=8;x.drawImage(im,cx-im.width*s/2,fy-im.height*s,im.width*s,im.height*s);x.restore()}
+      else{x.fillStyle=T.soft;x.beginPath();x.arc(cx,fy-dh*.35,dh*.3,0,7);x.fill()}
+      x.textAlign='center';x.fillStyle=T.ink;x.font=`600 ${story?24:21}px ${sans}`;x.fillText(fitText(x,r.newDolls[i].name,slot-6),cx,fy+34);x.textAlign='left'});
+    y=fy+58;x.textAlign='center';x.fillStyle=T.sub;x.font=`500 ${story?28:24}px ${serif}`;x.fillText('謝謝你們這一年來到我身邊 🤍',W/2,y+(story?34:24));x.textAlign='left';
+    y+=story?96:76;
+  }
+  if(r.fav.length&&footY-y>=230){
+    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('FAVORITES',P,y);const fw=x.measureText('FAVORITES').width+28;x.letterSpacing='0px';
+    x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('年度最愛',P+fw,y+2);y+=28;
+    const gap=24,n=r.fav.length,sz=Math.max(110,Math.min((IW-gap*2)/3,story?300:270,footY-y-28-(SC.hideNames?60:92)-20));
     const ims=await Promise.all(r.fav.map(f=>loadImg(img(f.it)).catch(()=>null)));
-    ims.forEach((im,i)=>{const bx=P+i*(sz+gap);
+    const fx0=P+(IW-(n*sz+(n-1)*gap))/2;
+    ims.forEach((im,i)=>{const bx=fx0+i*(sz+gap);
       x.fillStyle=T.card;rrect(x,bx,y,sz,sz,28);x.fill();
       if(im){const s=Math.min(sz/im.width,sz/im.height)*.8;x.drawImage(im,bx+(sz-im.width*s)/2,y+(sz-im.height*s)/2,im.width*s,im.height*s)}
       else{x.textAlign='center';x.font=`${sz*.32}px ${sans}`;x.fillText('👗',bx+sz/2,y+sz*.62);x.textAlign='left'}
       if(i===0){x.font=`40px ${sans}`;x.fillText('👑',bx+14,y+50)}
       x.textAlign='center';x.fillStyle=T.ink;x.font=`600 26px ${sans}`;
-      x.fillText(SC.hideNames?`${r.fav[i].n} 次`:fitText(x,r.fav[i].it.name,sz),bx+sz/2,y+sz+38);
+      x.fillText(SC.hideNames?`${r.fav[i].n} 次`:fitText(x,r.fav[i].name,sz),bx+sz/2,y+sz+38);
       if(!SC.hideNames){x.fillStyle=T.sub;x.font=`500 22px ${sans}`;x.fillText(`${r.fav[i].n} 次`,bx+sz/2,y+sz+70)}
       x.textAlign='left'});
     y+=sz+(SC.hideNames?60:92);
@@ -6450,8 +6506,8 @@ async function scYear(x,T,W,H,P,serif,num,sans){
   }
   // 限動比較長：放每個月的穿搭次數
   if(footY-y>=300&&r.months.some(Boolean)){
-    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('MONTHLY',P,y+10);x.letterSpacing='0px';
-    const mw2=x.measureText('MONTHLY').width+60;x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('每個月的穿搭',P+mw2,y+12);
+    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('MONTHLY',P,y+10);const mw2=x.measureText('MONTHLY').width+28;x.letterSpacing='0px';
+    x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('每個月的穿搭',P+mw2,y+12);
     const top=y+44,bh=Math.min(220,footY-top-70),mx=Math.max(...r.months),bw=IW/12;
     r.months.forEach((n,i)=>{const h=n?Math.max(10,n/mx*bh):4,bx=P+i*bw+bw*.18;
       x.fillStyle=n===mx&&n?T.accent:T.line;rrect(x,bx,top+bh-h,bw*.64,h,Math.min(10,h/2));x.fill();
