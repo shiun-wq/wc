@@ -1141,6 +1141,10 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
     </section>
 
     <!-- 紀錄 -->
+    <!-- 足跡、相簿：可以慢慢瀏覽的，用整頁 -->
+    <section class="view" id="v-foot"><div id="footView"></div></section>
+    <section class="view" id="v-album"><div id="albumView"></div></section>
+
     <section class="view" id="v-wear">
       <button class="btn wide" onclick="if(UI.wearLock&&UI.wearDoll)S.settings.mainDoll=UI.wearDoll;openWear()">記錄今天穿了什麼</button>
       <h2 class="sec" id="wearTitle">穿搭紀錄</h2>
@@ -2136,7 +2140,7 @@ const TABS=[
  ['insight','洞察','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
 ];
 // 不在底部分頁裡的子頁面：從首頁進入，左上角有返回
-const TITLES={wear:'穿搭紀錄',wish:'考慮中・購買中',dolls:'娃娃櫃',wallet:'錢包',memory:'回憶箱'};
+const TITLES={foot:'足跡',album:'相簿',wear:'穿搭紀錄',wish:'考慮中・購買中',dolls:'娃娃櫃',wallet:'錢包',memory:'回憶箱'};
 function buildTabs(){
   const cur=UI.tab in TITLES?'home':UI.tab;
   document.getElementById('tabs').innerHTML=TABS.map(([k,l,p])=>
@@ -2164,6 +2168,8 @@ function go(k,fromPop){
   if(k==='intake')renderQueue();
   if(k==='studio'){renderCanvas();renderLooks()}
   if(k==='wear')renderWears();
+  if(k==='foot')renderFoot();
+  if(k==='album')renderAlbum();
   if(k==='insight')renderInsight();
   if(k==='wish')renderWish();
   if(k==='dolls')renderDolls();
@@ -2273,7 +2279,7 @@ function renderHome(){
     <button onclick="openDollFoot('${d.id}')"><i><b>${outCount(d)}</b></i>📍 出門</button>
     <button onclick="openWearsOf('${d.id}','在家')"><i><b>${dollWears(d).filter(w=>w.place!=='出門').length}</b></i>🏠 在家</button>
     <button onclick="openWearsOf('${d.id}')"><i><b>${dollWears(d).length}</b></i>👗 穿搭紀錄</button>
-    <button onclick="openAlbum('${d.id}',null,null,()=>closeSheet())"><i><b>${wearPhotos(d).length}</b></i>📷 相簿</button>
+    <button onclick="openAlbum('${d.id}')"><i><b>${wearPhotos(d).length}</b></i>📷 相簿</button>
   </div>`:''}
   <div class="hstat hsplit">
     <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣 ›</span></button>
@@ -2371,7 +2377,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-11';
+const APP_VER='2026.10.01-12';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2691,14 +2697,16 @@ function dollAlbumBlock(d){
     ${albumGrid(ws,6)}${ws.length>6?`<button class="btn sm ghost wide" style="margin-top:10px" onclick="openAlbum('${d.id}')">看全部 ${ws.length} 張</button>`:''}</div>`;
 }
 // 相簿全頁：依月份分組。title/list 可以自己給（地圖上點某個地方）
-function openAlbum(dollId,title,list,back){
-  const d=dollId?S.dolls.find(x=>x.id===dollId):null,ws=list||wearPhotos(d);
-  UI.albumList=ws.map(w=>w.id);UI.albumBack=back||(d?()=>{DD={...d};drawDoll()}:null);
-  openSheet(`${d||back?`<div class="sethead"><button onclick="UI.albumBack?UI.albumBack():closeSheet()">‹ ${d?esc(d.name):'返回'}</button></div>`:''}
-    <h3>${title||`${d?esc(d.name)+' 的':''}相簿`}</h3>
-    <p class="hint" style="margin:-6px 0 12px">${ws.length} 張。照片只存在這支手機裡，記得定期「完整備份」，或存一份到手機相簿。</p>
-    ${byMonth(ws).map(([m,l])=>`<p class="mh">${m?`${m.slice(0,4)} 年 ${+m.slice(5)} 月`:'沒有日期'}</p>${albumGrid(l)}`).join('')}
-    ${ws.length?`<button class="btn ghost wide" style="margin-top:16px" onclick="savePhotos(UI.albumList)">⬇️ 全部存到手機</button>`:''}`);
+function openAlbum(dollId,title,list){UI.albumArgs={dollId,title,ids:list?list.map(w=>w.id):null};closeSheet();go('album')}
+function renderAlbum(){
+  const A=UI.albumArgs||{},d=A.dollId?S.dolls.find(x=>x.id===A.dollId):null,el=document.getElementById('albumView');if(!el)return;
+  const ws=A.ids?A.ids.map(id=>S.wears.find(w=>w.id===id)).filter(w=>w&&w.photo):wearPhotos(d);
+  UI.albumList=ws.map(w=>w.id);
+  document.getElementById('title').textContent=A.title||`${d?d.name+' 的':''}相簿`;
+  el.innerHTML=`<p class="hint" style="margin:0 0 12px">${ws.length} 張。照片只存在這支手機裡，記得定期「完整備份」，或存一份到手機相簿。</p>
+    ${ws.length?byMonth(ws).map(([m,l])=>`<p class="mh">${m?`${m.slice(0,4)} 年 ${+m.slice(5)} 月`:'沒有日期'}</p>${albumGrid(l)}`).join('')
+      :`<div class="empty"><strong>還沒有照片</strong>記錄穿搭時放上照片，就會收進${d?' '+esc(d.name)+' 的':''}相簿</div>`}
+    ${ws.length?`<button class="btn ghost wide" style="margin-top:16px" onclick="savePhotos(UI.albumList)">⬇️ 全部存到手機</button>`:''}`;
 }
 function openPhoto(wid){
   const w=S.wears.find(x=>x.id===wid);if(!w||!w.photo)return;
@@ -2823,7 +2831,9 @@ async function dollOut(){
   d.outs=d.outs||[];const t=today();
   if(d.outs.includes(t)){d.outs=d.outs.filter(x=>x!==t);toast('已取消今天的出門紀錄')}
   else{DD.outs=d.outs.slice();return openTrip(d.id,null,'doll')}
-  DD.outs=d.outs.slice();await save();drawDoll();
+  DD.outs=d.outs.slice();await save();
+  if(UI.tab==='foot'){renderFoot();toast('已取消今天的出門紀錄');return}
+  drawDoll();
   if(UI.tab==='dolls')renderDolls();
 }
 function openDoll(id){
@@ -2870,7 +2880,7 @@ function drawDollPage(d){
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
     <div class="dlinks">
-      <button onclick="openDollFoot('${d.id}',1)"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
+      <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
       <button onclick="openAlbum('${d.id}')"><b>${wearPhotos(d).length}</b><span>📷 相簿 ›</span></button>
     </div>
@@ -5153,7 +5163,8 @@ async function delTrip(){
   await save();tripDone(d,'已刪除');
 }
 function tripDone(d,msg){
-  if(TRIP.from==='doll')openDoll(d.id);else closeSheet();
+  if(UI.tab==='foot'){closeSheet();renderFoot()}
+  else if(TRIP.from==='doll')openDoll(d.id);else closeSheet();
   if(UI.tab==='home')renderHome();if(UI.tab==='dolls')renderDolls();if(UI.tab==='insight')renderInsight();
   toast(msg);
 }
@@ -5166,11 +5177,14 @@ function footCount(sps){
 const footSummary=({regs,cts})=>`${regs.size?`・去過 ${regs.size} 個${unitOf(homeCountry())}`:''}${cts.size?`・${cts.size} 個國家`:''}`;
 // 娃娃頁的足跡
 // 一隻娃娃的足跡頁（首頁點「出門」、娃娃頁點足跡）
-function openDollFoot(id,back){
-  const d=S.dolls.find(x=>x.id===id);if(!d)return;
-  openSheet(`${back?`<div class="sethead"><button onclick="openDoll('${id}')">‹ ${esc(d.name)}</button></div>`:''}<h3>${esc(d.name)} 的足跡</h3>
-    ${isLive(d)?`<button class="btn ${(d.outs||[]).includes(today())?'ghost':''} wide" style="margin-bottom:12px" onclick="DD={...S.dolls.find(x=>x.id==='${id}')};dollOut()">${(d.outs||[]).includes(today())?'今天出門了 ✓':`🚶 今天帶 ${esc(d.name)} 出門`}</button>`:''}
-    ${dollFootBlock(d,true)}`);
+function openDollFoot(id){UI.footDoll=id;closeSheet();go('foot')}
+function renderFoot(){
+  const d=S.dolls.find(x=>x.id===UI.footDoll),el=document.getElementById('footView');if(!d||!el)return;
+  document.getElementById('title').textContent=`${d.name} 的足跡`;
+  const out=(d.outs||[]).includes(today());
+  el.innerHTML=`${isLive(d)?`<div class="row" style="margin-bottom:12px"><button class="btn ${out?'ghost':''} grow" onclick="DD={...S.dolls.find(x=>x.id==='${d.id}')};dollOut()">${out?'今天出門了 ✓':`🚶 今天帶 ${esc(d.name)} 出門`}</button>
+    ${(d.outs||[]).length?`<button class="btn ghost" onclick="openShare('foot','${d.id}')">分享足跡</button>`:''}</div>`:''}
+    ${dollFootBlock(d,true)}`;
   fillMaps();
 }
 function dollFootBlock(d,full){
@@ -5182,7 +5196,7 @@ function dollFootBlock(d,full){
     ${homeCountry()==='台灣'&&Object.keys(cnt).some(k=>k.startsWith('r:'))?mapBox('tw',footCounts(sps).reg,{small:true,doll:d.id}):''}
     ${cts.length?mapBox('world',footCounts(sps).ct,{small:true,home:homeCountry(),doll:d.id})+`<div class="parts" style="margin:0 0 8px">${cts.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)}</button>`).join('')}</div>`:''}
     ${ts.slice(0,full?ts.length:5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?(isAbroad(spNorm(P[t]))?'✈️ ':'')+esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
-    ${!full&&ts.length>5?`<button class="btn sm ghost wide" style="margin-top:8px" onclick="openDollFoot('${d.id}',1)">看全部 ${ts.length} 次</button>`:''}`
+    ${!full&&ts.length>5?`<button class="btn sm ghost wide" style="margin-top:8px" onclick="openDollFoot('${d.id}')">看全部 ${ts.length} 次</button>`:''}`
     :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，去過的地方會標在地圖上。</div>`}</div>`;
 }
 // 足跡地圖：maps/ 裡是預先投影好的 SVG 路徑（台灣縣市、世界各國）。去越多次顏色越深
@@ -5207,7 +5221,7 @@ function fillMaps(){
         ${m.f.filter(f=>f.c&&(hit(f)||!world)).map(f=>`<circle cx="${f.c[0]}" cy="${f.c[1]}" r="${world?4:5}" class="dot ${cls(f)}" data-n="${esc(name(f))}" data-k="${hit(f)}"/>`).join('')}</svg>`;
       el.onclick=e=>{const t=e.target.closest('[data-n]');if(!t||!t.dataset.n)return;
         const nm=t.dataset.n,ph=+t.dataset.k?placePhotos(el.dataset.map,nm,el.dataset.doll):[];
-        if(ph.length){const inSheet=!!el.closest('#sheet'),did=el.dataset.doll;openAlbum(null,`${esc(nm)}・去過 ${t.dataset.k} 次`,ph,inSheet&&did?()=>openDoll(did):null);return}
+        if(ph.length){openAlbum(null,`${nm}・去過 ${t.dataset.k} 次`,ph);return}
         toast(`${nm}${+t.dataset.k?`・去過 ${t.dataset.k} 次`:'・還沒去過'}`)};
     }catch(e){el.innerHTML='<div class="fmload">沒有網路，地圖暫時載不出來</div>';el.classList.remove('done')}
   });
@@ -5487,21 +5501,25 @@ function openShare(kind,id){
     items=l.itemIds;layout=l.layout;cw=l.cw||cw;title=l.name;doll=lookDoll(l)||mainDoll();
   }else if(kind==='ann'){
     doll=S.dolls.find(d=>d.id===id);title=SC.ann.line;
+  }else if(kind==='foot'){
+    doll=S.dolls.find(d=>d.id===id);if(!doll)return;title=`${doll.name} 的足跡`;
   }else{
     if(!UI.canvas.length){toast('畫布是空的，先加幾件娃衣');return}
     layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.filter(p=>p.itemId).map(p=>p.itemId);
     cw=document.getElementById('canvas').clientWidth||cw;title='今天想這樣穿';doll=mainDoll();
   }
   Object.assign(SC,{items:items.map(i=>S.items.find(x=>x.id===i)).filter(Boolean),photo,layout,cw,date,doll,title,
-    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:'',hideNames:!!S.settings.scHideNames});
+    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:'',hideNames:!!S.settings.scHideNames,pos:{x:.5,y:.5}});
   SC.hasDollPiece=!!(layout&&layout.some(p=>p.dollId));
   if(SC.hasDollPiece){const d=S.dolls.find(x=>x.id===layout.find(p=>p.dollId).dollId);if(d)SC.doll=d}
   SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
   if(kind!=='ann')SC.ann=null;
-  openSheet(`<h3>${SC.ann?'紀念小卡':'分享小卡'}</h3>
+  SC.foot=kind==='foot'?id:null;
+  openSheet(`<h3>${SC.ann?'紀念小卡':SC.foot?'足跡小卡':'分享小卡'}</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
+    ${SC.photo&&!SC.ann?`<p class="hint" style="text-align:center;margin:6px 0 0">在預覽上拖曳照片，可以調整照片的位置</p>`:''}
     <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
-    <div class="swap" id="scLay">${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
+    <div class="swap" id="scLay" ${SC.foot?'hidden':''}>${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
     ${!SC.ann&&!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
     ${SC.ann&&SC.ann.stats&&SC.ann.stats.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.annStats?'checked':''} onchange="SC.annStats=this.checked;S.settings.annStats=this.checked;save();scRender()"> 放上${SC.ann.stats.map(r=>r[0]).join('、')}的次數</label>`:''}
@@ -5511,7 +5529,7 @@ function openShare(kind,id){
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
       ${navigator.share?`<button class="btn grow" onclick="scShare()">分享</button>`:''}
     </div>`);
-  scRender();
+  scRender();scDragInit();
 }
 function scSet(k,v){
   SC[k]=v;
@@ -5528,8 +5546,9 @@ async function scArt(x,T,AX,AY,AW,AH,R,noShadow){
   else{x.fillStyle=T.card;rrect(x,AX,AY,AW,AH,R);x.fill()}
   x.save();rrect(x,AX,AY,AW,AH,R);x.clip();
   if(SC.photo){
-    const im=await loadImg(SC.photo),s=Math.max(AW/im.width,AH/im.height);
-    x.drawImage(im,AX+(AW-im.width*s)/2,AY+(AH-im.height*s)/2,im.width*s,im.height*s);
+    // 照片滿版裁切；SC.pos 是使用者拖曳決定的焦點（0～1，預設置中）
+    const im=await loadImg(SC.photo),s=Math.max(AW/im.width,AH/im.height),fp=SC.pos||{x:.5,y:.5};
+    x.drawImage(im,AX+(AW-im.width*s)*fp.x,AY+(AH-im.height*s)*fp.y,im.width*s,im.height*s);
   }else{
     x.fillStyle=T.line;for(let yy=AY+24;yy<AY+AH;yy+=36)for(let xx=AX+24;xx<AX+AW;xx+=36){x.beginPath();x.arc(xx,yy,2.2,0,7);x.fill()}
     let IX=AX,IW=AW;
@@ -5628,8 +5647,8 @@ async function scAnn(x,T,W,H,P,serif,num,sans){
 }
 // 紀念小卡的統計列：三個小格（數字＋說明），align center 置中、left 靠左
 const annStatsOn=()=>SC.annStats&&SC.ann&&SC.ann.stats&&SC.ann.stats.length;
-function drawAnnStats(x,T,X,Y,w,num,sans){
-  const st=SC.ann.stats,gap=16,cw=(w-gap*(st.length-1))/st.length,h=104;
+function drawAnnStats(x,T,X,Y,w,num,sans,stats){
+  const st=stats||SC.ann.stats,gap=16,cw=(w-gap*(st.length-1))/st.length,h=104;
   st.forEach(([lab,n,u],i)=>{const cx=X+i*(cw+gap);
     x.save();x.fillStyle=T.card;x.globalAlpha=.9;rrect(x,cx,Y,cw,h,22);x.fill();x.globalAlpha=1;x.strokeStyle=T.line;x.lineWidth=2;x.stroke();x.restore();
     x.textAlign='center';x.fillStyle=T.ink;x.font=`700 48px ${num}`;const nt=String(n),nw=x.measureText(nt).width;
@@ -5638,6 +5657,45 @@ function drawAnnStats(x,T,X,Y,w,num,sans){
     x.fillStyle=T.sub;x.font=`600 22px ${sans}`;x.textAlign='left';x.fillText(u,cx+cw/2+nw/2-uw/2+3,Y+56);
     x.textAlign='center';x.fillStyle=T.sub;x.font=`500 22px ${sans}`;x.fillText(lab,cx+cw/2,Y+88);x.textAlign='left'});
   return Y+h;
+}
+// 足跡小卡：台灣地圖（去越多次越深）＋世界地圖＋娃娃＋統計
+async function drawMapOn(x,T,kind,cnt,BX,BY,BW,BH,home){
+  const m=await loadMap(kind).catch(()=>null);if(!m)return;
+  const [,,vw,vh]=m.vb.split(' ').map(Number),k=Math.min(BW/vw,BH/vh),ox=BX+(BW-vw*k)/2,oy=BY+(BH-vh*k)/2;
+  x.save();x.translate(ox,oy);x.scale(k,k);x.lineWidth=1/k*1.2;x.strokeStyle=T.card;
+  const hit=f=>kind==='world'?(f.n||[]).reduce((a,n)=>a+(cnt[n]||0),0):(cnt[f.n]||0);
+  const col=f=>{const n=hit(f);if(n)return [T.accent,.38+.2*(heat(n)-1)];if(kind==='world'&&(f.n||[]).includes(home))return [T.sub,.35];return [T.line,1]};
+  m.f.forEach(f=>{if(!f.d)return;const [c,a]=col(f);x.globalAlpha=a;x.fillStyle=c;const p=new Path2D(f.d);x.fill(p);x.globalAlpha=1;x.stroke(p)});
+  m.f.forEach(f=>{if(!f.c||!hit(f))return;x.fillStyle=T.accent;x.beginPath();x.arc(f.c[0],f.c[1],(kind==='world'?5:6)/k*1.2,0,7);x.fill()});
+  (m.box||[]).forEach(([bx,by,bw,bh])=>{x.setLineDash([6/k,5/k]);x.strokeStyle=T.sub;x.globalAlpha=.4;x.strokeRect(bx,by,bw,bh);x.globalAlpha=1;x.setLineDash([])});
+  x.restore();
+}
+async function scFoot(x,T,W,H,P,serif,num,sans){
+  const d=SC.doll,story=SC.ratio==='story',hc=homeCountry(),P2=d.outPlaces||{};
+  const sps=(d.outs||[]).map(t=>spNorm(P2[t])).filter(Boolean),{reg,ct}=footCounts(sps),{regs,cts}=footCount(sps);
+  x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText('FOOTPRINTS',P,P+30);x.letterSpacing='0px';
+  x.fillStyle=T.ink;x.font=`700 84px ${serif}`;x.fillText(fitText(x,`${d.name} 的足跡`,W-P*2-40),P,P+130);
+  x.fillStyle=T.ink;x.fillRect(P,P+160,W-P*2,3);
+  const hasTW=hc==='台灣',hasW=Object.keys(ct).length>0;
+  const statH=104,capH=SC.cap?80:0,worldH=hasW?(story?420:(hasTW?260:560)):0;
+  const MY=P+196,MH=H-MY-P-120-statH-40-capH-(worldH?worldH+24:0);
+  // 地圖卡
+  x.fillStyle=T.card;x.globalAlpha=.85;rrect(x,P,MY,W-P*2,MH,36);x.fill();x.globalAlpha=1;
+  if(hasTW)await drawMapOn(x,T,'tw',reg,P+30,MY+30,(W-P*2)*.62,MH-60,hc);
+  else if(!hasW){x.fillStyle=T.sub;x.font=`500 30px ${sans}`;x.fillText('還沒有出門紀錄',P+40,MY+80)}
+  // 娃娃站在地圖右下角
+  const im=d.photo?await loadImg(d.photo).catch(()=>null):null;
+  if(im){const bw=(W-P*2)*(hasTW?.42:.5),bh=MH*.62,s=Math.min(bw/im.width,bh/im.height);
+    x.save();x.shadowColor='rgba(0,0,0,.18)';x.shadowBlur=30;x.shadowOffsetY=14;x.drawImage(im,W-P-20-im.width*s,MY+MH-24-im.height*s,im.width*s,im.height*s);x.restore()}
+  let y=MY+MH+24;
+  if(worldH){x.fillStyle=T.card;x.globalAlpha=.85;rrect(x,P,y,W-P*2,worldH,30);x.fill();x.globalAlpha=1;
+    await drawMapOn(x,T,'world',ct,P+16,y+16,W-P*2-32,worldH-32,hc);y+=worldH+24}
+  const stats=[['出門',(d.outs||[]).length,'次']];
+  if(regs.size)stats.push([`去過的${unitOf(hc)}`,regs.size,'個']);
+  if(cts.size)stats.push(['去過的國家',cts.size,'個']);
+  y=drawAnnStats(x,T,P,y+8,W-P*2,num,sans,stats);
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y+60)}
+  const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
 // 紀念小卡的共用：娃娃照（沒有就用名字第一個字）、日期文字
 async function annDollImg(){return SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null}
@@ -5736,7 +5794,12 @@ async function scMag(x,T,W,H,P,serif,num,sans){
   if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y+30)}
   await scFooter(x,T,P,W,H-P,serif,sans);
 }
+// 隱藏娃衣名稱：有照片的話整個娃衣區都拿掉（當作沒有娃衣）；沒照片時娃衣就是主角，只藏名字
 async function scDraw(){
+  const keep=SC.items;if(SC.hideNames&&SC.photo&&!SC.ann)SC.items=[];
+  try{return await scDraw0()}finally{SC.items=keep}
+}
+async function scDraw0(){
   const T=CARD_THEMES[SC.theme],W=1080,H=SC.ratio==='story'?1920:1350,P=72;
   try{await document.fonts.ready}catch(e){}
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
@@ -5746,6 +5809,7 @@ async function scDraw(){
   x.fillStyle=T.soft;x.globalAlpha=.55;x.beginPath();x.arc(W-60,120,220,0,7);x.fill();x.beginPath();x.arc(40,H-160,180,0,7);x.fill();x.globalAlpha=1;
   x.textBaseline='alphabetic';
   if(SC.ann){await (SC.lay==='polaroid'?scAnnPolaroid:SC.lay==='mag'?scAnnMag:scAnn)(x,T,W,H,P,serif,num,sans);return c}
+  if(SC.foot){await scFoot(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='polaroid'){await scPolaroid(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='mag'){await scMag(x,T,W,H,P,serif,num,sans);return c}
   // 標題列
@@ -5784,6 +5848,17 @@ async function scDraw(){
   }
   await scFooter(x,T,P,W,H-P,serif,sans);
   return c;
+}
+// 在預覽上拖曳照片，調整裁切的位置
+function scDragInit(){
+  const im=document.getElementById('scImg');if(!im||!SC.photo||SC.ann)return;
+  let st=null,t=0;
+  im.style.touchAction='none';im.style.cursor='grab';
+  im.onpointerdown=e=>{st={x:e.clientX,y:e.clientY,p:{...(SC.pos||{x:.5,y:.5})}};im.setPointerCapture(e.pointerId)};
+  im.onpointermove=e=>{if(!st)return;const r=im.getBoundingClientRect();
+    SC.pos={x:Math.min(1,Math.max(0,st.p.x-(e.clientX-st.x)/r.width*1.6)),y:Math.min(1,Math.max(0,st.p.y-(e.clientY-st.y)/r.height*1.6))};
+    const n=Date.now();if(n-t>140){t=n;scRender(true)}};
+  im.onpointerup=im.onpointercancel=()=>{if(st){st=null;scRender()}};
 }
 async function scRender(){
   const spin=document.getElementById('scSpin');if(spin)spin.style.display='';
@@ -6444,9 +6519,9 @@ const HELP=[
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
   ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['🧸','娃娃櫃 → 足跡']],
-    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位和拍攝日期的話，會建議拍攝地和日期，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','點進娃娃是一張履歷（姓名、尺寸、到家日、生日、來源），下面是紀念日和整理紀錄；足跡、穿搭紀錄、相簿點上面的格子進去。要改資料或配件，按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位和拍攝日期的話，會建議拍攝地和日期，點一下就能用。','在娃娃的足跡頁按「分享足跡」，可以把地圖、娃娃和去過幾個地方做成小卡。','以前的出門可以到娃娃頁的「足跡」補記；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','點進娃娃是一張履歷（姓名、尺寸、到家日、生日、來源），下面是紀念日和整理紀錄；足跡、穿搭紀錄、相簿點上面的格子進去。要改資料或配件，按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
   ['📷','相簿：娃娃的照片',[['📝','記穿搭放照片'],['🧸','娃娃頁 → 相簿'],['🗺️','地圖點地方看照片'],['⬇️','存到手機']],
-    ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
+    ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。','做分享小卡時，可以在預覽上拖曳照片，調整照片裁切的位置。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料和照片都只存在這支手機上，沒有上傳到任何地方，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟；照片也可以在相簿「存到手機」多留一份。']],
 ];
