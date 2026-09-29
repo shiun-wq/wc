@@ -521,6 +521,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.stickybar{position:sticky;bottom:0;z-index:5;margin:14px -18px 0;padding:12px 18px 4px;background:linear-gradient(to top,var(--paper) 70%,transparent)}
 .album{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .album button{position:relative;padding:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--swatch)}
 .album img{width:100%;height:100%;object-fit:cover;display:block}
@@ -2208,7 +2209,9 @@ function renderHome(){
   // 首頁跟著主角娃娃：只算這個尺寸的娃衣、這隻娃娃的穿搭（全部的在洞察頁）
   const ms=d&&d.size,items=S.items.filter(i=>i.category!=='套裝'&&(!ms||(i.sizes||[]).includes(ms)));
   const month=today().slice(0,7),mw=(d?dollWears(d):S.wears).filter(w=>(w.date||'').startsWith(month)).length;
-  const used=items.length?Math.round(items.filter(i=>wearCount(i.id)>0).length/items.length*100):0;
+  // 使用率綁娃娃：這隻娃娃穿過的合身娃衣 ÷ 合身娃衣
+  const dw=new Set((d?dollWears(d):S.wears).flatMap(w=>w.itemIds||[]));
+  const used=items.length?Math.round(items.filter(i=>dw.has(i.id)).length/items.length*100):0;
   const wait=S.wish.filter(w=>w.status==='wait'),skip=S.wish.filter(w=>w.status==='skip');
   const saved=skip.reduce((a,w)=>a+(+w.price||0),0);
   // 整套都壓箱底就顯示套裝，不再一件件列出它的單品
@@ -2244,7 +2247,7 @@ function renderHome(){
   <button class="hstat" onclick="go('insight')">
     <div><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣</span></div>
     <div><b>${mw}</b><span>${d?esc(d.name)+' ':''}本月穿搭</span></div>
-    <div><b>${used}<small>%</small></b><span>衣櫃使用率</span></div>
+    <div><b>${used}<small>%</small></b><span>${d?'穿過的比例':'衣櫃使用率'}</span></div>
     <em>›</em>
   </button>
 
@@ -2335,7 +2338,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-3';
+const APP_VER='2026.10.01-4';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5211,7 +5214,7 @@ function drawWearSheet(){
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
     <div id="wpick">${wearPickHTML()}</div>
-    <button class="btn wide" style="margin-top:14px" onclick="commitWear()">存入穿著紀錄</button>
+    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">存入穿著紀錄${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
   `);
   document.querySelector('#sheet .panel').classList.add('full');
 }
@@ -5309,6 +5312,7 @@ function togglePick(id){
   document.querySelectorAll(`#wlist button[data-id="${id}"]`).forEach(b=>b.classList.toggle('on',WEAR.picked.includes(id)));
   const p=document.getElementById('wpicked');if(p)p.innerHTML=wearPickedHTML();
   const c=document.getElementById('wcount');if(c)c.textContent=WEAR.picked.length+' 件已選';
+  const sv=document.getElementById('wsave');if(sv)sv.textContent='存入穿著紀錄'+(WEAR.picked.length?`（${WEAR.picked.length} 件）`:'');
 }
 async function commitWear(){
   if(!WEAR.picked.length){toast('至少選一件');return}
