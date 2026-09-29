@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=16"></script>
+<script src="i18n/i18n.js?v=17"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -597,6 +597,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 
 .dhome.djar{margin-top:-4px}.dhome.djar b{color:var(--berry-deep);font-weight:600}
 .obar{margin:4px 0 12px;gap:8px;flex-wrap:wrap}.obar .btn{white-space:nowrap;position:relative;padding-left:12px;padding-right:12px;flex:0 0 auto}
+.fxpair{display:flex;gap:8px;align-items:flex-end}.fxpair label{flex:1;min-width:0}.fxpair span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.fxpair em{font-style:normal;color:var(--muted);padding-bottom:12px}
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
@@ -1416,7 +1417,7 @@ async function load(){
   if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
   // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
   if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
-  S.dolls=S.dolls||[];migrateLetters();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
+  S.dolls=S.dolls||[];migrateLetters();guessCountry();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
     const old={'10cm 棉花娃':'10cm','15cm 棉花娃':'15cm','20cm 棉花娃':'20cm'};
@@ -1997,7 +1998,10 @@ function quotaTable(){
 /* ---- 點數（非會員也能用 AI）----
    先用每月免費／會員額度，用完才扣點數。點數要花在哪、多少錢一包都在這裡調。 */
 const POINT_COST={tag:1,wearid:1,buy:3,img:5,idea:1};
-const PACKS=[{pts:30,price:30},{pts:100,price:90,tag:'熱門'},{pts:220,price:180,tag:'最划算'}];
+const PACKS=[{pts:30,price:30,usd:.99},{pts:100,price:90,usd:2.99,tag:'熱門'},{pts:220,price:180,usd:5.99,tag:'最划算'}];
+// 價格：台灣用台幣，其他國家一律用美金
+const twPrice=()=>homeCountry()==='台灣';
+const priceText=(twd,usd)=>twPrice()?`NT$${twd}`:`US$${usd}`;
 const TEST_CODES={DOLL2026:20,WELCOME:10};   // 網頁版測試用兌換碼，上架後改由伺服器驗證
 function wallet(){return S.wallet=S.wallet||{points:0,log:[],codes:[]}}
 const canPay=k=>quotaLeft(k)>0||wallet().points>=POINT_COST[k];
@@ -2025,7 +2029,7 @@ function askPoints(k){
 function renderWallet(){
   const el=document.getElementById('walletView'),w=wallet(),u=usage();
   const best=PACKS.reduce((a,p)=>p.price/p.pts<a.price/a.pts?p:a,PACKS[0]);
-  const mv=memberValue(),mvPrice=Math.round(mv*best.price/best.pts);
+  const mv=memberValue(),mvPrice=twPrice()?Math.round(mv*best.price/best.pts):(mv*best.usd/best.pts).toFixed(2);
   el.innerHTML=`
   <div class="wcardbig">
     <span>${isMember()?'會員・本月額度用完後也可以用點數':'我的點數'}</span>
@@ -2046,12 +2050,12 @@ function renderWallet(){
 
   ${isMember()?'':`<div class="upsell" onclick="openMember()">
     <b>常用 AI？會員比較省</b>
-    <span>會員 NT$90／月，每月多出的額度大約等於 <b>${mv} 點</b>，用點數買要 NT$${mvPrice}。</span><em>›</em>
+    <span>會員 ${priceText(PLANS[0].price,PLANS[0].usd)}／月，每月多出的額度大約等於 <b>${mv} 點</b>，用點數買要 ${twPrice()?'NT$':'US$'}${mvPrice}。</span><em>›</em>
   </div>`}
 
   <h2 class="sec" id="packs">儲值點數</h2>
   <div class="packs">${PACKS.map((p,i)=>`<button class="pack" onclick="buyPack(${i})">
-    ${p.tag?`<em>${p.tag}</em>`:''}<b>${p.pts}<small> 點</small></b><span>NT$${p.price}</span><small class="per">每點 $${(p.price/p.pts).toFixed(2)}</small></button>`).join('')}</div>
+    ${p.tag?`<em>${p.tag}</em>`:''}<b>${p.pts}<small> 點</small></b><span>${priceText(p.price,p.usd)}</span><small class="per">每點 $${((twPrice()?p.price:p.usd)/p.pts).toFixed(twPrice()?2:3)}</small></button>`).join('')}</div>
   <p class="hint" style="margin-top:8px">網頁版是測試模式，按了會直接加點數，不會真的付款。</p>
 
   <h2 class="sec">兌換碼</h2>
@@ -2064,7 +2068,7 @@ function renderWallet(){
 }
 async function buyPack(i){
   const p=PACKS[i];
-  if(!confirm(`測試模式：直接加 ${p.pts} 點（正式版會是 NT$${p.price} 的購買流程）`))return;
+  if(!confirm(`測試模式：直接加 ${p.pts} 點（正式版會是 ${priceText(p.price,p.usd)} 的購買流程）`))return;
   addPoints(p.pts,`儲值 ${p.pts} 點`);renderWallet();toast(`已加 ${p.pts} 點`);
 }
 function redeem(){
@@ -2592,7 +2596,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-33';
+const APP_VER='2026.10.01-34';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2924,6 +2928,18 @@ const starLocked=(d,s)=>!s.opened&&(s.at||'9999')>today();
 const readyStars=d=>starsOf(d).filter(s=>starReady(d,s));
 const starOpenLabel=(d,s)=>s.open==='anniv'?'到家紀念日':s.open==='bday'?'生日':s.open==='now'?'隨時':String(s.open).startsWith('d:')?(((d.dates||[]).find(y=>y.id===s.open.slice(2))||{}).label||'紀念日'):'約好的日子';
 // 舊版「寫給娃娃的一句話」搬進星星罐
+// 第一次使用：照手機的地區猜住在哪個國家（之後可以在 設定 → 我住在 改）
+const REGION_ZH={TW:'台灣',HK:'香港',MO:'澳門',CN:'中國',JP:'日本',KR:'韓國',TH:'泰國',SG:'新加坡',MY:'馬來西亞',VN:'越南',PH:'菲律賓',US:'美國',CA:'加拿大',GB:'英國',FR:'法國',AU:'澳洲'};
+const EURO=['DE','FR','IT','ES','NL','BE','AT','PT','FI','IE','GR','SK','SI','LU','LV','LT','EE','MT','CY','HR'];
+function guessCountry(){
+  const st=S.settings;if(st.homeCountry||st.welcomed||S.dolls.length||S.items.length)return;
+  const tag=(navigator.languages&&navigator.languages[0])||navigator.language||'';
+  let rg=(tag.match(/-([A-Z]{2})\b/i)||[])[1];rg=rg&&rg.toUpperCase();
+  if(!rg){if(/^zh/i.test(tag))rg=/hans|cn/i.test(tag)?'CN':'TW';else if(/^ja/i.test(tag))rg='JP';else if(/^ko/i.test(tag))rg='KR';else return}
+  let nm=REGION_ZH[rg];
+  if(!nm){try{nm=new Intl.DisplayNames(['zh-Hant'],{type:'region'}).of(rg)}catch(e){}if(EURO.includes(rg))st.cur='EUR';else st.cur=st.cur||'USD'}
+  if(nm&&nm!=='台灣')st.homeCountry=nm;
+}
 function migrateLetters(){
   S.dolls.forEach(d=>{if(d.letter&&!d.stars){const date=d.letterAt||today();const s={id:uid('st'),text:d.letter,date,open:'anniv',opened:false};s.at=starAt(d,s);d.stars=[s]}
     if(d.stars){delete d.letter;delete d.letterAt}});
@@ -3647,7 +3663,8 @@ const CUR_NAME={TWD:'台幣',CNY:'人民幣',JPY:'日圓',KRW:'韓元',USD:'美�
 const CUR_SIGN={CNY:'¥',JPY:'¥',USD:'US$',KRW:'₩',HKD:'HK$',EUR:'€',GBP:'£',TWD:'NT$'};
 // 連不上匯率服務時的參考值（1 外幣＝多少台幣）
 const FX_TWD={CNY:4.5,JPY:.21,KRW:.023,USD:32,HKD:4.1,MOP:4,EUR:35,GBP:41,THB:.9,SGD:24,MYR:7,VND:.0013,PHP:.56,CAD:23,AUD:21,TWD:1};
-const homeCur=()=>CUR_OF[homeCountry()]||'TWD';
+// 記帳幣別：自己選的優先，沒選就跟著住的國家；不在清單裡的國家用美金
+const homeCur=()=>S.settings.cur||CUR_OF[homeCountry()]||'USD';
 function fxSet(){S.settings.fx=S.settings.fx||{mode:'auto',fee:1.5,manual:{},cache:null};return S.settings.fx}
 // 當天匯率：一天抓一次，存起來
 async function fxLoad(){
@@ -3662,7 +3679,8 @@ async function fxLoad(){
 // 1 外幣＝多少本國幣（還沒加手續費）
 function fxBase(cur){
   const f=fxSet(),base=homeCur();if(cur===base)return {rate:1,src:'same'};
-  if(f.mode==='manual'&&+f.manual[cur]>0)return {rate:+f.manual[cur],src:'manual'};
+  const mk=cur+'>'+base,mv=+f.manual[mk]||(base==='TWD'?+f.manual[cur]:0);
+  if(f.mode==='manual'&&mv>0)return {rate:mv,src:'manual'};
   const c=f.cache;if(c&&c.base===base&&c.rates&&c.rates[cur])return {rate:1/c.rates[cur],src:'auto',date:c.date};
   if(base==='TWD'&&FX_TWD[cur])return {rate:FX_TWD[cur],src:'default'};
   if(FX_TWD[cur]&&FX_TWD[base])return {rate:FX_TWD[cur]/FX_TWD[base],src:'default'};
@@ -3677,16 +3695,16 @@ function openOrderShot(){
   if(!isMember()){openSheet(`<h3>截圖匯入購買中<span class="pro">PRO</span></h3><p class="hint" style="margin:-6px 0 10px">會員專屬功能</p>
     <div class="note">把購物 App 的訂單截圖丟進來，AI 會讀出店家、品名、價格和進度，還會剪下商品小圖，一次記進購買中。外幣會照匯率換算。</div>
     <button class="btn wide" style="margin-top:14px" onclick="closeSheet();openMember()">了解會員</button>`);return}
-  SH={shots:[],rows:null,busy:false,cur:'CNY'};drawShot();fxLoad().then(()=>{if(SH.shots&&!SH.rows&&document.getElementById('sh_fx'))drawShot()});
+  SH={shots:[],rows:null,busy:false,cur:homeCur()==='CNY'?'USD':'CNY'};drawShot();fxLoad().then(()=>{if(SH.shots&&!SH.rows&&document.getElementById('sh_fx'))drawShot()});
 }
 function fxPanel(cur){
   const f=fxSet(),b=fxBase(cur),home=homeCur(),r=fxRate(cur),nm=CUR_NAME[cur]||cur,hn=CUR_NAME[home]||home;
-  if(cur===home)return '';
   return `<div class="card" id="sh_fx" style="margin:0 0 12px">
-    <div class="row" style="gap:8px;align-items:center"><b class="grow" style="font-size:13.5px">1 ${esc(nm)} ＝ ${Math.round(r*1000)/1000} ${esc(hn)}</b>
-      <select style="width:auto" onchange="SH.cur=this.value;drawShot()">${Object.keys(CUR_NAME).filter(k=>k!==home).map(k=>`<option value="${k}" ${k===cur?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></div>
+    <div class="fxpair"><label><span>訂單的幣別</span><select onchange="SH.cur=this.value;drawShot()">${Object.keys(CUR_NAME).filter(k=>k!==home).map(k=>`<option value="${k}" ${k===cur?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></label>
+      <em>→</em><label><span>換成（記帳幣別）</span><select onchange="S.settings.cur=this.value;save();fxSet().cache=null;fxLoad().then(()=>drawShot());drawShot()">${Object.keys(CUR_NAME).map(k=>`<option value="${k}" ${k===home?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></label></div>
+    <p style="margin:10px 0 0;font-size:14px"><b>1 ${esc(nm)} ＝ ${Math.round(r*1000)/1000} ${esc(hn)}</b></p>
     <div class="swap" style="margin:10px 0 8px">${[['auto','當天匯率'],['manual','自己填']].map(([k,l])=>`<button type="button" class="${f.mode===k?'on':''}" onclick="fxSet().mode='${k}';save();drawShot()">${l}</button>`).join('')}</div>
-    ${f.mode==='manual'?`<label class="f" style="margin:0"><span>1 ${esc(nm)} 等於多少${esc(hn)}（刷卡帳單上的實際匯率）</span><input type="number" inputmode="decimal" step="0.001" value="${esc(f.manual[cur]||'')}" placeholder="${Math.round(b.rate*1000)/1000}" onchange="fxSet().manual['${cur}']=this.value;save();drawShot()"></label>`
+    ${f.mode==='manual'?`<label class="f" style="margin:0"><span>1 ${esc(nm)} 等於多少${esc(hn)}（刷卡帳單上的實際匯率）</span><input type="number" inputmode="decimal" step="0.001" value="${esc(f.manual[cur+'>'+home]||(home==='TWD'?f.manual[cur]:'')||'')}" placeholder="${Math.round(b.rate*1000)/1000}" onchange="fxSet().manual['${cur}>${home}']=this.value;save();drawShot()"></label>`
       :`<div class="row" style="gap:8px;align-items:center"><span class="hint grow" style="margin:0">${b.src==='auto'?`${b.date} 的匯率 ${Math.round(b.rate*1000)/1000}`:'連不上匯率服務，先用參考匯率 '+Math.round(b.rate*1000)/1000}，加上海外手續費</span>
         <input type="number" inputmode="decimal" step="0.1" style="width:72px" value="${esc(f.fee)}" onchange="fxSet().fee=this.value;save();drawShot()"><span class="hint" style="margin:0">%</span></div>`}
   </div>`;
@@ -3699,7 +3717,7 @@ function drawShot(){
     <div class="shgrid">${st.shots.map((s,k)=>`<div><img src="${s.small}" alt=""><button type="button" onclick="SH.shots.splice(${k},1);drawShot()" aria-label="移除">✕</button></div>`).join('')}
       <label class="shadd">＋ 截圖<input type="file" accept="image/*" multiple hidden onchange="shotAdd(event)"></label></div>
     ${fxPanel(st.cur)}
-    <button class="btn wide" ${st.shots.length&&!st.busy?'':'disabled'} onclick="shotRead()">${st.busy?'AI 讀取中…':`AI 讀取 ${st.shots.length||''} 張`}</button>`);
+    <button class="btn wide" ${st.shots.length&&!st.busy?'':'disabled'} onclick="shotRead()">${st.busy?'AI 讀取中…':st.shots.length?`AI 讀取 ${st.shots.length} 張`:'AI 讀取'}</button>`);
 }
 async function shotAdd(ev){
   const fs=[...ev.target.files];ev.target.value='';
@@ -5349,7 +5367,7 @@ async function delLook(id){
    ============================================================ */
 const isMember=()=>!!S.settings.member||trialOn();
 /* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
-const PLANS=[{id:'month',name:'月訂',price:90,per:'月'},{id:'year',name:'年訂',price:900,per:'年',tag:'最划算'}];
+const PLANS=[{id:'month',name:'月訂',price:90,usd:3,per:'月'},{id:'year',name:'年訂',price:900,usd:30,per:'年',tag:'最划算'}];
 const TRIAL_DAYS=3;
 const trialOn=()=>{const t=S.settings.trial;return !!(t&&Date.now()<t.end)};
 const trialLeft=()=>{const t=S.settings.trial;return t?Math.max(0,Math.ceil((t.end-Date.now())/864e5)):0};
@@ -5462,7 +5480,7 @@ function openMember(){
     <div class="mbox">${MEMBER_ONLY.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b><small>${d}</small></div><div class="mq"><span>—</span><span class="on">✓</span></div></div>`).join('')}</div>
     <p class="mlabel">一直免費</p>
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
-    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。${PLANS.map(p=>`${p.name} NT$${p.price}`).join('、')}（價格暫定）。</div>
+    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。${PLANS.map(p=>`${p.name} ${priceText(p.price,p.usd)}`).join('、')}（價格暫定）。</div>
     <p class="hint" style="margin:10px 2px 0">即將推出：☁️ 雲端自動備份（還在規劃中，不包含在目前的會員方案裡）</p>
     ${!isMember()&&!S.settings.trial?`<button class="btn wide" style="margin-top:14px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`:''}
     <button class="btn ghost wide" style="margin-top:8px" onclick="openSettings('member')">${S.settings.member?'會員與 AI 設定':'看訂閱方案'}</button>`);
@@ -7623,7 +7641,8 @@ function openSettings(page){
   let body='';
   if(page==='member'){
     const paid=!!st.member,tr=trialOn();
-    const plan=p=>`<button class="plancard" onclick="subscribe('${p.id}')">${p.tag?`<em>${p.tag}</em>`:''}<b>${p.name}</b><span><strong>NT$${p.price}</strong> / ${p.per}</span>${p.per==='年'?`<small>平均每月 NT$${Math.round(p.price/12)}</small>`:'<small>&nbsp;</small>'}</button>`;
+    const plan=p=>{const tw=twPrice(),amt=tw?p.price:p.usd,sym=tw?'NT$':'US$',per=p.per==='年'?(tw?Math.round(amt/12):(amt/12).toFixed(2)):0;
+      return `<button class="plancard" onclick="subscribe('${p.id}')">${p.tag?`<em>${p.tag}</em>`:''}<b>${p.name}</b><span><strong>${sym}${amt}</strong> / ${p.per}</span>${per?`<small>平均每月 ${sym}${per}</small>`:'<small>&nbsp;</small>'}</button>`};
     body=`
     <p class="mlabel" style="margin-top:0">我的方案</p>
     <div class="card">
@@ -7693,7 +7712,9 @@ function openSettings(page){
   if(page==='region')body=`<p class="hint" style="margin:-6px 0 12px">記錄出門時，會先列出你住的國家的${esc(unitOf(homeCountry()))}，其他國家算「國外」。足跡分析和旅行回憶也會照這個算。</p>
     <div class="parts" id="s_home">${COUNTRIES.map(c=>`<button type="button" class="${homeCountry()===c?'on':''}" onclick="setHomeCountry('${c}')">${c}</button>`).join('')}</div>
     <label class="f" style="margin-top:12px"><span>其他國家</span><input type="text" maxlength="20" placeholder="例如 德國" value="${COUNTRIES.includes(homeCountry())?'':esc(homeCountry())}" onchange="this.value.trim()&&setHomeCountry(this.value.trim())"></label>
-    <p class="hint">${REGIONS[homeCountry()]?`${esc(homeCountry())}的${esc(unitOf(homeCountry()))}已經列好，點一下就能選。`:'這個國家的地區要自己打，例如城市或州的名字。'}</p>`;
+    <p class="hint">${REGIONS[homeCountry()]?`${esc(homeCountry())}的${esc(unitOf(homeCountry()))}已經列好，點一下就能選。`:'這個國家的地區要自己打，例如城市或州的名字。'}</p>
+    <label class="f" style="margin-top:14px"><span>記帳用的幣別（花費、購買中的金額、截圖匯入換算）</span><select onchange="S.settings.cur=this.value;save();toast('已設定記帳幣別')">
+      <option value="" ${S.settings.cur?'':'selected'}>跟著國家（${esc(CUR_NAME[CUR_OF[homeCountry()]||'USD'])}）</option>${Object.keys(CUR_NAME).map(k=>`<option value="${k}" ${S.settings.cur===k?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></label>`;
   if(page==='look')body=`<div class="swap" id="s_theme">
       ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
     </div>`;
