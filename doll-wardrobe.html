@@ -504,6 +504,24 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .footrow b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .footrow b i{font-style:normal;font-weight:400;color:var(--placeholder)}
 .footrow em{font-style:normal;color:var(--muted)}
+.twmap{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:12px 0 4px;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.twmap{grid-auto-rows:38px}.twmap.sm{grid-auto-rows:28px}
+.twmap span{position:relative;display:grid;place-items:center;border-radius:10px;background:var(--swatch);color:var(--muted);font-size:12px;letter-spacing:.02em}
+.twmap span.isle{border:1px dashed var(--line-2);background:none}
+.twmap span.on{background:var(--berry);color:var(--on-ink);font-weight:600;border:none}
+.twmap span i{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--gold);color:#fff;font:600 10px/17px var(--sans);font-style:normal}
+.twmap.sm{gap:4px;padding:10px;margin:10px 0 6px}.twmap.sm span{font-size:10.5px;border-radius:8px}
+.dtabs{margin-bottom:16px}
+.dprof .dhead{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding-right:52px}.dprof .dhead h3{margin:0;flex:1}
+.dprof .dhead small{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
+.dprof .hero{cursor:default;margin-bottom:14px}
+.dprof .stat{margin:14px 0}
+.dprof .care{margin:0 0 16px}
+.dprof .dsec{font-size:13px;color:var(--muted);letter-spacing:.08em;margin:22px 0 10px}
+.danns{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.danns div{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:13.5px}
+.danns div b{flex:1;font-weight:600}.danns div em{font-style:normal;color:var(--muted);font-size:12.5px}
+.arrtip{margin-top:16px}
 .twgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .twgrid>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .twgrid small{width:34px;font-size:11.5px;color:var(--muted)}
@@ -2275,7 +2293,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.09.30-3';
+const APP_VER='2026.09.30-4';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2321,7 +2339,7 @@ function homeCards(){
     const t=tripMemText(m),w=S.wears.find(x=>x.date===m.f.date&&(!m.f.d||x.dollId===m.f.d.id));
     h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
       <b>${t.title}</b><span>${esc(t.body)}</span>
-      <div class="row">${w?`<button class="btn sm" onclick="openShare('wear','${w.id}')">做回憶小卡</button>`:''}<button class="btn sm ghost" onclick="go('insight')">看足跡</button></div></section>`);
+      <div class="row">${w?`<button class="btn sm" onclick="openShare('wear','${w.id}')">做回憶小卡</button>`:''}<button class="btn sm ghost" onclick="UI.dollTab='foot';go('dolls')">看足跡</button></div></section>`);
   });
   // 0a. 節日：有節日服 → 前 3 週、前一天、當天提醒；沒有 → 一個月前提醒一次，建議用現有的衣服搭出節日感
   if(st.holOn!==false)holidayAlerts().forEach(x=>{
@@ -2539,7 +2557,9 @@ function renderDolls(){
   // 依照「常帶出門」排出前三名
   const rank=S.dolls.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
   const rows=[];for(let i=0;i<list.length+1;i+=4)rows.push(list.slice(i,i+4));
-  el.innerHTML=`
+  const tabs=`<div class="swap dtabs">${[['doll','🧸 娃娃'],['foot','📍 足跡']].map(([k,l])=>`<button class="${(UI.dollTab||'doll')===k?'on':''}" onclick="UI.dollTab='${k}';renderDolls();window.scrollTo(0,0)">${l}</button>`).join('')}</div>`;
+  if(UI.dollTab==='foot'){el.innerHTML=tabs+(footSection()||`<div class="empty"><strong>還沒有出門紀錄</strong>帶娃娃出門時按「今天帶出門」，或記穿搭時選「出門」，去過的地方會標在地圖上</div>`);return}
+  el.innerHTML=tabs+`
     <div class="stat">
       <div><b>${S.dolls.length}</b><span>隻娃娃</span></div>
       <div><b>${total?'$'+total.toLocaleString():'—'}</b><span>娃娃總花費</span></div>
@@ -2577,10 +2597,47 @@ function openDoll(id){
   DD.isMain=d?d.id===(mainDoll()||{}).id:!S.dolls.length;
   drawDoll();
 }
+// 娃娃頁分兩層：點進來是回憶頁（照片、第幾天、紀念日、足跡、整理、配件），右上「編輯」才是設定
 function drawDoll(){
+  const saved=DD.id?S.dolls.find(x=>x.id===DD.id):null;
+  if(saved&&DD.view!=='edit')return drawDollPage(saved);
+  drawDollEdit();
+}
+function dollEdit(){DD={...S.dolls.find(x=>x.id===DD.id),view:'edit'};DD.isMain=DD.id===(mainDoll()||{}).id;drawDoll()}
+function dollPageBack(){const id=DD.id;DD={...S.dolls.find(x=>x.id===id)};drawDoll()}
+// 接下來的紀念日（到家日、生日、自訂）
+function dollNextDates(d){
+  const out=[],t=dayNum(today()),y=+today().slice(0,4);
+  const next=md=>{let x=dayNum(y+'-'+md);if(x<t)x=dayNum((y+1)+'-'+md);return x-t};
+  if(d.home)out.push({ic:'🏡',label:'到家紀念日',md:d.home.slice(5),left:next(d.home.slice(5))});
+  (d.dates||[]).forEach(x=>out.push({ic:'🎂',label:x.label,md:x.md,left:next(x.md)}));
+  return out.sort((a,b)=>a.left-b.left);
+}
+function drawDollPage(d){
+  const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0,nd=dollNextDates(d),out=(d.outs||[]).includes(today());
+  openSheet(`<div class="dprof">
+    <div class="dhead"><h3>${esc(d.name)}${d.size?`<small>${esc(d.size)}</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
+    <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
+    ${d.home&&homeDays(d)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
+      :`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`}
+    <div class="stat" style="grid-template-columns:1fr 1fr 1fr">
+      <div><b>${outCount(d)}</b><span>出門次數</span></div>
+      <div><b>${dollWears(d).length}</b><span>穿搭紀錄</span></div>
+      <div><b>${fit}</b><span>合身娃衣</span></div></div>
+    <div class="row" style="margin-bottom:6px">
+      <button class="btn ${out?'ghost':''} grow" onclick="dollOut()">${out?'今天出門了 ✓':'🚶 今天帶出門'}</button>
+      <button class="btn ghost grow" onclick="setMainDoll('${d.id}').then(openWear)">👗 記錄穿搭</button></div>
+    ${nd.length?`<p class="dsec">紀念日</p><div class="danns">${nd.slice(0,4).map(x=>`<div><span>${x.ic}</span><b>${esc(x.label)}</b><em>${+x.md.slice(0,2)}/${+x.md.slice(3)}・${x.left===0?'就是今天':x.left===1?'明天':`再 ${x.left} 天`}</em></div>`).join('')}</div>`:''}
+    <p class="dsec">回憶</p>
+    ${dollFootBlock(d)}
+    <p class="dsec">整理</p>
+    ${dollCareBlock(d)+dollAccBlock(d)}
+    ${d.note?`<p class="dsec">備註</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.note)}</p></div>`:''}
+  </div>`);
+}
+function drawDollEdit(){
   const d=DD,saved=d.id?S.dolls.find(x=>x.id===d.id):null;
-  const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0;
-  openSheet(`<h3>${saved?esc(saved.name):'新增娃娃'}</h3>
+  openSheet(`${saved?`<div class="sethead"><button onclick="dollPageBack()">‹ ${esc(saved.name)}</button></div>`:''}<h3>${saved?'編輯娃娃':'新增娃娃'}</h3>
     <div class="hero dollhero" onclick="document.getElementById('dphoto').click()">
       ${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}<span>點這裡放照片</span></div>`}
     </div>
@@ -2590,14 +2647,6 @@ function drawDoll(){
       <button class="btn sm quiet grow" onclick="cutDoll(this)">${d.raw?'重新去背':'去背（放在首頁更好看）'}</button>
       ${d.raw?`<button class="btn sm ghost" onclick="DD.photo=DD.raw;DD.raw=null;drawDoll()">用原圖</button>`:''}
     </div>`:''}
-    ${saved&&saved.home&&homeDays(saved)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(saved)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${saved.id}')">做紀念小卡</a></span>`
-      :saved?`<span class="dhome" style="color:var(--muted)">填上「到家日」，就會幫 ${esc(saved.name)} 記住來家裡幾天、每年慶祝</span>`:''}
-    ${saved?`<div class="stat" style="margin-bottom:10px;grid-template-columns:1fr 1fr 1fr">
-      <div><b>${outCount(saved)}</b><span>出門次數</span></div>
-      <div><b>${dollWears(saved).length}</b><span>穿搭紀錄</span></div>
-      <div><b>${fit}</b><span>合身娃衣</span></div></div>
-      <button class="btn ${(saved.outs||[]).includes(today())?'ghost':'quiet'} wide" style="margin-bottom:16px" onclick="dollOut()">${(saved.outs||[]).includes(today())?'今天已經帶出門了 ✓':`今天帶 ${esc(saved.name)} 出門`}</button>`:''}
-    ${saved?dollFootBlock(saved)+dollCareBlock(saved)+dollAccBlock(saved):''}
     <label class="f"><span>名字</span><input type="text" id="d_name" value="${esc(d.name)}" placeholder="小白" oninput="DD.name=this.value"></label>
     <div class="split">
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
@@ -2723,14 +2772,15 @@ async function setAcc(id,aid,st){const d=S.dolls.find(x=>x.id===id),a=(d.acc||[]
 async function delAcc(id,aid){const d=S.dolls.find(x=>x.id===id);setDollField(id,'acc',(d.acc||[]).filter(x=>x.id!==aid));await save();drawDoll()}
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
-  const {isMain,...d}=DD;d.name=d.name.trim();
+  const {isMain,view,...d}=DD;d.name=d.name.trim();
   if(d.id){const i=S.dolls.findIndex(x=>x.id===d.id);S.dolls[i]=Object.assign(S.dolls[i],d)}
   else{d.id=uid('d');d.createdAt=Date.now();S.dolls.push(d)}
   if(d.attr!=='has'){d.work='';d.chara=''}
   if(isMain)S.settings.mainDoll=d.id;
   else if(S.settings.mainDoll===d.id)S.settings.mainDoll='';
-  await save();closeSheet();
+  await save();
   if(UI.tab==='dolls')renderDolls();else renderHome();
+  DD={...d};drawDoll();
   toast('已儲存');
 }
 async function delDoll(id){
@@ -4786,11 +4836,24 @@ const footSummary=({regs,cts})=>`${regs.size?`・去過 ${regs.size} 個${unitOf
 // 娃娃頁的足跡
 function dollFootBlock(d){
   const ts=(d.outs||[]).slice().sort().reverse(),P=d.outPlaces||{};
+  const sps=ts.map(t=>spNorm(P[t])),cnt={};sps.forEach(sp=>{const k=sp&&spKey(sp);if(k)cnt[k]=(cnt[k]||0)+1});
+  const cts=[...new Set(sps.filter(sp=>sp&&isAbroad(sp)).map(sp=>sp.c))];
   return `<div class="care"><div class="row"><b class="grow">📍 足跡</b><button class="btn sm ghost" onclick="openTrip('${d.id}',null,'doll')">＋ 補記出門</button></div>
-    ${ts.length?`<div class="hint" style="margin:4px 0 6px">出門 ${ts.length} 次${footSummary(footCount(ts.map(t=>spNorm(P[t]))))}</div>
+    ${ts.length?`<div class="hint" style="margin:4px 0 6px">出門 ${ts.length} 次${footSummary(footCount(sps))}</div>
+    ${homeCountry()==='台灣'&&Object.keys(cnt).some(k=>k.startsWith('r:'))?twMap(cnt,true):''}
+    ${cts.length?`<div class="parts" style="margin:0 0 8px">${cts.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)}</button>`).join('')}</div>`:''}
     ${ts.slice(0,5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?(isAbroad(spNorm(P[t]))?'✈️ ':'')+esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
-    ${ts.length>5?`<div class="hint">還有 ${ts.length-5} 次，全部可以在「洞察 → 足跡」看</div>`:''}`
-    :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，之後會變成她的旅行地圖。</div>`}</div>`;
+    ${ts.length>5?`<div class="hint">還有 ${ts.length-5} 次，全部可以在「娃娃櫃 → 足跡」看</div>`:''}`
+    :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，去過的地方會標在地圖上。</div>`}</div>`;
+}
+// 台灣的格子地圖：每個縣市一格，大概照地理位置排（[列, 欄]）
+const TW_TILES={'連江縣':[0,0],'桃園市':[0,2],'台北市':[0,3],'基隆市':[0,4],'新竹市':[1,1],'新竹縣':[1,2],'新北市':[1,3],'宜蘭縣':[1,4],
+  '金門縣':[2,0],'苗栗縣':[2,1],'台中市':[2,2],'花蓮縣':[2,3,2],'彰化縣':[3,1],'南投縣':[3,2],'雲林縣':[4,1],'嘉義縣':[4,2],'台東縣':[4,3,2],
+  '澎湖縣':[5,0],'嘉義市':[5,1],'台南市':[5,2],'高雄市':[6,2],'屏東縣':[6,3]};
+// cnt：{'r:台北市':次數}；沒去過的是淡色
+function twMap(cnt,small){
+  return `<div class="twmap ${small?'sm':''}">${Object.entries(TW_TILES).map(([r,[y,x,h]])=>{const n=cnt['r:'+r]||0;
+    return `<span class="${n?'on':''} ${x===0?'isle':''}" style="grid-row:${y+1}${h?' / span '+h:''};grid-column:${x+1}">${shortRegion(r,'台灣')}${n&&!small?`<i>${n}</i>`:''}</span>`}).join('')}</div>`;
 }
 const shortRegion=(r,c)=>c==='台灣'?(/^(新竹|嘉義)/.test(r)?r:r.replace(/[市縣]$/,'')):c==='日本'&&r!=='北海道'?r.replace(/[都府縣]$/,''):r;
 // 每個地方第一次去的那一筆（自己國家算到縣市，國外算到國家）
@@ -4807,12 +4870,11 @@ function footSection(){
   const topSpots=Object.entries(spots).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const byDoll=S.dolls.map(d=>{const P=d.outPlaces||{},rs=[...new Set((d.outs||[]).map(t=>{const sp=spNorm(P[t]);return sp?spotText({c:sp.c,r:sp.r}):''}).filter(Boolean))];return {d,n:(d.outs||[]).length,rs}}).filter(x=>x.n).sort((a,b)=>b.rs.length-a.rs.length||b.n-a.n);
   const unit=unitOf(hc);
-  return `<h2 class="sec">足跡</h2>
-    <div class="stat">
+  return `<div class="stat">
       <div><b>${fp.length}</b><span>出門次數</span></div><div><b>${home}</b><span>在家穿搭</span></div>
       <div><b>${regs.size}${all.length?`<small style="font-size:14px"> / ${all.length}</small>`:''}</b><span>${esc(hc)}${esc(unit)}</span></div><div><b>${cts.size}</b><span>去過的國家</span></div></div>
     ${newest?`<div class="note">最近解鎖的地方：<strong>${esc(spotText({c:newest.sp.c,r:isAbroad(newest.sp)?'':newest.sp.r}))}</strong>（${newest.date}${newest.d?`，${esc(newest.d.name)} 第一次去`:''}）</div>`:''}
-    ${REGIONS[hc]?`<div class="twgrid">${REGIONS[hc].groups.map(([g,l])=>`<div>${g?`<small>${g}</small>`:''}${l.map(r=>`<span class="${cnt['r:'+r]?'on':''}">${shortRegion(r,hc)}${cnt['r:'+r]?`<i>${cnt['r:'+r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>`
+    ${hc==='台灣'?twMap(cnt):REGIONS[hc]?`<div class="twgrid">${REGIONS[hc].groups.map(([g,l])=>`<div>${g?`<small>${g}</small>`:''}${l.map(r=>`<span class="${cnt['r:'+r]?'on':''}">${shortRegion(r,hc)}${cnt['r:'+r]?`<i>${cnt['r:'+r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>`
       :regs.size?`<div class="parts" style="margin:8px 0 0">${[...regs].map(r=>`<button type="button" class="on" style="pointer-events:none">📍 ${esc(r)} ${cnt['r:'+r]}</button>`).join('')}</div>`:''}
     ${ab.length?`<div class="parts" style="margin:8px 0 0">${ab.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)} ${cnt['c:'+c]}</button>`).join('')}</div>`:''}
     ${topSpots.length?`<h2 class="sec" style="font-size:15px">最常去的地方</h2>${topSpots.map(([k,n])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${n} 次</em></div><div class="tr"><i style="width:${n/topSpots[0][1]*100}%"></i></div></div>`).join('')}`:''}
@@ -5313,7 +5375,7 @@ function renderInsight(){
   const el=document.getElementById('insight');
   const items=S.items.filter(i=>i.category!=='套裝');
   if(items.length<3){
-    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+footSection()+spendSection();
+    el.innerHTML='<div class="empty"><strong>還需要更多資料</strong>建檔幾件娃衣、記錄幾次穿搭之後，這裡會開始回答「我到底有什麼、真正常穿什麼」</div>'+spendSection();
     return;
   }
   const buyGroup={},wearGroup={};
@@ -5364,7 +5426,6 @@ function renderInsight(){
       <div class="sw"><img src="${img(x.i)}" alt=""><span class="tag">${k===0?'👑 ':''}${x.c} 次</span></div>
       <div class="nm">${esc(x.i.name)}</div></button>`).join('')}</div>`;
   }
-  h+=footSection();
   // 娃娃出場排行
   const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
   if(dollRank.length){
@@ -5941,8 +6002,8 @@ const HELP=[
     ['買來 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','賣掉後移到回憶箱，會記下賣了多少錢。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
-  ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['📊','洞察 → 足跡']],
-    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','洞察頁會整理出去過幾個台灣縣市、幾個國家，和每隻娃娃去過的地方。']],
+  ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['🧸','娃娃櫃 → 足跡']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，會有地圖標出去過的縣市、幾個國家，和每隻娃娃去過的地方。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料都存在這支手機上，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟。']],
 ];
@@ -5954,11 +6015,11 @@ const HELP_SHOTS={
   '記錄今天的穿搭':[['wear-list','穿搭紀錄：照片、在家或去了哪裡'],['wear-card','做成拍立得小卡分享']],
   '壓箱底・狀況・出售':[['sell-card','出售貼文：一次做好圖和文字']],
   '整理衣櫃':[['closet','衣櫃：類別、狀態、尺寸一起篩選']],
-  '娃娃櫃與紀念日':[['doll-home','首頁：主角娃娃站在舞台上，紀念日當天會提醒'],['doll-cabinet','娃娃櫃：每隻娃娃的尺寸、出門次數'],['doll-page','娃娃頁：來家裡第幾天、紀念日'],['doll-card','紀念小卡：一鍵做成分享圖']],
+  '娃娃櫃與紀念日':[['doll-home','首頁：主角娃娃站在舞台上，紀念日當天會提醒'],['doll-cabinet','娃娃櫃：每隻娃娃的尺寸、出門次數'],['doll-page','娃娃頁：來家裡第幾天、紀念日、足跡'],['doll-edit','右上「編輯」改名字、尺寸、生日'],['doll-card','紀念小卡：一鍵做成分享圖']],
   '買前檢查・考慮中・購買中':[['buy-check','買前檢查：衣櫃裡幾乎一樣的排最前面'],['orders','購買中：每件的進度和預計到貨'],['arrive-tip','到貨了，建檔頁會提醒你一起建檔']],
   '備份很重要':[['backup','設定 → 備份與資料']],
   '娃娃的整理與配件':[['doll-care','記錄換骨架、交給手作娘，和配件在不在']],
-  '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-insight','洞察：去過幾個縣市、幾個國家']]
+  '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-map','娃娃櫃 → 足跡：地圖標出去過的縣市和國家']]
 };
 function helpHTML(){
   return `<p class="hint" style="margin:-6px 0 12px">點一個主題展開。不懂的地方也可以隨時回來看。</p>
