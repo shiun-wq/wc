@@ -1,0 +1,250 @@
+250	Below are the most worn and forgotten clothes, counts by category, and each doll's style.
+251	Don't remind me
+252	If you turn it off, you can turn it back on in {0}'s "Edit".
+253	Won't remind you. You can turn it back on in the doll's "Edit"
+254	Don't show again
+255	No photos, small file
+256	Don't want people to know what they're wearing? Check "Hide clothing names": cards with a photo drop the clothes section entirely.
+257	No reminder
+258	No change
+259	Not living in Taiwan? Go to Settings → I live in and pick your country. Trips abroad or a first visit somewhere from years ago today show up as travel memories on home.
+260	Not in Taiwan?
+261	No thanks
+262	You can skip AI: use the free simple cut-out, then clean it up with "Fix sticker".
+263	Not sure what to wear? Style me an outfit
+264	Not sure what to wear? Tap "Style me an outfit" and pick at home, before bed or a holiday. Random picks are free, AI ideas use quota.
+265	Not sure
+266	Can't be undone
+267	Can't be in the future
+268	Keep it
+269	Lost
+270	Not buying
+271	Blocked: the request never left, usually a sandbox or network block, not CORS
+272	Any
+273	Unlimited items, categories, tags, sizes, batch edit
+274	Sejong
+275	World
+276	Central
+277	China
+278	Chugoku & Shikoku
+279	Chinese style
+280	Mid-Autumn
+281	Central
+282	Mix only from now on, no whole sets
+283	You can turn it back on under "Stickers" in Settings
+284	Then you can see which clothes are worn most and least
+285	Remind you about {0} again?
+286	Kyushu & Okinawa
+287	Kowloon
+288	You can also stash, make a sale post, move to the memory box or delete in one go; these confirm step by step, and deleting requires typing "delete".
+289	Also remove this day's outing from footprints?
+290	About membership
+291	Tue
+292	Secondhand
+293	Fri
+294	Traded
+295	Traded / given away
+296	Send to an artisan
+297	Items with an artisan show "with the artisan" and the expected return date; tap "Done" when they're back.
+298	Gyeonggi
+299	Kyoto
+300	Bright areas stay, dark areas are removed
+301	Any background works, hands and clutter are removed too
+302	Incheon
+303	Backed up today
+304	Went out today ✓
+305	Added today
+306	Where today
+307	Where are you today?
+308	At home today
+309	Let them shine today
+310	Planning to wear this today
+311	It's {0} today!
+312	Strawberry dessert day today 🍓
+313	Today's outfit
+314	Wearing today
+315	Wear this today?
+316	What should {0} wear today?
+317	Recovered this year
+318	Daily look
+319	Pick tomorrow's outfit tonight
+320	"{0}" as the star{1}{2}. {3}{4}
+321	Add past outings with "Add outing" on the footprints page; "Use a photo" reads the date and place from the photo and puts it in the album too.
+322	Sold before
+323	Anything similar among clothes you sold before
+324	Something similar was given away before.
+325	Pajamas and loungewear, comfy and cute
+326	items{0}
+327	missing
+328	memories of doll clothes
+329	stories of doll clothes
+330	pieces (all sizes){0}{1}
+331	selected
+332	items: {0}
+333	Casual
+334	Casual · cool · black tones
+335	The server returned an error code
+336	The server doesn't list models, just type the model name
+337	The server is reachable but doesn't allow cross-origin requests. The API server needs to return these headers: Access-Control-Allow-Origin, Access-Control-Allow-Headers: content-type,authorization, Access-Control-Allow-Methods: GET,POST,OPTIONS, and OPTIONS must return 200.
+338	Where you live
+339	Saga
+340	Series
+341	Series, collections and events all work as tags, separate with commas. Filter by tag at the top of the closet.
+342	Series / tags
+343	You previously
+344	You sold something very similar before. Check "Sold before" below and think about why you sold it.
+345	You took {0} to {1}. Remember that trip?
+346	What your most-worn pieces have in common:
+347	You have
+348	How many of the same type and style you already have
+349	What you buy most:
+350	You still have
+351	You have {0} doll clothes on the way ({1}), none very similar to this one.
+352	使用者今天在家陪娃娃{0}（{1}），不出門也想幫娃娃打扮；{2}。
+353	使用者要帶娃娃{0}去「{1}」拍照。
+354	Help
+355	Home for
+356	Day {0} at home
+357	Year {0} at home
+358	Source
+359	Source: {0}
+360	e.g. 350
+361	e.g. 450
+362	e.g. 680
+363	e.g. OB11, BJD, 30cm
+364	e.g. gemini-3.1-pro-preview
+365	e.g. a group-buy name, the maker
+366	e.g. China
+367	e.g. China, Japan
+368	e.g. left hand had less stuffing on arrival
+369	e.g. kimono, swimsuit, underlayer
+370	e.g. new skeleton at Bear Crafts, lent to Amy for a shoot
+371	e.g. Snowy
+372	e.g. Germany
+373	e.g. Love and Deepspace
+374	e.g. Love and Deepspace, fan-made
+375	e.g. Haikyu!!
+376	e.g. Shoyo Hinata
+377	e.g. a doll clothes shop
+378	e.g. Taobao, group buy
+379	e.g. strawberry lace dress
+380	e.g. small coffee stain on the cuff, bow on the back came off
+381	Suggested from each doll's usual styles and colors
+382	Based on outfit records; please double-check sizes when adding.
+383	Storage environment (optional)
+384	Stored in: {0}
+385	Save settings
+386	Edit
+387	Repair
+388	Fix sticker
+389	
+390	Personality notes, favorite foods…
+391	Lent to a friend
+392	Lent to a friend
+393	Make sale images and text
+394	Make a sale post
+395	Make a sale post, or move sold items to the memory box
+396	Make a memory card
+397	Make a Look
+398	Make a sale post
+399	Make a card
+400	Make a sticker
+401	Make a keepsake card
+402	The brand or shop that made it. You can choose whether to show it when selling; big-name, official items sell more easily.
+403	Backups matter
+404	Backup downloaded
+405	Backup & data
+406	Notes
+407	Notes (optional)
+408	This session only (can't be saved, please export)
+409	Adds a white outline like a chat sticker. Set 0 for no outline.
+410	Price
+411	Price must be a number
+412	Price (optional, counts toward "saved" if you don't buy)
+413	Price: {0}
+414	Prefer stashed clothes 📦
+415	Top up {0} pts
+416	Top up points
+417	Save
+418	Save changes
+419	Storage: {0}
+420	Storage is full, please export a backup
+421	Save changes
+422	Not now
+423	Select the clothes to sell first
+424	Fill it in first
+425	Enter the origin first
+426	Write at least one item
+427	Pick a size first
+428	Pick a date first
+429	Select the part to keep first
+430	Gwangju
+431	Even lighting
+432	Redeem
+433	Redeemed, +{0} pts
+434	Redeem code
+435	Redeem code {0}
+436	Invalid code
+437	Free
+438	Free · recommended
+439	Photo tips for free cut-outs
+440	Free plan
+441	Free vs member?
+442	The free plan includes {0} uses a month, reset on the 1st.
+443	Inner Mongolia
+444	Select none
+445	Whole image
+446	Brand new, sealed
+447	Jeollabuk-do
+448	Jeollanam-do
+449	Fully automatic, but needs a plain background
+450	Select all
+451	All
+452	AI analyze all
+453	Make all stickers
+454	Add all
+455	All dolls
+456	All sizes
+457	Add all to intake
+458	Remove all
+459	All tags
+460	All holidays
+461	Save all
+462	Pinch to zoom and move.
+463	cm
+464	Picnic in the park
+465	Sat
+466	Total $
+467	{0} items, {1} not worn in over half a year. Before buying another of the same type, maybe look through these.
+468	{0} images, swipe to see
+469	Hyogo
+470	{0} of them are stashed, a nice chance to give them some air.
+471	Other
+472	Other issue
+473	Other countries
+474	Other country, e.g. Germany
+475	Anything else (optional)
+476	Still with me (back to the doll shelf)
+477	In {0} days
+478	Record a few more outfits and analysis will start to appear here.
+479	Let me think
+480	Another one
+481	Check another
+482	Check again
+483	Compare again
+484	Show the welcome screen again
+485	Trying again with only the {0} closest items…
+486	Winter
+487	Sell
+488	Sale image {0}
+489	Sale images and text
+490	Sale images use the stickers from when items were added, noting "please refer to the seller for the actual condition". Consider adding a current photo too.
+491	Sale post
+492	Sale posts can include the brand, series, where you bought it, origin, and a smoke-free, pet-free home.
+493	Sale post: images and text in one go
+494	Traveling without them
+495	Image generation took too long, try again later
+496	Image model
+497	Out
+498	{0} outings
+499	{0} outings{1}

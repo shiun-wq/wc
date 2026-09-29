@@ -2596,10 +2596,10 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-35';
+const APP_VER='2026.10.01-36';
 let UPD_SHOWN=false;
 async function checkUpdate(){
-  if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
+  if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
   try{
     const v=(await (await fetch('version.json?t='+Date.now(),{cache:'no-store'})).json()).v;
     if(v&&v!==APP_VER){UPD_SHOWN=true;showUpdate()}
@@ -3098,12 +3098,34 @@ function openPhoto(wid){
     if(e.target===v||e.target.closest('.pvx'))v.remove()};
   document.body.appendChild(v);
 }
+/* ---- 包成 App（Capacitor）時的差異 ----
+   App 裡沒有「下載」：圖片、備份檔先寫進 App 的暫存資料夾，再打開手機的分享面板（存到照片、檔案、iCloud、LINE…）。 */
+const isApp=()=>!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const blobB64=b=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=no;r.readAsDataURL(b)});
+async function appShareFiles(files){
+  const {Filesystem,Share}=Capacitor.Plugins,uris=[];
+  for(const f of files){
+    const path='share/'+f.name.replace(/[\\/:*?"<>|]/g,'_'),CH=3*1024*1024;   // 3 的倍數，base64 分段接起來才不會壞
+    try{await Filesystem.deleteFile({path,directory:'CACHE'})}catch(e){}
+    for(let o=0;o<Math.max(1,f.size);o+=CH){const d=await blobB64(f.slice(o,o+CH));
+      if(o===0)await Filesystem.writeFile({path,data:d,directory:'CACHE',recursive:true});else await Filesystem.appendFile({path,data:d,directory:'CACHE'})}
+    uris.push((await Filesystem.getUri({path,directory:'CACHE'})).uri);
+  }
+  try{await Share.share({files:uris})}catch(e){}
+}
+// 存檔：網頁用下載，App 用分享面板
+async function saveFiles(files){
+  if(isApp()){try{await appShareFiles(files);return true}catch(e){toast('存檔失敗：'+(e.message||e));return false}}
+  files.forEach(f=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},60000)});
+  return true;
+}
 // 存到手機：可以的話用分享面板（iPhone 會有「儲存影像」），不行就下載
 async function savePhotos(ids){
   const ws=ids.map(id=>S.wears.find(w=>w.id===id)).filter(w=>w&&w.photo);if(!ws.length)return;
   const files=await Promise.all(ws.map(async(w,k)=>{const b=await (await fetch(w.photo)).blob();return new File([b],`哇娃衣櫃_${w.date||'photo'}_${k+1}.jpg`,{type:b.type||'image/jpeg'})}));
+  if(isApp()){await saveFiles(files);return}
   try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files});return}}catch(e){if(e.name==='AbortError')return}
-  files.forEach(f=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)});
+  await saveFiles(files);
   toast(files.length>1?`已下載 ${files.length} 張`:'已下載');
 }
 // 地圖上點某個地方：列出在那裡拍的穿搭照片
@@ -4319,10 +4341,9 @@ async function drawSellBig(i){
 function sellBlob(c){return new Promise(r=>c.toBlob(r,'image/png'))}
 const sellName=k=>`娃衣出售-${today()}${SELL.canvases.length>1?'-'+(k+1):''}.png`;
 async function sellDownload(){
-  for(let k=0;k<SELL.canvases.length;k++){
-    const a=document.createElement('a');a.href=URL.createObjectURL(await sellBlob(SELL.canvases[k]));a.download=sellName(k);a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),3000);await new Promise(r=>setTimeout(r,350));
-  }
+  const fs=[];for(let k=0;k<SELL.canvases.length;k++)fs.push(new File([await sellBlob(SELL.canvases[k])],sellName(k),{type:'image/png'}));
+  if(isApp()){await saveFiles(fs);return}
+  for(const f of fs){await saveFiles([f]);await new Promise(r=>setTimeout(r,350))}
   toast(SELL.canvases.length>1?`已下載 ${SELL.canvases.length} 張`:'圖片已下載');
 }
 async function sellCopy(){try{await navigator.clipboard.writeText(SELL.text);toast('文字已複製')}catch(e){const t=document.getElementById('sellTxt');t.select();document.execCommand('copy');toast('文字已複製')}}
@@ -4717,9 +4738,7 @@ function openItem(id){
 function dlSticker(id){
   const i=S.items.find(x=>x.id===id);
   if(!i||!i.cutout){toast('這件還沒有貼圖，先按重做貼圖');return}
-  const a=document.createElement('a');
-  a.href=i.cutout;a.download=(i.name||'sticker').replace(/[\\/:*?"<>|]/g,'')+'.png';
-  a.click();toast('已下載');
+  fetch(i.cutout).then(r=>r.blob()).then(b=>saveFiles([new File([b],(i.name||'sticker').replace(/[\\/:*?"<>|]/g,'')+'.png',{type:'image/png'})])).then(ok=>{if(ok&&!isApp())toast('已下載')});
 }
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
@@ -6793,12 +6812,12 @@ async function scRender(){
 function scBlob(){return new Promise(r=>SC.canvas.toBlob(r,'image/png'))}
 async function scDownload(){
   if(!SC.canvas)return;
-  const a=document.createElement('a');a.href=URL.createObjectURL(await scBlob());
-  a.download=`娃衣小卡-${SC.date}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('圖片已下載');
+  const ok=await saveFiles([new File([await scBlob()],`娃衣小卡-${SC.date}.png`,{type:'image/png'})]);if(ok&&!isApp())toast('圖片已下載');
 }
 async function scShare(){
   if(!SC.canvas)return;
   const f=new File([await scBlob()],`娃衣小卡-${SC.date}.png`,{type:'image/png'});
+  if(isApp()){await saveFiles([f]);return}
   try{
     if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:SC.title});
     else scDownload();
@@ -8062,11 +8081,10 @@ async function exportBackup(withImages){
   let blob;
   try{blob=new Blob(backupParts(withImages),{type:'application/json'})}
   catch(e){toast('手機記憶體不夠，備份失敗。先關掉其他 App 再試一次，或先用輕量備份');return}
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`哇娃衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
+  const name=`哇娃衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
+  if(!(await saveFiles([new File([blob],name,{type:'application/json'})])))return;
   if(withImages){S.settings.lastBackup=Date.now();save();if(UI.tab==='home')renderHome()}
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  if(isApp())return;
   toast(`備份檔已下載（${blob.size>1048576?(blob.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(blob.size/1024))+' KB'}）`);
 }
 async function importBackup(ev){
@@ -8209,7 +8227,7 @@ document.addEventListener('wheel',e=>{
   go('home');
   // 請瀏覽器不要自動清掉這個網站的資料（有支援的瀏覽器才會生效）
   try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))navigator.storage.persist()}catch(e){}
-  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
+  if(!isApp()&&'serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
   setTimeout(checkUpdate,3000);
   if(!S.settings.welcomed&&!S.items.length&&!S.dolls.length)openWelcome();
   setTimeout(notifyAnniv,1500);

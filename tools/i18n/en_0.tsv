@@ -1,0 +1,250 @@
+0	- No photo
+1	0 items
+2	1 month
+3	1 week
+4	10cm, 20cm… (pick one)
+5	15 days
+6	2 months
+7	2 weeks
+8	Remind me in 2 weeks
+9	30 days
+10	AI image
+11	AI cut-out
+12	Not enough AI quota or points for an AI image, so this one uses a simple cut-out
+13	AI analysis
+14	AI analysis (optional)
+15	AI features are temporarily unavailable
+16	AI features (monthly uses, reset on the 1st)
+17	AI item analysis
+18	AI outfit idea
+19	AI whole set in one
+20	AI is drawing the whole set ({0} pieces). About 10–60 seconds, feel free to do something else
+21	AI is temporarily unavailable
+22	AI service {0}
+23	AI service is having trouble (
+24	AI service is working
+25	The AI didn't pick anything from your closet. Please try again
+26	Looks like a single piece to the AI, you can make it a sticker directly
+27	The AI thinks it might be these
+28	The AI finds each piece and where it is
+29	AI identify
+30	AI identifying…
+31	The AI didn't draw the whole piece this time. No charge, please try again
+32	The AI didn't draw any clothes this time. No charge, please try again
+33	AI connection settings
+34	The AI redraws a clean sticker, removing hands, the doll and clutter. Any background works
+35	API endpoint
+36	API endpoint
+37	API key
+38	App storage
+39	Resets the monthly quota in the app. The server's daily limit (Cloudflare DAILY_LIMIT) has to be changed in Cloudflare.
+40	On iPhone, add Wawa Closet to your Home Screen and open it from there to turn on notifications
+41	{0} / {1} pieces worn
+42	{0} {1} is away ({2}){3}
+43	{0} {1} · worn {2} times{3}
+44	{0} {1} to handle
+45	{0} {1} today
+46	{0} {1} in {2} days
+47	{0} {1}, you'll be together again soon.
+48	{0} items
+49	{0} items{1}
+50	{0} items · worn {1} times
+51	{0} pieces drawn in one image and cut apart automatically, counted as 1 use. Tap a small box to fix any that are off
+52	Put {0} items back in the closet
+53	{0} items moved to the memory box
+54	{0} items moved to the memory box
+55	{0} items not worn in over half a year
+56	Stickers done for {0} pieces
+57	{0} selected
+58	{0} pieces failed ({1}). Tap a piece's small box to redo it
+59	{0} items moved to the memory box
+60	All {0} pieces are cut. Tap a small box to fix any that are off
+61	{0} similar items
+62	Came home on {0}, together for
+63	{0} · {2} {1} at home
+64	{0} months
+65	Left {0} → home {1} ({2} days){3}
+66	Left {0}{1}{2}
+67	{0} is off{1} 🚗
+68	{0} went out!
+69	{0} went to {1}!
+70	{0} is home!
+71	{0} is with the artisan ({1})
+72	Backed up {0} days ago
+73	After {0} days without outings or outfit records, home will ask whether to archive the doll
+74	{0} sets
+75	{0} sets {1} items
+76	{0} has been with you for {1} days. Dress {2} up in a favorite outfit today.
+77	{0} often wears {1}. Add these?
+78	{1}/{0}
+79	{0} years ago
+80	{0} photos
+81	{0} photos. Photos are only stored on this phone, so remember to make a "Full backup" regularly, or save a copy to your photo library.
+82	{0} is in the archive now. Take them out anytime
+83	Day {0}
+84	{0} is away
+85	{0} is away · {1}
+86	{0} wears most: {1}
+87	Month {0}
+88	{0}/{1}{2} · yearly reminder
+89	{0}/{1}.
+90	Month {0} has no day {1}
+91	Spent in {0}: {1}
+92	{0}: {1}
+93	{0} times
+94	{0}'s {1}
+95	{0}'s outfit records
+96	{0}'s footprints
+97	Clothes {0} has worn
+98	{0}'s first time in {1}.
+99	{0} added to intake{1}
+100	Where is {0} going?
+101	Logged {0} → done {1}
+102	Logged {0} · not handled yet
+103	Sold {0}
+104	Sent {0} → back {1}{2}
+105	Sent {0} · in progress{1}
+106	{0} weeks
+107	{0} has no outfit records yet
+108	{0} pts
+109	{0}{1} times
+110	{0}{1} · worn {2} times{3}
+111	{0}{1} outfit
+112	{0}{1} worn {2} times
+113	{0}. After adding, "stashed" is counted from the arrival date.
+114	{0} · {1} records
+115	{0} · then {1} pts each time
+116	{0} · visited {1} times
+117	{0} · same set
+118	{0} · whole set
+119	{0} · each wear lowers the cost
+120	{0} · anniversaries {1} · holidays {2} · outfit changes {3}
+121	{0}You don't have to go out. Changing {1} at home and taking a photo is lovely too.
+122	{0} details
+123	{0}Maybe think about what to wear and where to take photos that day.
+124	{0}You can use points ({1} pts each, you have {2}), or become a member for {3} uses a month.
+125	{0} fitting
+126	{0}clothes ›
+127	{0} to handle
+128	In {0}
+129	{0}It will be gone if you switch phones or the data is cleared. Download a backup to be safe.
+130	{0}recent outfits
+131	Month {0}
+132	{0}this month ›
+133	{0}one outfit a day
+134	{0} has no free quota.
+135	{0}The photo will also go into {1}'s album.
+136	{0}Why did you let it go back then? If it wasn't worn much or was hard to style, this one might be the same. Think it over before ordering.
+137	{0}'s {1}
+138	The {1} of {0} are listed, tap to pick.
+139	{0} {1} outfit
+140	{0} {1} look
+141	Where in {0}? (optional)
+142	{0}album
+143	{0} wore {1}{2}. Tap to make a memory card
+144	{0} worn {1} times
+145	{0} worn {1} times{2}{3}
+146	{0}sold {1}{2} · {3}
+147	{0} in {1} days
+148	{0} quota {1} / {2}
+149	{0} style
+150	{0} ({1} days ago)
+151	{0} (all colors)
+152	{0}, e.g. California, London
+153	‹ Batch edit
+154	‹ Settings
+155	‹ Back
+156	※ Photos were taken when the item was added. Please message for the actual condition and real photos.
+157	※ Made with the Wawa Closet app from the item's photo
+158	⇋ Flip
+159	☑ Select
+160	⚠ Decorations come off easily, handle with care
+161	⚠️ To handle
+162	✈️ Abroad
+163	✈️ Travel memories
+164	✏️ Edit
+165	✓ Done
+166	✓ Nothing to handle
+167	✓ Nothing to handle
+168	✦ Smart select
+169	✨ New version available, tap to update
+170	⬇️ Save all to phone
+171	⬇️ Save to phone
+172	, {0} countries
+173	. Use this as a reference next time you pick clothes.
+174	. Below are matches by name and tags, which may be off.
+175	. Add them together on the intake page.
+176	. What you like to buy isn't always what you like to wear.
+177	"AI image" also removes hands and clutter, using quota or points; no charge if it fails.
+178	"Wear this today?" picks an outfit for them each day and hides once today's outfit is recorded. On order and stashed items also only show their size.
+179	"Fix sticker"
+180	"Select" lets you change progress, ETA and size at once, and add arrived ones together.
+181	"Long time no change" only reminds you about the doll shown now; tap × to be reminded in 2 weeks or never.
+182	With "Whole sets" on, fitting sets are sometimes suggested as a whole; turn it off if you like mixing (you can also switch at the top right of "Wear this today?" on home).
+183	"Tap to cut" is free: tap the clothes and they're selected, on any background.
+184	[For sale | Doll clothes]
+185	 · {0} countries
+186	 · {0} days ago
+187	 · {0} yrs
+188	 · {0} photos
+189	 · handled on {0}
+190	 · {0} dolls waiting to come home
+191	 · home today!
+192	 · home in {0} days
+193	 · visited {0} {1}
+194	 · visited {0} times
+195	 · recovered {0}%
+196	 · with the artisan
+197	 · {0} archived
+198	 · {0} MB used
+199	 · to handle
+200	 · worn most by {0}
+201	 · usage limits
+202	 · worn {0} times
+203	 · worn {0} times
+204	 · total {0}
+205	 · to send to the artisan
+206	 · bought {0}
+207	 · sold {0}
+208	 · not visited yet
+209	 · expected
+210	 · home expected {0}{1}
+211	 · {0} days past the expected return
+212	Mon
+213	All good, ready to use.
+214	One set
+215	Always AI image (uses quota or points)
+216	Always simple cut-out (free, needs a plain background)
+217	Always tap to cut (free, tap the clothes)
+218	Change {1} for {0} items at once. {2}
+219	Change origin for {0} items at once.
+220	Add several
+221	Always free
+222	Out together
+223	Photos together
+224	Stash them together, or take them out
+225	Cared for together
+226	Worn together 5 times
+227	Worn together {0} times
+228	Together for {0}
+229	Wed
+230	Mie
+231	Back
+232	Last full backup: 
+233	Shanghai
+234	Move up
+235	Top
+236	Tops, skirts, custom categories…
+237	Decorations come off easily (remind the buyer to handle with care)
+238	Next
+239	Next: move to the memory box
+240	Before you order: checks your closet for near-identical or same-style-different-color items, orders on the way, and
+241	The day you ordered or paid. Without an arrival date, "stashed" counts from this day.
+242	Order date
+243	Washed
+244	Washed: {0}
+245	Move down
+246	Download PNG
+247	Download {0}
+248	Download image
+249	Rainy day
