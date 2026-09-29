@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=19"></script>
+<script src="i18n/i18n.js?v=20"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1087,6 +1087,14 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .wrow i{font-style:normal;font-size:22px;line-height:1.2}
 .wrow b{display:block;font-size:14.5px}
 .wrow span{font-size:12.5px;color:var(--ink-2);line-height:1.6}
+/* 給使用者的一封信 */
+.letter{position:relative;margin:4px 0 14px;padding:26px 22px 22px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-2);font-family:var(--serif);color:var(--ink);line-height:1.95;font-size:15px}
+.letter::before{content:"";position:absolute;inset:8px;border:1px dashed var(--line);border-radius:12px;pointer-events:none}
+.letter .lhead{text-align:center;margin:0 0 14px;font-size:26px;line-height:1}
+.letter p{margin:0 0 12px}
+.letter .sign{text-align:right;margin:16px 0 0;color:var(--ink-2)}
+.letter .sign small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
+.fbtype{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
 
@@ -1360,7 +1368,8 @@ let UI={tab:'home',lastTab:'home',size:'全部尺寸',wishTab:'wait',cat:'全部
 
 const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
 // 用手機的當地日期（toISOString 是 UTC，台灣早上 8 點前會變成昨天）
-const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+let TODAY_AT=null;
+const today=()=>{const d=TODAY_AT?new Date(TODAY_AT):new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const days=d=>d?Math.floor((Date.now()-new Date(d))/864e5):null;
 // 畫面上的字可能已經被換成別的語言，程式要讀原本的中文時用這個
 const txt=el=>el.dataset&&el.dataset.o!=null?el.dataset.o:el.textContent;
@@ -1381,6 +1390,7 @@ async function save(){
   if(SAVING){SAVE_AGAIN=true;return SAVING}
   SAVING=(async()=>{do{SAVE_AGAIN=false;await saveNow()}while(SAVE_AGAIN)})();
   try{await SAVING}finally{SAVING=null}
+  try{if(!NOTIFY_BUSY)appNotifySoon()}catch(e){}
 }
 async function saveNow(){
   const lean={},seen=new Set(),writes=[];
@@ -2596,7 +2606,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-38';
+const APP_VER='2026.10.01-39';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -2737,9 +2747,42 @@ function openWelcome(){
     <div class="wrow"><i>👗</i><span><b>搭配和紀錄</b>把衣服拖到娃娃身上試穿，做成小卡分享</span></div>
     <div class="wrow"><i>🛍️</i><span><b>買前檢查<span class="pro">PRO</span></b>想買新娃衣前，先看看衣櫃裡有沒有類似的</span></div>
     <p class="hint" style="margin-top:14px">資料只存在這台裝置上，記得偶爾到設定「完整備份」。</p>
-    <button class="btn wide" onclick="S.settings.welcomed=true;save();closeSheet()">開始使用</button>
+    <button class="btn wide" onclick="S.settings.welcomed=true;save();openLetter(true)">開始使用</button>
   </div>`,()=>{S.settings.welcomed=true;save()});
 }
+/* ---- 給使用者的一封信：第一次按「開始使用」後打開，之後在 設定 → 給你的一封信 ---- */
+const LETTER=['親愛的你：',
+  '謝謝你打開哇娃衣櫃。',
+  '娃衣越買越多，常常忘了自己買過什麼、哪一件好久沒穿，預購的衣服到了才發現撞款⋯⋯所以做了這個小小的衣櫃，想幫你把娃衣好好收起來，也把和娃娃一起的日子記下來。',
+  '你的照片和資料都只存在這支手機裡，不會上傳到任何地方。記得偶爾備份一下，就像幫娃娃拍照留念一樣。',
+  '如果用起來有哪裡不順手，或是有想要的功能，歡迎到「設定 → 意見回饋」告訴我，每一封我都會好好看。',
+  '願你和你的娃娃，每天都有喜歡的穿搭，和好多好多回憶。'];
+const LETTER_SIGN='哇娃衣櫃 敬上';
+function letterHTML(){
+  return `<div class="letter"><div class="lhead">💌</div>${LETTER.map(t=>`<p>${esc(t)}</p>`).join('')}<p class="sign">${esc(LETTER_SIGN)}</p></div>`;
+}
+function openLetter(first){
+  S.settings.letterSeen=true;save();
+  openSheet(`${first?'':`<div class="sethead"><button onclick="openSettings()">‹ 設定</button></div>`}
+    ${letterHTML()}
+    <button class="btn wide" onclick="closeSheet()">${first?'開始整理衣櫃':'收好這封信'}</button>`);
+}
+/* ---- 意見回饋：寫好後用手機的寄信 App 寄出 ---- */
+const FEEDBACK_EMAIL='';   // 客服信箱，由使用者提供
+const FB_TYPES=['想要的功能','用起來有問題','其他想說的'];
+let FB={type:FB_TYPES[0],text:'',info:true};
+function feedbackInfo(){
+  const ua=navigator.userAgent,dev=/iPhone/.test(ua)?'iPhone':/iPad/.test(ua)?'iPad':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'其他';
+  const os=(ua.match(/OS (\d+[_\d]*)/)||ua.match(/Android [\d.]+/)||[''])[0].replace(/_/g,'.');
+  return `版本 ${APP_VER}・${isApp()?'App':'網頁'}・${dev}${os?' '+os:''}・${document.documentElement.lang||''}`;
+}
+function sendFeedback(){
+  const t=FB.text.trim();if(!t){toast('先寫下想說的話');return}
+  if(!FEEDBACK_EMAIL){toast('客服信箱還沒設定');return}
+  const body=t+(FB.info?`\n\n——\n${feedbackInfo()}`:'');
+  location.href=`mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('【哇娃衣櫃】'+FB.type)}&body=${encodeURIComponent(body)}`;
+}
+async function copyFeedbackMail(){try{await navigator.clipboard.writeText(FEEDBACK_EMAIL);toast('已複製信箱')}catch(e){toast(FEEDBACK_EMAIL)}}
 // 好久沒換裝的提醒：按叉叉後選 2 週後再提醒，或不再提醒（days=0）
 async function idleSnooze(id,days){
   const st=S.settings;UI.idleAsk='';
@@ -2763,56 +2806,94 @@ function homeDolls(cur){
   return list;
 }
 /* ---- 紀念日通知 ----
-   網頁版沒有自己的伺服器推播，所以是「打開 App（或切回來）時」檢查，到了提醒點就跳系統通知。
-   iPhone 要先加到主畫面（iOS 16.4 以上）才能開通知。做成 App 後會改成準時的本機排程通知。 */
-const canNotify=()=>'Notification' in window;
+   網頁版：打開（或切回來）時檢查，到了提醒點就跳系統通知；iPhone 要先加到主畫面（iOS 16.4 以上）才能開通知。
+   App 版：用本機排程通知，先把接下來 30 天每天早上 9 點的提醒排好，沒打開 App 也會準時跳。 */
+const LN=()=>isApp()&&window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.LocalNotifications;
+const canNotify=()=>isApp()?!!LN():'Notification' in window;
+// 通知權限：App 問系統（記在 appNotify），網頁看瀏覽器
+const notifyGranted=()=>isApp()?S.settings.appNotify==='granted':canNotify()&&Notification.permission==='granted';
+const notifyReady=()=>!!S.settings.notify&&notifyGranted();
 async function setHomeCountry(c){S.settings.homeCountry=c;await save();openSettings('region');if(UI.tab==='insight')renderInsight();toast(`已設定：住在${c}`)}
 async function setNotify(on){
   if(on){
     if(!canNotify()){toast(isIOS()&&!isStandalone()?'iPhone 要先把哇娃衣櫃加到主畫面，從主畫面打開才能開通知':'這個瀏覽器不支援通知');return}
-    const p=await Notification.requestPermission().catch(()=>'denied');
-    if(p!=='granted'){toast('通知權限被拒絕了，要到手機的設定裡打開');return}
+    let p;
+    if(isApp()){try{p=(await LN().requestPermissions()).display}catch(e){p='denied'}S.settings.appNotify=p}
+    else p=await Notification.requestPermission().catch(()=>'denied');
+    if(p!=='granted'){await save();toast('通知權限被拒絕了，要到手機的設定裡打開');return}
   }
   S.settings.notify=on;await save();openSettings('notify');
   if(on){toast('已開啟通知');notifyAnniv(true)}
+  else if(isApp())appNotifyClear();
+}
+// 這一天（today()）要提醒的事：[{title,body,key}]；later=true 是預先排未來的日子（到貨只看預計日期）
+function notifyList(later){
+  const out=[],add=(title,body,key)=>out.push({title,body,key});
+  for(const x of idleDolls())add(`🌿 好久沒幫 ${x.d.name} 換裝了`,`已經 ${x.n} 天了，不一定要出門，在家換一套也很好`,'idle:'+x.d.id+':'+x.last+':'+outRemind());
+  if(S.settings.holOn!==false)for(const x of holidayAlerts()){if(!x.its.length)continue;
+    add(`${holIcon(x.n)} ${x.left===0?`今天是${x.n}！`:x.left===1?`明天就是${x.n}了`:`${x.n}還有 ${x.left} 天`}`,`衣櫃裡有 ${x.its.length} 件${x.n}主題的娃衣，打開看看要怎麼搭`,x.key)}
+  if(S.settings.tripOn!==false)for(const m of tripMemories()){const t=tripMemText(m);add(t.title,t.body,m.key+':'+today().slice(0,4))}
+  if(arrOn()){const a=later?[]:arrivedOrders(),sn=soonOrders().filter(o=>{const l=dayNum(o.eta)-dayNum(today());return later?l>=0&&l<=1:l<=1});
+    if(a.length||sn.length)add(a.length?`🎁 ${a.length} 件娃衣到貨了`:`📦 ${sn.length} 件娃衣快到貨了`,a.length?'打開建檔頁，一起建檔吧':'預計明天或今天到','arr:'+today())}
+  for(const d of liveDolls()){const rs=readyStars(d);if(!rs.length)continue;
+    add(`⭐ ${d.name} 的星星罐有 ${rs.length} 顆星星可以打開了`,`${rs[0].date.replace(/-/g,'/')} 你寫下的話，約好今天打開`,'jar:'+d.id+':'+rs.map(x=>x.id).join(','))}
+  if(S.settings.annOn!==false)for(const a of dollAnniv()){
+    const nm=a.d.name,what=annWhat(a),k=annKey(a)+':'+annStage(a);
+    if(a.left===0)add(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`在家慶祝或出門走走都好，也可以做一張紀念小卡`,k);
+    else add(`🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}`,'可以先想想那天要穿什麼、去哪裡拍照',k);
+  }
+  return out;
 }
 async function notifyAnniv(test){
-  if(!S.settings.notify||!canNotify()||Notification.permission!=='granted')return;
+  if(!notifyReady())return;
+  if(isApp())return appNotifySchedule(test);
   const done=S.settings.notified=S.settings.notified||{};
   const show=async(title,body,tag)=>{
     try{const reg=await navigator.serviceWorker?.getRegistration();if(reg){await reg.showNotification(title,{body,tag,icon:'icons/icon-192.png',badge:'icons/favicon.png'});return}}catch(e){}
     try{new Notification(title,{body,tag,icon:'icons/icon-192.png'})}catch(e){}
   };
   let n=0;
-  for(const x of idleDolls()){
-    const k='idle:'+x.d.id+':'+x.last+':'+outRemind();if(done[k])continue;
-    await show(`🌿 好久沒幫 ${x.d.name} 換裝了`,`已經 ${x.n} 天了，不一定要出門，在家換一套也很好`,k);
-    done[k]=Date.now();n++;
-  }
-  if(S.settings.holOn!==false)for(const x of holidayAlerts()){
-    if(!x.its.length||done[x.key])continue;
-    await show(`${holIcon(x.n)} ${x.left===0?`今天是${x.n}！`:x.left===1?`明天就是${x.n}了`:`${x.n}還有 ${x.left} 天`}`,`衣櫃裡有 ${x.its.length} 件${x.n}主題的娃衣，打開看看要怎麼搭`,x.key);
-    done[x.key]=Date.now();n++;
-  }
-  if(S.settings.tripOn!==false)for(const m of tripMemories()){
-    const k=m.key+':'+today().slice(0,4);if(done[k])continue;
-    const t=tripMemText(m);await show(t.title,t.body,k);done[k]=Date.now();n++;
-  }
-  if(arrOn()){const a=arrivedOrders(),sn=soonOrders().filter(o=>dayNum(o.eta)-dayNum(today())<=1);
-    const k='arr:'+today();
-    if((a.length||sn.length)&&!done[k]){await show(a.length?`🎁 ${a.length} 件娃衣到貨了`:`📦 ${sn.length} 件娃衣快到貨了`,a.length?'打開建檔頁，一起建檔吧':'預計明天或今天到',k);done[k]=Date.now();n++}}
-  for(const d of liveDolls()){const rs=readyStars(d);if(!rs.length)continue;const k='jar:'+d.id+':'+rs.map(x=>x.id).join(',');if(done[k])continue;
-    await show(`⭐ ${d.name} 的星星罐有 ${rs.length} 顆星星可以打開了`,`${rs[0].date.replace(/-/g,'/')} 你寫下的話，約好今天打開`,k);done[k]=Date.now();n++}
-  if(S.settings.annOn!==false)for(const a of dollAnniv()){
-    const k=annKey(a)+':'+annStage(a);if(done[k])continue;
-    const nm=a.d.name,what=annWhat(a);
-    if(a.left===0)await show(`🎂 今天是 ${nm} ${what}！`,a.kind==='custom'?`祝 ${nm} ${a.label}快樂，打開看看要怎麼慶祝吧`:`在家慶祝或出門走走都好，也可以做一張紀念小卡`,k);
-    else await show(`🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}`,'可以先想想那天要穿什麼、去哪裡拍照',k);
-    done[k]=Date.now();n++;
-  }
+  for(const x of notifyList()){if(done[x.key])continue;await show(x.title,x.body,x.key);done[x.key]=Date.now();n++}
   if(n)save();
   else if(test===true)show('通知已開啟','紀念日、節日和好久沒換裝的娃娃，會在這裡提醒你','wc-test');
 }
+// App：通知的編號要是數字，用 key 算一個固定的號碼
+const notifId=k=>{let h=0;for(const c of k)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%2000000000+1};
+const NOTIFY_HOUR=9,NOTIFY_DAYS=30,NOTIFY_MAX=60;   // iPhone 最多只能排 64 個
+async function appNotifyClear(){try{const p=await LN().getPending();if(p.notifications.length)await LN().cancel({notifications:p.notifications.map(n=>({id:n.id}))})}catch(e){}}
+var NOTIFY_BUSY=false;
+async function appNotifySchedule(test){
+  if(NOTIFY_BUSY)return;NOTIFY_BUSY=true;
+  try{
+    const ln=LN();
+    try{const p=(await ln.checkPermissions()).display;if(p!==S.settings.appNotify){S.settings.appNotify=p;save()}if(p!=='granted')return}catch(e){}
+    const st=S.settings,done=st.notified=st.notified||{},plan=st.notifyPlan||{},now=Date.now();
+    // 之前排好、時間已經過了的，算是已經提醒過
+    for(const [k,t] of Object.entries(plan))if(t<=now)done[k]=t;
+    const list=[],seen=new Set();
+    try{
+      for(let i=0;i<=NOTIFY_DAYS&&list.length<NOTIFY_MAX;i++){
+        const d=new Date();d.setDate(d.getDate()+i);d.setHours(NOTIFY_HOUR,0,0,0);
+        TODAY_AT=i?d.getTime():null;
+        for(const x of notifyList(i>0)){
+          if(done[x.key]||seen.has(x.key))continue;seen.add(x.key);
+          // 今天的：還沒到 9 點就排 9 點，過了就馬上跳
+          list.push({...x,at:i===0&&d.getTime()<=now?now+3000:d.getTime()});
+        }
+      }
+    }finally{TODAY_AT=null}
+    if(test===true&&!list.some(x=>x.at<now+6e4))list.push({title:'通知已開啟',body:'紀念日、節日和好久沒換裝的娃娃，會在這裡提醒你',key:'wc-test:'+now,at:now+3000});
+    const use=list.slice(0,NOTIFY_MAX);
+    await appNotifyClear();
+    if(use.length)await ln.schedule({notifications:use.map(x=>({id:notifId(x.key),title:x.title,body:x.body,schedule:{at:new Date(x.at),allowWhileIdle:true},smallIcon:'ic_stat_wawa',iconColor:'#B5536B'}))});
+    st.notifyPlan=Object.fromEntries(use.filter(x=>!x.key.startsWith('wc-test')).map(x=>[x.key,x.at]));
+    await save();
+  }catch(e){console.warn('notify',e)}
+  finally{NOTIFY_BUSY=false}
+}
+// App：資料改了（例如加了生日、改了預計到貨）就重新排，同一段時間內只排一次
+var NOTIFY_T=0;
+function appNotifySoon(){if(!isApp()||!notifyReady())return;clearTimeout(NOTIFY_T);NOTIFY_T=setTimeout(()=>notifyAnniv(),4000)}
 /* ---- 到家紀念日 ---- */
 // 很久沒出門：最後一次出門或穿搭紀錄（都沒有就從建立那天算）超過設定天數
 const outRemind=()=>S.settings.outRemind===undefined?30:+S.settings.outRemind;
@@ -7598,7 +7679,7 @@ const HELP=[
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
     ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有年度回顧「娃娃的一年」（可以做成分享小卡）、搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
   ['🔔','提醒與通知',[['⚙️','設定'],['🔔','提醒與通知'],['📱','手機通知']],
-    ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；把哇娃衣櫃加到主畫面、開了手機通知，也會跳通知給你。','有新版本時畫面下方會出現「有新版本，點一下更新」。','會員另外有換季提醒：3、6、9、12 月的前兩週，提醒這一季的娃衣有幾件還沒穿過。星星罐約好打開的那天，也會提醒你。']],
+    ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；開了手機通知，也會跳通知給你。用 App 的話，提醒會在當天早上 9 點準時跳出來，沒打開 App 也收得到；用網頁版要先把哇娃衣櫃加到主畫面，打開時才會跳。','有新版本時畫面下方會出現「有新版本，點一下更新」。','會員另外有換季提醒：3、6、9、12 月的前兩週，提醒這一季的娃衣有幾件還沒穿過。星星罐約好打開的那天，也會提醒你。']],
   ['⚙️','設定：語言、外觀、幣別、類別',[['⚙️','右上角設定'],['🌐','語言'],['🌙','外觀'],['🌏','我住在・幣別'],['🗂️','類別・尺寸']],
     ['語言可以選繁體中文、簡體中文或英文，預設跟著手機。只會換畫面上的字，衣櫃裡的資料不會變。','外觀可以選淺色、深色，或跟著手機自動切換。','「我住在」選你住的國家，足跡和旅行回憶會照這個算；下面可以選記帳幣別，花費、購買中的金額和截圖匯入換算都用它。','「衣櫃類別」可以新增自己的類別（例如 和服、泳裝），不常用的也可以隱藏；「娃衣尺寸」可以加 OB11、BJD 等尺寸。','「貼圖製作」可以選每次詢問，或固定用點選去背、簡易去背、AI 出圖。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
@@ -7651,7 +7732,7 @@ function helpZoom(src){
   const d=document.createElement('div');d.className='hzoom';d.innerHTML=`<img src="${src}" alt="">`;d.onclick=()=>d.remove();document.body.appendChild(d);
 }
 // 設定：第一層是分類清單，點進去才是各自的設定（像手機的設定 App）
-const SET_PAGES={help:'使用說明',member:'會員與 AI',notify:'提醒與通知',region:'我住在',look:'外觀',lang:'語言',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
+const SET_PAGES={help:'使用說明',feedback:'意見回饋',member:'會員與 AI',notify:'提醒與通知',region:'我住在',look:'外觀',lang:'語言',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
 function openSettings(page){
   const st=S.settings,c=cfg();
   const th=st.theme||'light';
@@ -7665,9 +7746,11 @@ function openSettings(page){
       <i>♛</i><span><b>${isMember()?'會員':'免費版'}</b><small>點數 ${wallet().points}・${aiReady()?'AI 服務正常':'AI 暫時無法使用'}</small></span><em>›</em></button>
     <div class="setgroup">
       ${row('help','📖','使用說明','第一次用？看圖文教學，一步一步上手')}
+      ${row('feedback','💬','意見回饋','有問題或想要的功能，寫信告訴我')}
+      <button class="setrow" onclick="readForm();openLetter()"><i>💌</i><span><b>給你的一封信</b></span><em>›</em></button>
     </div>
     <div class="setgroup" style="margin-top:10px">
-      ${row('notify','🔔','提醒與通知',`${st.notify&&canNotify()&&Notification.permission==='granted'?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'開':'關'}・節日${st.holOn!==false?'開':'關'}・換裝${outRemind()?outRemind()+' 天':'不提醒'}`)}
+      ${row('notify','🔔','提醒與通知',`${notifyReady()?'通知已開啟':'通知未開啟'}・紀念日${st.annOn!==false?'開':'關'}・節日${st.holOn!==false?'開':'關'}・換裝${outRemind()?outRemind()+' 天':'不提醒'}`)}
     </div>
     <p class="setlabel">我的衣櫃</p>
     <div class="setgroup">
@@ -7720,8 +7803,14 @@ function openSettings(page){
         ${st.trial?`<button class="btn sm ghost grow" onclick="S.settings.trial=null;save().then(()=>{updateWalletChip();openSettings('member')})">重置試用</button>`:''}</div>
     </div>`;
   }
+  if(page==='feedback')body=`<p class="hint" style="margin:-6px 0 12px">想要的功能、用起來卡卡的地方，或只是想說說話，都歡迎寫給我。按「寄出」會打開手機的寄信 App。</p>
+    <div class="swap fbtype" id="fb_type">${FB_TYPES.map(t=>`<button type="button" class="${FB.type===t?'on':''}" onclick="FB.type=txt(this);document.querySelectorAll('#fb_type button').forEach(b=>b.classList.toggle('on',b===this))">${t}</button>`).join('')}</div>
+    <label class="f"><span>想說的話</span><textarea rows="7" maxlength="2000" placeholder="例如：希望衣櫃可以依顏色排序／建檔時按了 AI 分析沒有反應…" oninput="FB.text=this.value">${esc(FB.text)}</textarea></label>
+    <label class="remember" style="margin:0 0 12px"><input type="checkbox" ${FB.info?'checked':''} onchange="FB.info=this.checked"> 附上版本和手機型號（遇到問題時比較好找原因）</label>
+    <button class="btn wide" onclick="sendFeedback()">寄出</button>
+    ${FEEDBACK_EMAIL?`<div class="row" style="margin-top:12px;align-items:center"><span class="grow hint" style="margin:0">打不開寄信 App？直接寄到 <b translate="no">${esc(FEEDBACK_EMAIL)}</b></span><button class="btn sm ghost" onclick="copyFeedbackMail()">複製</button></div>`:''}`;
   if(page==='notify'){
-    const on=st.notify&&canNotify()&&Notification.permission==='granted';
+    const on=notifyReady();
     body=`
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">手機通知</b><div class="hint">${on?'已開啟':'建議開啟，才不會錯過娃娃的生日和到家紀念日'}</div></span>
