@@ -440,5 +440,15 @@
 "跟著國家（{0}）": "Follow country ({0})",
 "已設定記帳幣別": "Currency set",
 "會員 {0}／月，每月多出的額度大約等於 {1} 點，用點數買要 {2}。": "Membership is {0}/month; the extra monthly quota is worth about {1} points, which would cost {2} in points.",
-"平均每月 {0}": "About {0} / month"
+"平均每月 {0}": "About {0} / month",
+"系列（選填）": "Series (optional)",
+"搜尋名稱、系列、品牌、購買管道": "Search name, series, brand, shop",
+"找不到符合的": "No matches",
+"換個關鍵字試試看": "Try a different keyword",
+"例如 甜心派對系列": "e.g. Sweetheart Party series",
+"同一個品牌推出的系列或主題，例如「甜心派對系列」。之後出售時可以一起寫出來。": "A series or theme from the same brand, e.g. \"Sweetheart Party\". You can include it when you sell the item later.",
+"搜尋名稱、系列、品牌、標籤": "Search name, series, brand, tags",
+"選填，例如 甜心派對系列": "Optional, e.g. Sweetheart Party series",
+"批次改系列": "Batch change series",
+"清空系列": "Clear series"
 }
