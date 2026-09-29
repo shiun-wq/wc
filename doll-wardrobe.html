@@ -536,8 +536,8 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .wgrid{grid-template-columns:repeat(3,1fr);gap:14px 10px}.wgrid .nm{font-size:12px}
 .pkset{margin-left:auto;font-size:11.5px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
 .resume{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);margin-bottom:12px}
-.resume .rph{flex:0 0 34%;aspect-ratio:3/4;border-radius:14px;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%);display:grid;place-items:center;overflow:hidden}
-.resume .rph img{width:100%;height:100%;object-fit:contain;padding:8px}
+.resume .rph{position:relative;flex:0 0 34%;aspect-ratio:3/4;border-radius:14px;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%);display:grid;place-items:center;overflow:hidden}
+.resume .rph img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:8px;box-sizing:border-box}
 .resume dl{flex:1;margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-content:start;min-width:0}
 .resume dl div{display:contents;font-size:13.5px;line-height:1.4}
 .resume dt{color:var(--muted);font-size:12px;white-space:nowrap;line-height:1.55}
@@ -666,6 +666,9 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .iconbtn.back{margin:0 -4px 0 -12px}
 .iconbtn[hidden]{display:none}
 header.top.subview h1::before{display:none}
+/* 子頁標題：名字多長都不換行，太長就縮小字、最後用「…」 */
+header.top.subview h1{display:block;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header.top .wchip,header.top .iconbtn{flex-shrink:0;white-space:nowrap}
 nav.tabs button.plus svg{width:26px;height:26px;padding:5px;box-sizing:content-box;border-radius:14px;color:#fff;
   background:linear-gradient(135deg,#B8627B,var(--berry-deep));box-shadow:0 6px 14px -6px rgba(162,77,102,.7)}
 nav.tabs button.plus{gap:1px}
@@ -834,7 +837,7 @@ nav.tabs button.plus.on{color:var(--berry)}
 .mcol em{position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);font-style:normal;font-size:10.5px;color:var(--ink-2);white-space:nowrap}
 .mlab{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:5px}
 .mlab span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap}
-.wchip{margin-left:8px;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 11px;border-radius:999px;
+.wchip{margin-left:8px;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 11px;border-radius:999px;
   background:var(--gold-soft);color:var(--ink);font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;border:1px solid rgba(179,144,96,.25)}
 .wchip i{font-style:normal;color:var(--gold)}
 .wcardbig{padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#B8627B,#843B52 60%,#6E2F44);box-shadow:0 14px 30px -14px rgba(132,59,82,.8)}
@@ -2448,7 +2451,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-16';
+const APP_VER='2026.10.01-17';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2585,6 +2588,10 @@ async function idleSnooze(id,days){
   else{st.idleNever={...(st.idleNever||{}),[id]:true};toast('不再提醒，可以在娃娃的「編輯」打開')}
   await save();renderHome();
 }
+// 子頁標題太長時自動縮小字（再長就用「…」）
+(()=>{const t=document.getElementById('title');if(!t)return;
+  const fit=()=>{const n=[...(t.textContent||'')].length,sub=document.querySelector('header.top').classList.contains('subview');t.style.fontSize=!sub?'':n>11?'16px':n>8?'18px':''};
+  new MutationObserver(fit).observe(t,{childList:true,characterData:true,subtree:true});})();
 // 沒有圖片的娃衣（只記名稱的）不要出現破圖：載不到的圖片直接藏起來，留下底色
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG')t.style.visibility='hidden'},true);
 async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
