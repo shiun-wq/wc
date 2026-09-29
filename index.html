@@ -675,18 +675,21 @@ nav.tabs button.plus.on{color:var(--berry)}
 .scwrap img:not([src]){display:none}
 .scwrap .spin{position:absolute;width:22px;height:22px}
 .cabinet{margin-top:6px;padding:18px 12px 6px;border-radius:24px;background:linear-gradient(180deg,var(--wood-bg1),var(--wood-bg2));box-shadow:inset 0 2px 10px rgba(0,0,0,.08)}
-.shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;padding-bottom:14px;margin-bottom:18px}
-.shelf::before{content:"";position:absolute;left:-6px;right:-6px;top:calc(min(30vw,150px) - 2px);height:12px;border-radius:4px;
+.shelf{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;position:relative;padding-bottom:8px;margin-bottom:12px}
+.shelf::before{content:"";position:absolute;left:-6px;right:-6px;top:calc(min(24vw,112px) - 2px);height:10px;border-radius:4px;
   background:linear-gradient(180deg,var(--wood1),var(--wood2));box-shadow:0 6px 10px -4px rgba(0,0,0,.25)}
 .dcell{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;z-index:1;min-width:0;transition:transform .18s var(--ease)}
 .dcell:active{transform:scale(.96)}
-.dstand{position:relative;height:min(30vw,150px);width:100%;display:flex;align-items:flex-end;justify-content:center}
+.dstand{position:relative;height:min(24vw,112px);width:100%;display:flex;align-items:flex-end;justify-content:center}
 .dstand img{max-width:92%;max-height:94%;object-fit:contain;filter:drop-shadow(0 6px 6px rgba(0,0,0,.18))}
+.dstand.small img{max-height:66%;max-width:72%}
+.dcell .pin{font-size:11px}
+.rank{transform:scale(.85);transform-origin:top left}
 .dstand .ph svg{height:80px;width:auto}
-.dcell.add .dstand span{width:56px;height:56px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;border:1.5px dashed var(--line-2);color:var(--muted);font-size:26px;font-weight:300}
-.dcell b{margin-top:18px;font-size:13.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcell.add .dstand span{width:44px;height:44px;margin-bottom:8px;border-radius:50%;display:grid;place-items:center;border:1.5px dashed var(--line-2);color:var(--muted);font-size:26px;font-weight:300}
+.dcell b{margin-top:13px;font-size:12.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dcell span{font-size:11px;color:var(--muted)}
-.dcell em{font-style:normal;font-size:10.5px;margin-top:3px;padding:1px 8px;border-radius:999px;background:var(--berry-soft);color:var(--berry-deep);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcell em{font-style:normal;font-size:10px;margin-top:2px;padding:1px 6px;border-radius:999px;background:var(--berry-soft);color:var(--berry-deep);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dcell em.src{background:var(--gold-soft);color:var(--ink-2)}
 .rank{position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--num);font-weight:700;font-size:15px;color:#fff;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.35);box-shadow:0 2px 6px rgba(0,0,0,.2)}
 .rank.r1{background:linear-gradient(135deg,#E2C07A,#B8914A)}
@@ -2496,6 +2499,11 @@ let DD={};
 const DOLL_SRC=['跟團購買','私生','官方','二手','交換／贈送','其他'];
 const DOLL_SORT=[['out','常帶出門'],['wear','常換裝'],['new','最新到家'],['price','金額']];
 const outCount=d=>(d.outs||[]).length;
+// 娃娃櫃裡比較小隻的（例如 10cm 跟 20cm 放一起）站得矮一點，看得出大小
+function dollSmall(d){
+  const cm=x=>parseFloat(x&&x.size)||0,max=Math.max(0,...S.dolls.map(cm));
+  return cm(d)>0&&max>0&&cm(d)<=max*.6;
+}
 function renderDolls(){
   const el=document.getElementById('dollList');
   const srt=UI.dollSort||'out';
@@ -2508,7 +2516,7 @@ function renderDolls(){
   const cnt=f=>S.dolls.filter(f).length;
   // 依照「常帶出門」排出前三名
   const rank=S.dolls.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
-  const rows=[];for(let i=0;i<list.length+1;i+=3)rows.push(list.slice(i,i+3));
+  const rows=[];for(let i=0;i<list.length+1;i+=4)rows.push(list.slice(i,i+4));
   el.innerHTML=`
     <div class="stat">
       <div><b>${S.dolls.length}</b><span>隻娃娃</span></div>
@@ -2520,7 +2528,7 @@ function renderDolls(){
       ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
         const n=rank.indexOf(d.id);
         return `<button class="dcell" onclick="openDoll('${d.id}')">
-          <div class="dstand">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}${dollOpen(d).some(c=>c.status==='處理中')?'<span class="pin" style="left:6px;right:auto" title="在手作娘那裡">🪡</span>':dollOpen(d).length?'<span class="pin" style="left:6px;right:auto" title="有要處理的">⚠️</span>':''}
+          <div class="dstand ${dollSmall(d)?'small':''}">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}${d.pin?'<span class="pin" title="釘選在首頁">📌</span>':''}${dollOpen(d).some(c=>c.status==='處理中')?'<span class="pin" style="left:6px;right:auto" title="在手作娘那裡">🪡</span>':dollOpen(d).length?'<span class="pin" style="left:6px;right:auto" title="有要處理的">⚠️</span>':''}
             ${n>=0&&srt==='out'?`<span class="rank r${n+1}">${n+1}</span>`:''}</div>
           <b>${esc(d.name)}</b>
           <span>${srt==='wear'?`換裝 ${dollWears(d).length} 次`:srt==='price'&&d.price?`$${(+d.price).toLocaleString()}`:`出門 ${outCount(d)} 次`}</span>
