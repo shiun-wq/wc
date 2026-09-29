@@ -471,6 +471,8 @@ details.help[open] summary em{transform:rotate(90deg)}
 .hshots figcaption{font-size:11.5px;color:var(--ink-2);margin-top:6px;line-height:1.4}
 .hzoom{position:fixed;inset:0;z-index:600;background:rgba(20,16,18,.86);display:grid;place-items:center;padding:20px;animation:fade .2s ease}
 .hzoom img{max-width:100%;max-height:100%;border-radius:18px}
+.hcredit{margin:16px 4px 0;text-align:center}
+.hcredit p{font-size:11.5px;color:var(--muted);margin:3px 0;line-height:1.5}
 .hsteps{display:flex;align-items:flex-start;gap:4px;overflow-x:auto;padding:4px 16px 10px}
 .hsteps>div{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;width:64px;text-align:center}
 .hsteps span{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:linear-gradient(135deg,var(--berry-soft),var(--gold-soft))}
@@ -845,6 +847,8 @@ nav.tabs button.plus.on{color:var(--berry)}
 .wcard .ochk{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:2px solid var(--line-2);background:var(--card);display:grid;place-items:center;font-style:normal;font-size:13px;color:#fff;z-index:2}
 .wcard.osel .ochk{background:var(--berry);border-color:var(--berry)}
 textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--card);color:var(--ink);resize:vertical}
+.nacts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.nacts .btn{white-space:nowrap;padding-left:6px;padding-right:6px;font-size:13px;justify-content:center}
 .bstatwrap{margin-top:18px;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--card)}
 .bstatwrap summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-2)}
 .mhead{display:grid;grid-template-columns:1fr 58px 58px;gap:0;padding:6px 12px !important;font-size:12px;color:var(--muted);text-align:center;margin:-4px 0 0;position:sticky;top:30px;background:var(--paper);z-index:1;padding:6px 0}
@@ -2267,7 +2271,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.09.29-2';
+const APP_VER='2026.09.30-2';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2298,9 +2302,9 @@ function homeCards(){
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
       <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年。出門走走，或在家幫 ${nm} 換上最喜歡的衣服慶祝都好，拍張照留下紀念吧。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，在家慶祝或出門走走都好。`}</span>
-      <div class="row">${out?`<button class="btn sm ghost" disabled>今天已經帶出門了 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">今天帶 ${nm} 出門</button>`}
+      <div class="nacts">${out?`<button class="btn sm ghost" disabled>已出門 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">🚶 帶出門</button>`}
         <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
-        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄穿搭</button></div>
+        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">👗 記錄穿搭</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
       <b>🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}</b>
@@ -3361,7 +3365,9 @@ function renderCloset(){
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
 
-  document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${S.items.length} 件`:'';
+  // 件數跟洞察一致：套裝本身不算一件（它拆出來的單品才算）
+  const nPieces=S.items.filter(i=>i.category!=='套裝').length;
+  document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${nPieces} 件`:'';
   const el=document.getElementById('closetGrid');
   UI.closetList=list.map(i=>i.id);UI.msel=UI.msel||new Set();
   renderMultiBar();
@@ -4918,11 +4924,11 @@ function renderWears(){
     <div class="rowitem">
       ${wearThumb(w)}
       <div class="tx"><b>${w.date}${w.dollName?'　'+esc(w.dollName):''}</b>
-        <span>${w.place?(w.place==='在家'?'🏠 ':'🚶 '+(w.spot&&w.spot.r?esc(spotText(w.spot))+'・':'')):''}${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
-      <div class="rt row"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" onclick="delWear('${w.id}')">刪除</button></div>
+        <span>${w.place?(w.place==='在家'?'🏠 ':'🚶 '+(w.spot&&(w.spot.c||w.spot.r)?esc(spotText(w.spot))+'・':'')):''}${w.itemIds.map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')}</span></div>
+      <div class="rt row" style="gap:6px"><button class="btn sm quiet" onclick="openShare('wear','${w.id}')">小卡</button><button class="btn sm ghost" style="padding-left:10px;padding-right:10px" onclick="delWear('${w.id}')" aria-label="刪除">✕</button></div>
     </div>`).join('');
 }
-async function delWear(id){S.wears=S.wears.filter(w=>w.id!==id);await save();renderWears()}
+async function delWear(id){if(!confirm('刪除這筆穿搭紀錄？'))return;S.wears=S.wears.filter(w=>w.id!==id);await save();renderWears()}
 
 /* ============================================================
    9b. 分享小卡
@@ -5893,6 +5899,12 @@ const HELP=[
 ];
 // 說明頁的截圖（help/ 資料夾，用示範資料自動產生）：key 是主題標題
 const HELP_SHOTS={
+  '建檔：把娃衣放進衣櫃':[['intake','拍好照片、選尺寸，AI 會幫你填名稱和風格']],
+  '貼圖怎麼做':[['editor','手動去背：兩指放大，亮的部分會留下']],
+  '搭配：幫娃娃試穿':[['studio','把衣服拖到娃娃身上試穿']],
+  '記錄今天的穿搭':[['wear-list','穿搭紀錄：照片、在家或去了哪裡'],['wear-card','做成拍立得小卡分享']],
+  '壓箱底・狀況・出售':[['sell-card','出售貼文：一次做好圖和文字']],
+  '整理衣櫃':[['closet','衣櫃：類別、狀態、尺寸一起篩選']],
   '娃娃櫃與紀念日':[['doll-home','首頁：主角娃娃站在舞台上，紀念日當天會提醒'],['doll-cabinet','娃娃櫃：每隻娃娃的尺寸、出門次數'],['doll-page','娃娃頁：來家裡第幾天、紀念日'],['doll-card','紀念小卡：一鍵做成分享圖']],
   '娃娃的整理與配件':[['doll-care','記錄換骨架、交給手作娘，和配件在不在']],
   '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-insight','洞察：去過幾個縣市、幾個國家']]
@@ -5903,7 +5915,9 @@ function helpHTML(){
       <div class="hsteps">${steps.map(([e,l],n)=>`<div><span>${e}</span><small>${n+1}. ${l}</small></div>`).join('<i>→</i>')}</div>
       ${sh.length?`<div class="hshots">${sh.map(([f,c])=>`<figure onclick="helpZoom('help/${f}.jpg')"><img src="help/${f}.jpg" alt="${esc(c)}" loading="lazy"><figcaption>${esc(c)}</figcaption></figure>`).join('')}</div>`:''}
       <ul>${tips.map(x=>`<li>${x}</li>`).join('')}</ul></details>`}).join('')}
-    <p class="hint" style="margin:14px 2px 0;text-align:center">示範娃娃：尉霆・梁湛・小尉霆・小梁湛</p>
+    <div class="hcredit"><p>示範娃娃：尉霆・梁湛・小尉霆・小梁湛（自製娃娃）</p>
+      <p>示範娃衣：帕帕斯〈光影・黑〉、棉花星球〈狐耳摩斯〉、魚譜〈字母上衣〉、方塊兒日記〈搖滾狂想曲〉、夾心芝麻堡〈耳機〉</p>
+      <p>建檔、搭配、出售畫面裡的衣服是示範用插圖</p></div>
     <button class="btn ghost wide" style="margin-top:12px" onclick="closeSheet();setTimeout(openWelcome,300)">再看一次歡迎畫面</button>`;
 }
 function helpZoom(src){
