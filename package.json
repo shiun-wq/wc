@@ -1,0 +1,22 @@
+{
+  "name": "wawa-closet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "哇娃衣櫃 App（Capacitor 外殼）。網頁本體還是根目錄的 index.html。",
+  "scripts": {
+    "build": "node scripts/build-www.js",
+    "sync": "node scripts/build-www.js && cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/share": "^8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}

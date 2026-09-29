@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">哇娃衣櫃</string>
+    <string name="title_activity_main">哇娃衣櫃</string>
+    <string name="package_name">com.wawacloset.app</string>
+    <string name="custom_url_scheme">com.wawacloset.app</string>
+</resources>
