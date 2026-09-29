@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=14"></script>
+<script src="i18n/i18n.js?v=15"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -565,7 +565,6 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .dletter{display:block;width:100%;text-align:left;margin:12px 0;padding:12px 16px;border-radius:14px;background:var(--berry-soft);border-left:3px solid var(--berry)}
 .dletter small{display:block;font-size:12px;color:var(--muted)}
 .dletter p{margin:4px 0 0;font-family:var(--serif);font-size:15.5px;line-height:1.6;color:var(--ink)}
-.dletter.empty{background:transparent;border:1.5px dashed var(--line);color:var(--muted);font-size:13px}
 .nletter{margin:6px 0 4px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.55);font-size:13px;color:var(--ink-2);line-height:1.6}
 .nletter b{font-family:var(--serif);color:var(--ink)}
 [data-theme=dark] .nletter{background:rgba(0,0,0,.2)}
@@ -596,6 +595,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .starreveal p{font-family:var(--serif);font-size:19px;line-height:1.7;margin:14px 6px 22px;color:var(--ink)}
 .dletter.jarrow p{font-family:inherit;font-size:14px}
 
+.dhome.djar{margin-top:-4px}.dhome.djar b{color:var(--berry-deep);font-weight:600}
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
@@ -2591,7 +2591,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-31';
+const APP_VER='2026.10.01-32';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2639,11 +2639,6 @@ function homeCards(){
       <b>${t.title}</b><span>${esc(t.body)}</span>
       <div class="row">${w?`<button class="btn sm" onclick="openShare('wear','${w.id}')">做回憶小卡</button>`:''}<button class="btn sm ghost" onclick="UI.dollTab='foot';go('dolls')">看足跡</button></div></section>`);
   });
-  // 0-1b. 星星罐：到了約好的日子
-  liveDolls().forEach(d=>{const rs=readyStars(d);if(!rs.length)return;const k='jar:'+d.id+':'+rs.map(x=>x.id).join(',');if(st.annHide[k])return;
-    h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
-      <b>⭐ ${esc(d.name)} 的星星罐有 ${rs.length} 顆星星可以打開了</b><span>${rs[0].date.replace(/-/g,'/')} 你寫給 ${esc(d.name)} 的話，約好今天打開。</span>
-      <div class="row"><button class="btn sm" onclick="openJar('${d.id}')">🌟 打開星星罐</button></div></section>`)});
   // 0-2. 會員：年度回顧、換季提醒
   const rc=recapAlert();
   if(rc&&!st.annHide[rc.key])h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${rc.key}']=1;save();renderHome()" aria-label="隱藏">×</button>
@@ -2703,6 +2698,11 @@ function homeCards(){
       <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({dollId:'${x.d.id}',scene:'在家陪伴'}),250)">幫 ${nm} 搭一套</button><button class="btn sm ghost" onclick="openWear()">記錄今天穿搭</button></div>
     </section>`);
   }
+  // 星星罐：到了約好的日子（放在好久沒換裝下面，一打開首頁就看得到）
+  liveDolls().forEach(d=>{const rs=readyStars(d);if(!rs.length)return;const k='jar:'+d.id+':'+rs.map(x=>x.id).join(',');if(st.annHide[k])return;
+    h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>⭐ ${esc(d.name)} 的星星罐有 ${rs.length} 顆星星可以打開了</b><span>${rs[0].date.replace(/-/g,'/')} 你寫給 ${esc(d.name)} 的話，約好今天打開。</span>
+      <div class="row"><button class="btn sm" onclick="openJar('${d.id}')">🌟 打開星星罐</button></div></section>`)});
   // 1. 新手引導
   const steps=[
     [S.dolls.length>0,'放上你的娃娃','首頁中間會是娃娃的舞台',"openDoll()"],
@@ -3280,8 +3280,7 @@ function drawDollPage(d){
     </div>
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
-    ${starsOf(d).length?(()=>{const st=starsOf(d),rd=readyStars(d).length,lk=st.filter(x=>starLocked(d,x)).length;return `<button class="dletter jarrow" onclick="openJar('${d.id}')"><small>⭐ ${esc(d.name)} 的星星罐・${st.length} 顆</small><p>${rd?`🌟 有 ${rd} 顆星星可以打開了！`:lk?`${lk} 顆在等約好的日子打開`:'打開看看寫過的話'} ›</p></button>`})()
-      :isLive(d)?`<button class="dletter empty" onclick="openJar('${d.id}')">⭐ 寫一句話給 ${esc(d.name)}，放進星星罐，約好的那天再打開 ›</button>`:''}
+    ${isLive(d)||starsOf(d).length?(()=>{const st=starsOf(d),rd=readyStars(d).length;return `<span class="dhome djar">⭐ ${st.length?`星星罐 ${st.length} 顆${rd?`・<b>🌟 ${rd} 顆可以打開</b>`:''}　`:''}<a href="javascript:void 0" onclick="openJar('${d.id}')">${rd?'打開星星罐':st.length?'再寫一句話':'寫一句話給 '+esc(d.name)}</a></span>`})():''}
     <div class="dlinks">
       <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
