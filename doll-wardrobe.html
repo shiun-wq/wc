@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=12"></script>
+<script src="i18n/i18n.js?v=13"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -573,6 +573,28 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .dline div{flex:0 0 auto;text-align:center;width:84px}
 .dline img{width:84px;height:110px;object-fit:contain;display:block}
 .dline span{display:block;font-size:12px;padding:6px 0 10px;color:var(--ink-2)}
+
+/* 星星罐 */
+.jar{position:relative;width:170px;margin:4px auto 0}
+.jarlid{width:120px;height:18px;margin:0 auto;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#E3B85A,#C99A45);box-shadow:0 2px 0 rgba(0,0,0,.08)}
+.jarbody{position:relative;height:170px;margin-top:-2px;border-radius:26px 26px 40px 40px;background:linear-gradient(135deg,rgba(255,255,255,.75),rgba(255,255,255,.35));border:2px solid var(--line);box-shadow:inset 0 -18px 30px rgba(226,184,90,.18),0 8px 20px -12px rgba(0,0,0,.25);overflow:hidden}
+[data-theme=dark] .jarbody{background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04))}
+.jarbody i{position:absolute;font-style:normal;line-height:1}
+.jarempty{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--muted)}
+.jstar{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.jstar p{margin:0 0 4px;font-family:var(--serif);font-size:15px;line-height:1.6;color:var(--ink)}
+.jstar small{display:block;font-size:12px;color:var(--muted)}
+.jstar span{display:block;font-size:14px;font-weight:600;color:var(--ink-2)}
+.jstar .row{margin-top:8px;gap:6px}
+.jstar.locked{background:var(--swatch);border-style:dashed}
+.jstar.ready{background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));border-color:transparent;animation:jarGlow 2s ease-in-out infinite}
+@keyframes jarGlow{50%{box-shadow:0 0 0 4px rgba(227,184,90,.25)}}
+.starreveal{text-align:center;padding:10px 4px}
+.starreveal .big{font-size:64px;animation:starPop .7s var(--ease)}
+@keyframes starPop{0%{transform:scale(.2) rotate(-40deg);opacity:0}70%{transform:scale(1.15)}100%{transform:none;opacity:1}}
+.starreveal small{display:block;color:var(--muted);font-size:13px;margin-top:8px}
+.starreveal p{font-family:var(--serif);font-size:19px;line-height:1.7;margin:14px 6px 22px;color:var(--ink)}
+.dletter.jarrow p{font-family:inherit;font-size:14px}
 
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -1393,7 +1415,7 @@ async function load(){
   if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
   // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
   if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
-  S.dolls=S.dolls||[];S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
+  S.dolls=S.dolls||[];migrateLetters();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
     const old={'10cm 棉花娃':'10cm','15cm 棉花娃':'15cm','20cm 棉花娃':'20cm'};
@@ -2569,7 +2591,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-29';
+const APP_VER='2026.10.01-30';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2599,7 +2621,6 @@ function homeCards(){
     const hide=`<button class="x" onclick="S.settings.annHide['${key}:${annStage(a)}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
-      ${a.kind==='year'&&a.d.letter?`<div class="nletter">💌 ${a.d.letterAt?`${a.d.letterAt.replace(/-/g,'/')} `:''}你寫給 ${nm}：<b>「${esc(a.d.letter)}」</b></div>`:''}
       <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年。出門走走，或在家幫 ${nm} 換上最喜歡的衣服慶祝都好，拍張照留下紀念吧。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，在家慶祝或出門走走都好。`}</span>
       <div class="nacts">${out?`<button class="btn sm ghost" disabled>已出門 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">🚶 帶出門</button>`}
         <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
@@ -2618,6 +2639,11 @@ function homeCards(){
       <b>${t.title}</b><span>${esc(t.body)}</span>
       <div class="row">${w?`<button class="btn sm" onclick="openShare('wear','${w.id}')">做回憶小卡</button>`:''}<button class="btn sm ghost" onclick="UI.dollTab='foot';go('dolls')">看足跡</button></div></section>`);
   });
+  // 0-1b. 星星罐：到了約好的日子
+  liveDolls().forEach(d=>{const rs=readyStars(d);if(!rs.length)return;const k='jar:'+d.id+':'+rs.map(x=>x.id).join(',');if(st.annHide[k])return;
+    h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>⭐ ${esc(d.name)} 的星星罐有 ${rs.length} 顆星星可以打開了</b><span>${rs[0].date.replace(/-/g,'/')} 你寫給 ${esc(d.name)} 的話，約好今天打開。</span>
+      <div class="row"><button class="btn sm" onclick="openJar('${d.id}')">🌟 打開星星罐</button></div></section>`)});
   // 0-2. 會員：年度回顧、換季提醒
   const rc=recapAlert();
   if(rc&&!st.annHide[rc.key])h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${rc.key}']=1;save();renderHome()" aria-label="隱藏">×</button>
@@ -2770,6 +2796,8 @@ async function notifyAnniv(test){
   if(arrOn()){const a=arrivedOrders(),sn=soonOrders().filter(o=>dayNum(o.eta)-dayNum(today())<=1);
     const k='arr:'+today();
     if((a.length||sn.length)&&!done[k]){await show(a.length?`🎁 ${a.length} 件娃衣到貨了`:`📦 ${sn.length} 件娃衣快到貨了`,a.length?'打開建檔頁，一起建檔吧':'預計明天或今天到',k);done[k]=Date.now();n++}}
+  for(const d of liveDolls()){const rs=readyStars(d);if(!rs.length)continue;const k='jar:'+d.id+':'+rs.map(x=>x.id).join(',');if(done[k])continue;
+    await show(`⭐ ${d.name} 的星星罐有 ${rs.length} 顆星星可以打開了`,`${rs[0].date.replace(/-/g,'/')} 你寫下的話，約好今天打開`,k);done[k]=Date.now();n++}
   if(S.settings.annOn!==false)for(const a of dollAnniv()){
     const k=annKey(a)+':'+annStage(a);if(done[k])continue;
     const nm=a.d.name,what=annWhat(a);
@@ -2877,12 +2905,99 @@ function archiveHTML(){
     ${gone.length?`<p class="mh">已經離開的</p><div class="shelf arch">${gone.map(cell).join('')}</div>`:''}
     <p class="hint">收起來的娃娃不會出現在首頁和提醒裡，想玩的時候點進去按「拿出來」。</p></details>`;
 }
+/* ---- ⭐ 星星罐：想到就寫一句話給娃娃，放進罐子，約好的那天再打開 ----
+   每顆星星：{id,text,date 寫的日子,open:'now'|'anniv'|'bday'|'date',at 打開的日子,opened,openedAt}
+   到了打開的日子：首頁和通知提醒「星星罐有星星可以打開了」。寫過的都可以偷看、修改、刪除。 */
+const mdNext=(md,after)=>{if(!md)return null;const y=+after.slice(0,4);let t=`${y}-${md}`;if(t<=after)t=`${y+1}-${md}`;return t};
+const dollBday=d=>((d.dates||[]).find(x=>x.label==='生日')||{}).md||null;
+function starAt(d,s){
+  if(s.open==='now')return s.date;
+  if(s.open==='anniv')return mdNext(d.home?d.home.slice(5):null,s.date);
+  if(s.open==='bday')return mdNext(dollBday(d),s.date);
+  return s.at||null;
+}
+const starsOf=d=>(d&&d.stars)||[];
+const starReady=(d,s)=>!s.opened&&(s.at||'9999')<=today();
+const starLocked=(d,s)=>!s.opened&&(s.at||'9999')>today();
+const readyStars=d=>starsOf(d).filter(s=>starReady(d,s));
+const starOpenLabel=(d,s)=>s.open==='anniv'?'到家紀念日':s.open==='bday'?'生日':s.open==='now'?'隨時':'約好的日子';
+// 舊版「寫給娃娃的一句話」搬進星星罐
+function migrateLetters(){
+  S.dolls.forEach(d=>{if(d.letter&&!d.stars){const date=d.letterAt||today();const s={id:uid('st'),text:d.letter,date,open:'anniv',opened:false};s.at=starAt(d,s);d.stars=[s]}
+    if(d.stars){delete d.letter;delete d.letterAt}});
+}
+let JAR={};
+function openJar(id,opt){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  JAR=Object.assign({id,edit:null,text:'',open:d.home?'anniv':'date',at:'',peek:{}},opt||{});
+  drawJar();
+}
+function drawJar(){
+  const d=S.dolls.find(x=>x.id===JAR.id);if(!d)return;
+  const st=starsOf(d).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')),ready=st.filter(s=>starReady(d,s)),locked=st.filter(s=>starLocked(d,s)),opened=st.filter(s=>s.opened);
+  const e=JAR.edit?st.find(s=>s.id===JAR.edit):null;
+  const bd=dollBday(d),opts=[d.home?['anniv',`下一個到家紀念日（${+mdNext(d.home.slice(5),today()).slice(5,7)}/${+mdNext(d.home.slice(5),today()).slice(8)}）`]:null,bd?['bday',`生日（${+bd.slice(0,2)}/${+bd.slice(3)}）`]:null,['date','指定日期'],['now','不用等，現在就放著看']].filter(Boolean);
+  if(!opts.some(o=>o[0]===JAR.open))JAR.open=opts[0][0];
+  // 星星從罐底往上堆，每排 5 顆
+  const rj=seeded(d.id+':jar'),stars=Array.from({length:Math.min(st.length,30)},(_,i)=>{const row=Math.floor(i/5),col=i%5;return `<i style="left:${6+col*18+rj()*6}%;bottom:${5+row*14+rj()*5}%;transform:rotate(${rj()*50-25}deg);font-size:${20+rj()*8}px">${i<ready.length?'🌟':'⭐'}</i>`}).join('');
+  const card=(s,mode)=>{const at=s.at?s.at.replace(/-/g,'/'):'';
+    if(mode==='locked'&&!JAR.peek[s.id])return `<div class="jstar locked"><span>🔒 ${at} 打開・${starOpenLabel(d,s)}</span><small>寫於 ${s.date.replace(/-/g,'/')}</small>
+      <div class="row"><button class="btn sm ghost" onclick="JAR.peek['${s.id}']=1;drawJar()">偷看</button></div></div>`;
+    if(mode==='ready')return `<button class="jstar ready" onclick="openStar('${s.id}')"><span>🌟 可以打開了！</span><small>${s.date.replace(/-/g,'/')} 寫的・點一下打開</small></button>`;
+    return `<div class="jstar"><p>「${esc(s.text)}」</p><small>寫於 ${s.date.replace(/-/g,'/')}${s.opened&&s.openedAt&&s.open!=='now'?`・${s.openedAt.replace(/-/g,'/')} 打開`:!s.opened&&at?`・${at} 打開`:''}</small>
+      <div class="row"><button class="btn sm ghost" onclick="JAR.edit='${s.id}';JAR.text=${esc(JSON.stringify(s.text))};JAR.open='${s.open}';JAR.at='${s.at||''}';drawJar();setTimeout(()=>document.getElementById('jar_t').focus(),200)">修改</button>
+      <button class="btn sm ghost" style="color:var(--muted)" onclick="delStar('${s.id}')">刪除</button></div></div>`};
+  openSheet(`<div class="sethead"><button onclick="openDoll('${d.id}')">‹ ${esc(d.name)}</button></div>
+    <h3>⭐ ${esc(d.name)} 的星星罐</h3>
+    <div class="jar"><div class="jarlid"></div><div class="jarbody">${stars||'<span class="jarempty">還是空的</span>'}</div></div>
+    <p class="hint" style="text-align:center;margin:8px 0 14px">${st.length?`裡面有 ${st.length} 顆星星${ready.length?`，<b style="color:var(--berry-deep)">${ready.length} 顆可以打開了</b>`:locked.length?`，${locked.length} 顆在等約好的日子`:''}`:'想到什麼就寫給 '+esc(d.name)+'，放進罐子，約好的那天再打開'}</p>
+    <div class="card">
+      <label class="f" style="margin:0"><span>${e?'修改這顆星星':'寫一句話給 '+esc(d.name)}</span><textarea id="jar_t" rows="3" maxlength="120" placeholder="今天帶你去看海了，好開心；希望明年也一起去很多地方" oninput="JAR.text=this.value">${esc(JAR.text)}</textarea></label>
+      <p class="hint" style="margin:10px 0 6px">什麼時候打開？</p>
+      <div class="parts" style="margin:0">${opts.map(([k,l])=>`<button type="button" class="${JAR.open===k?'on':''}" onclick="JAR.open='${k}';JAR.text=document.getElementById('jar_t').value;drawJar()">${l}</button>`).join('')}</div>
+      ${JAR.open==='date'?`<input type="date" style="margin-top:8px" min="${today()}" value="${esc(JAR.at)}" onchange="JAR.at=this.value">`:''}
+      <div class="row" style="gap:8px;margin-top:12px"><button class="btn grow" onclick="saveStar()">${e?'儲存修改':'⭐ 放進星星罐'}</button>${e?`<button class="btn ghost" onclick="JAR.edit=null;JAR.text='';drawJar()">取消</button>`:''}</div>
+    </div>
+    ${ready.length?`<p class="mlabel">可以打開了 ✨</p>${ready.map(s=>card(s,'ready')).join('')}`:''}
+    ${locked.length?`<p class="mlabel">等約好的日子</p>${locked.map(s=>card(s,'locked')).join('')}`:''}
+    ${opened.length?`<p class="mlabel">打開過的星星</p>${opened.map(s=>card(s,'open')).join('')}`:''}`);
+}
+async function saveStar(){
+  const d=S.dolls.find(x=>x.id===JAR.id);if(!d)return;
+  const text=(document.getElementById('jar_t').value||'').trim();if(!text){toast('先寫一句話吧');return}
+  if(JAR.open==='date'&&!(JAR.at>today())){toast('選一個之後的日子');return}
+  d.stars=d.stars||[];
+  let s=JAR.edit&&d.stars.find(x=>x.id===JAR.edit);
+  if(!s){s={id:uid('st'),date:today(),opened:false};d.stars.push(s)}
+  Object.assign(s,{text,open:JAR.open,at:JAR.open==='date'?JAR.at:''});s.at=starAt(d,s);
+  if(s.open==='now'){s.opened=true;s.openedAt=s.openedAt||today()}else if(s.at>today()){s.opened=false;delete s.openedAt}
+  const was=!!JAR.edit;await save();JAR.edit=null;JAR.text='';drawJar();
+  toast(was?'已修改':s.open==='now'?'放進星星罐了 ⭐':`放進星星罐了，${s.at.replace(/-/g,'/')} 再打開 ⭐`);
+  if(UI.tab==='home')renderHome();
+}
+async function openStar(sid){
+  const d=S.dolls.find(x=>x.id===JAR.id);const s=starsOf(d).find(x=>x.id===sid);if(!s)return;
+  s.opened=true;s.openedAt=today();await save();if(UI.tab==='home')renderHome();
+  openSheet(`<div class="starreveal"><div class="big">🌟</div>
+    <small>${s.date.replace(/-/g,'/')}，你寫給 ${esc(d.name)}</small>
+    <p>「${esc(s.text)}」</p>
+    <button class="btn wide" onclick="drawJar()">放回星星罐</button></div>`);
+}
+async function delStar(sid){
+  if(!confirm('刪除這顆星星？'))return;
+  const d=S.dolls.find(x=>x.id===JAR.id);d.stars=starsOf(d).filter(s=>s.id!==sid);await save();drawJar();
+}
+// 說再見、收進封存櫃時：把罐子裡的話都拿出來看一次
+function starsFarewell(d){
+  const st=starsOf(d).slice().sort((a,b)=>a.date.localeCompare(b.date));if(!st.length)return '';
+  return `<div class="dletter"><small>⭐ 你寫給 ${esc(d.name)} 的 ${st.length} 顆星星</small>${st.map(s=>`<p>「${esc(s.text)}」<small style="display:inline;margin-left:6px">${s.date.replace(/-/g,'/')}</small></p>`).join('')}</div>`;
+}
 // 收進封存櫃前：寫過的話再看一次
 function archiveAsk(id){
   const d=S.dolls.find(x=>x.id===id);if(!d)return;
-  if(!d.letter){if(confirm(`把 ${d.name} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。`))archiveDoll(id);return}
+  if(!starsOf(d).length){if(confirm(`把 ${d.name} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。`))archiveDoll(id);return}
   openSheet(`<h3>把 ${esc(d.name)} 收進封存櫃？</h3>
-    <div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}${esc(d.name)} 剛來的時候，你寫下</small><p>「${esc(d.letter)}」</p></div>
+    ${starsFarewell(d)}
     <p class="hint">收起來不會刪除，想玩隨時拿出來。</p>
     <button class="btn wide" onclick="archiveDoll('${d.id}')">收進封存櫃</button>
     <button class="btn ghost wide" style="margin-top:8px" onclick="closeSheet()">再陪我一陣子</button>`);
@@ -3029,7 +3144,7 @@ function openFarewell(id){
       <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
       <h3>謝謝 ${esc(d.name)} 陪你 ${days} 天</h3>
       <p class="hint">在說再見之前，看看你們一起留下的回憶。</p>
-      ${d.letter?`<div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}${esc(d.name)} 剛來的時候，你寫下</small><p>「${esc(d.letter)}」</p></div>`:''}
+      ${starsFarewell(d)}
       <div class="fwlist">${mem.map(([ic,t])=>`<div><span>${ic}</span><p>${t}</p></div>`).join('')}</div>
       ${photos.length?`<p class="mh">一起拍的照片</p><div class="fwphotos">${photos.map(w=>`<img src="${w.photo}" alt="">`).join('')}</div>`:''}
       ${favs.length?`<p class="mh">最常穿的娃衣</p><div class="fwfav">${favs.map(x=>`<div><img src="${img(x.it)}" alt=""><small>${x.n} 次</small></div>`).join('')}</div>`:''}
@@ -3128,7 +3243,7 @@ function drawDollPage(d){
   const nd=dollNextDates(d),row=(k,v)=>v?`<div><dt>${k}</dt><dd>${v}</dd></div>`:'';
   const acc=d.acc||[];
   openSheet(`<div class="dprof">
-    <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
+    <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><div class="row" style="gap:6px;flex:0 0 auto"><button class="btn sm ghost" onclick="openJar('${d.id}')">⭐${starsOf(d).length?' '+starsOf(d).length:''}</button><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div></div>
     ${isAway(d)&&isLive(d)?`<div class="awaybox">${AWAY_SVG}<div><b>${awayIcon(d.away.reason)} 暫時離家・${esc(d.away.reason)}</b>
       <span>${esc(d.away.since.replace(/-/g,'/'))} 出發${d.away.back?`・預計 ${esc(d.away.back.replace(/-/g,'/'))} 回家${awayLeft(d)>0?`（再 ${awayLeft(d)} 天）`:''}`:''}${d.away.note?`・${esc(d.away.note)}`:''}</span>
       <div class="row" style="margin-top:8px"><button class="btn sm" onclick="dollBack('${d.id}')">🏠 回家了</button><button class="btn sm ghost" onclick="openAway('${d.id}')">修改</button></div></div></div>`:''}
@@ -3147,8 +3262,8 @@ function drawDollPage(d){
     </div>
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
-    ${d.letter?`<div class="dletter"><small>💌 ${d.letterAt?d.letterAt.replace(/-/g,'/')+' ':''}寫給 ${esc(d.name)}</small><p>「${esc(d.letter)}」</p></div>`
-      :isLive(d)?`<button class="dletter empty" onclick="dollEdit();setTimeout(()=>{const e=document.getElementById('d_letter');if(e){e.scrollIntoView({block:'center'});e.focus()}},300)">💌 寫一句話給 ${esc(d.name)}，每年到家紀念日會拿出來看 ›</button>`:''}
+    ${starsOf(d).length?(()=>{const st=starsOf(d),rd=readyStars(d).length,lk=st.filter(x=>starLocked(d,x)).length;return `<button class="dletter jarrow" onclick="openJar('${d.id}')"><small>⭐ ${esc(d.name)} 的星星罐・${st.length} 顆</small><p>${rd?`🌟 有 ${rd} 顆星星可以打開了！`:lk?`${lk} 顆在等約好的日子打開`:'打開看看寫過的話'} ›</p></button>`})()
+      :isLive(d)?`<button class="dletter empty" onclick="openJar('${d.id}')">⭐ 寫一句話給 ${esc(d.name)}，放進星星罐，約好的那天再打開 ›</button>`:''}
     <div class="dlinks">
       <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
@@ -3185,8 +3300,6 @@ function drawDollEdit(){
       <label class="f"><span>尺寸</span><select id="d_size" onchange="DD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>
       <label class="f"><span>到家日</span><input type="date" id="d_home" value="${esc(d.home||'')}" onchange="DD.home=this.value"></label>
     </div>
-    <label class="f"><span>💌 寫給${d.name?' '+esc(d.name)+' ':'他'}的一句話（選填）</span><textarea id="d_letter" rows="2" maxlength="80" placeholder="歡迎回家！希望我們一起去很多地方、拍很多照片" oninput="DD.letter=this.value">${esc(d.letter||'')}</textarea>
-      <small class="hint">每年到家紀念日會拿出來看；哪天要收進封存櫃或說再見時，也會再出現一次。</small></label>
     <div class="split">
       <label class="f"><span>來源</span><select onchange="DD.src=this.value"><option value="">未設定</option>${DOLL_SRC.map(x=>`<option ${x===d.src?'selected':''}>${x}</option>`).join('')}</select></label>
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price||'')}" placeholder="例如 450" oninput="DD.price=this.value"></label>
@@ -3344,7 +3457,6 @@ async function delAcc(id,aid){const d=S.dolls.find(x=>x.id===id);setDollField(id
 async function saveDoll(){
   if(!DD.name.trim()){toast('幫娃娃取個名字吧');return}
   const {isMain,view,...d}=DD;d.name=d.name.trim();
-  d.letter=(d.letter||'').trim();if(d.letter&&!d.letterAt)d.letterAt=today();if(!d.letter)delete d.letterAt;
   if(d.id){const i=S.dolls.findIndex(x=>x.id===d.id);S.dolls[i]=Object.assign(S.dolls[i],d)}
   else{d.id=uid('d');d.createdAt=Date.now();S.dolls.push(d)}
   if(d.attr!=='has'){d.work='';d.chara=''}
