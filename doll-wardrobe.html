@@ -697,6 +697,10 @@ nav.tabs button.plus.on{color:var(--berry)}
 .qa button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 2px 10px;border-radius:var(--r);background:var(--card);
   border:1px solid var(--line);box-shadow:var(--sh-1);font-size:12px;color:var(--ink-2);letter-spacing:.04em;transition:transform .18s var(--ease)}
 .qa button:active{transform:scale(.95)}
+.qa2{margin-top:-4px}
+.qa2 button{font-size:11.5px;letter-spacing:.02em}
+.qa2 i{display:grid;place-items:center;width:auto;min-width:40px;padding:0 8px;background:var(--swatch)}
+.qa2 i b{font-family:var(--num);font-size:22px;font-weight:600;color:var(--ink)}
 .qa i{width:40px;height:40px;border-radius:14px;background:var(--berry-soft) center/22px no-repeat}
 .qa .i1{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23843B52' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='17' rx='2'/%3E%3Cpath d='M8 2v4M16 2v4M3 10h18M9 15l2 2 4-4'/%3E%3C/svg%3E")}
 .qa .i2{background-color:var(--gold-soft);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A6A3A' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4-2 4 2 4-2 4 2v4l-3 1v9H7v-9L4 10z'/%3E%3C/svg%3E")}
@@ -2263,13 +2267,12 @@ function renderHome(){
     <button onclick="go('dolls')"><i class="i4"></i>娃娃櫃</button>
   </div>
 
-  <div class="hstat hsplit">
-    <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣 ›</span></button>
-    ${d?`<button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>出門 ›</span></button>
-    <button onclick="openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>穿搭紀錄 ›</span></button>
-    <button onclick="openAlbum('${d.id}',null,null,()=>closeSheet())"><b>${wearPhotos(d).length}</b><span>相簿 ›</span></button>`
-    :`<button onclick="openWearsOf('')"><b>${S.wears.length}</b><span>穿搭紀錄 ›</span></button>`}
-  </div>
+  ${d?`<div class="qa qa2">
+    <button onclick="openDollFoot('${d.id}')"><i><b>${outCount(d)}</b></i>📍 出門</button>
+    <button onclick="openWearsOf('${d.id}')"><i><b>${dollWears(d).length}</b></i>👗 穿搭紀錄</button>
+    <button onclick="openAlbum('${d.id}',null,null,()=>closeSheet())"><i><b>${wearPhotos(d).length}</b></i>📷 相簿</button>
+    <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><i><b>${items.length}</b></i>👚 ${ms?esc(ms):''}娃衣</button>
+  </div>`:''}
 
   ${todayPickHTML()}
   ${homeMoreHTML()}
@@ -2361,7 +2364,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-9';
+const APP_VER='2026.10.01-10';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2581,8 +2584,11 @@ function openAnnCard(key){
     big:a.kind==='custom'?(a.n>0?String(a.n):'🎂'):String(a.n),
     unit:a.kind==='year'?(a.n===1?'YEAR':'YEARS'):a.kind==='day'?'DAYS':(a.n>0?'YEARS OLD':''),
     line:a.kind==='custom'?`${nm} 的${a.label}`:`${nm} 來家裡第 ${a.n} ${a.kind==='year'?'年':'天'}`,
-    since:a.kind!=='custom'&&a.d.home?a.d.home:''
+    since:a.kind!=='custom'&&a.d.home?a.d.home:'',
+    // 像履歷一樣的小統計：來家裡幾天、換裝幾次、出門幾次（可以在小卡設定隱藏）
+    stats:[['來家裡',a.d.home&&homeDays(a.d)>=0?homeDays(a.d)+1:null,'天'],['換裝',dollWears(a.d).length,'次'],['出門',outCount(a.d),'次']].filter(r=>r[1]!=null)
   };
+  if(SC.annStats===undefined)SC.annStats=S.settings.annStats!==false;
   openShare('ann',a.d.id);
 }
 const dayNum=s=>{const [y,m,d]=String(s).split('-').map(Number);return Date.UTC(y,m-1,d)/864e5};
@@ -5491,6 +5497,7 @@ function openShare(kind,id){
     <div class="swap" id="scLay">${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
     ${!SC.ann&&!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
+    ${SC.ann&&SC.ann.stats&&SC.ann.stats.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.annStats?'checked':''} onchange="SC.annStats=this.checked;S.settings.annStats=this.checked;save();scRender()"> 放上${SC.ann.stats.map(r=>r[0]).join('、')}的次數</label>`:''}
     ${!SC.ann&&SC.items.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.hideNames?'checked':''} onchange="SC.hideNames=this.checked;S.settings.scHideNames=this.checked;save();scRender()"> 隱藏娃衣名稱（不想讓人知道穿了哪幾件）</label>`:''}
     <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="${SC.ann?'謝謝你來到我身邊 🤍':'今天是草莓甜點日 🍓'}" oninput="scCapChange(this.value)"></label>
     <div class="row">
@@ -5589,12 +5596,12 @@ async function scAnn(x,T,W,H,P,serif,num,sans){
   x.textAlign='center';
   x.fillStyle=T.accent;x.font=`600 32px ${num}`;x.letterSpacing='10px';x.fillText(A.tag,W/2,P+50);x.letterSpacing='0px';
   // 大數字；限動比較高，整塊往下移到置中
-  const R0=story?340:250,endEst=P+(story?300:230)+(story?520:400)+R0+(story?150:120)+62+(SC.cap?84:0);
+  const K=annStatsOn()?130:0,R0=story?340:(K?190:250),endEst=P+(story?300:230)+(story?520:(K?330:400))+R0+(story?150:120)+62+(SC.cap?84:0)+K;
   const by=P+(story?300:230)+Math.max(0,(H-P-120-endEst)/2);
   x.fillStyle=T.ink;x.font=`700 ${story?240:200}px ${num}`;x.fillText(A.big,W/2,by);
   if(A.unit){x.fillStyle=T.sub;x.font=`600 40px ${num}`;x.letterSpacing='8px';x.fillText(A.unit,W/2,by+60);x.letterSpacing='0px'}
   // 娃娃
-  const cy=by+(story?520:400),R=R0;
+  const cy=by+(story?520:(K?330:400)),R=R0;
   x.fillStyle=T.soft;x.globalAlpha=.8;x.beginPath();x.arc(W/2,cy,R,0,7);x.fill();x.globalAlpha=1;
   x.strokeStyle=T.accent;x.globalAlpha=.35;x.lineWidth=3;x.setLineDash([4,14]);x.beginPath();x.arc(W/2,cy,R+26,0,7);x.stroke();x.setLineDash([]);x.globalAlpha=1;
   const im=SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null;
@@ -5607,9 +5614,23 @@ async function scAnn(x,T,W,H,P,serif,num,sans){
   const d=new Date(SC.date+'T00:00:00'),fmt=s=>s.replace(/-/g,'.').replace(/\.0/g,'.');
   y+=62;x.fillStyle=T.sub;x.font=`600 34px ${num}`;x.letterSpacing='4px';
   x.fillText(A.since?`${fmt(A.since)}  →  ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`:`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`,W/2,y);x.letterSpacing='0px';
+  if(K){y=drawAnnStats(x,T,P+40,y+34,W-P*2-80,num,sans)-10;x.textAlign='center'}
   if(SC.cap){y+=84;x.fillStyle=T.ink;x.font=`500 40px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),W/2,y)}
   x.textAlign='left';
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
+}
+// 紀念小卡的統計列：三個小格（數字＋說明），align center 置中、left 靠左
+const annStatsOn=()=>SC.annStats&&SC.ann&&SC.ann.stats&&SC.ann.stats.length;
+function drawAnnStats(x,T,X,Y,w,num,sans){
+  const st=SC.ann.stats,gap=16,cw=(w-gap*(st.length-1))/st.length,h=104;
+  st.forEach(([lab,n,u],i)=>{const cx=X+i*(cw+gap);
+    x.save();x.fillStyle=T.card;x.globalAlpha=.9;rrect(x,cx,Y,cw,h,22);x.fill();x.globalAlpha=1;x.strokeStyle=T.line;x.lineWidth=2;x.stroke();x.restore();
+    x.textAlign='center';x.fillStyle=T.ink;x.font=`700 48px ${num}`;const nt=String(n),nw=x.measureText(nt).width;
+    x.font=`600 22px ${sans}`;const uw=x.measureText(u).width;
+    x.font=`700 48px ${num}`;x.fillText(nt,cx+cw/2-uw/2-3,Y+56);
+    x.fillStyle=T.sub;x.font=`600 22px ${sans}`;x.textAlign='left';x.fillText(u,cx+cw/2+nw/2-uw/2+3,Y+56);
+    x.textAlign='center';x.fillStyle=T.sub;x.font=`500 22px ${sans}`;x.fillText(lab,cx+cw/2,Y+88);x.textAlign='left'});
+  return Y+h;
 }
 // 紀念小卡的共用：娃娃照（沒有就用名字第一個字）、日期文字
 async function annDollImg(){return SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null}
@@ -5621,7 +5642,7 @@ function annDateText(){
 async function scAnnPolaroid(x,T,W,H,P,serif,num,sans){
   const A=SC.ann,story=SC.ratio==='story';
   x.textAlign='center';x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText(A.tag,W/2,P+48);x.letterSpacing='0px';x.textAlign='left';
-  const FW=W-220,FX=110,aw=FW-60,ah=story?aw*1.25:aw*.86,FH=30+ah+230,FY=Math.max(P+90,(H-P-120-FH)/2+20);
+  const K=annStatsOn()?130:0,FW=W-220,FX=110,aw=FW-60,ah=(story?aw*1.25:aw*.86)-(story?0:K),FH=30+ah+230,FY=Math.max(P+90,(H-P-120-FH-K)/2+20);
   x.save();x.translate(W/2,FY+FH/2);x.rotate(2.2*Math.PI/180);x.translate(-W/2,-(FY+FH/2));
   x.save();x.shadowColor='rgba(0,0,0,.2)';x.shadowBlur=44;x.shadowOffsetY=20;x.fillStyle='#FFFEFB';x.fillRect(FX,FY,FW,FH);x.restore();
   const AX=FX+30,AY=FY+30,soft=SC.theme==='night'?'#EADCD9':T.soft;
@@ -5641,6 +5662,7 @@ async function scAnnPolaroid(x,T,W,H,P,serif,num,sans){
   x.save();x.fillStyle='#E8C07A';x.globalAlpha=.45;x.translate(FX+FW-50,FY+10);x.rotate(20*Math.PI/180);x.fillRect(-90,-24,180,48);x.restore();
   let y=FY+FH+(story?120:84);
   x.textAlign='center';x.fillStyle=T.sub;x.font=`600 32px ${num}`;x.letterSpacing='4px';x.fillText(annDateText(),W/2,y);x.letterSpacing='0px';
+  if(K){y=drawAnnStats(x,T,P+40,y+30,W-P*2-80,num,sans)-10;x.textAlign='center'}
   if(SC.cap){y+=66;x.fillStyle=T.ink;x.font=`500 38px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),W/2,y)}
   x.textAlign='left';
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
@@ -5652,7 +5674,7 @@ async function scAnnMag(x,T,W,H,P,serif,num,sans){
   x.textAlign='right';x.fillStyle=T.sub;x.fillText(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}`,W-P,P+26);x.letterSpacing='0px';x.textAlign='left';
   x.fillStyle=T.ink;x.font=`700 ${story?100:88}px ${serif}`;x.fillText(fitText(x,SC.doll?SC.doll.name:A.line,W-P*2),P,P+140);
   x.fillStyle=T.ink;x.fillRect(P,P+172,W-P*2,3);
-  const AY=P+200,AH=H-AY-(story?420:330)-P;
+  const K=annStatsOn()?130:0,AY=P+200,AH=H-AY-(story?420:330)-P-K;
   const g=x.createLinearGradient(0,AY,0,AY+AH);g.addColorStop(0,T.soft);g.addColorStop(1,T.bg[1]);x.fillStyle=g;x.fillRect(0,AY,W,AH);
   // 大數字當背景
   if(/\d/.test(A.big)){x.save();x.fillStyle=T.accent;x.globalAlpha=.16;x.font=`700 ${story?560:440}px ${num}`;x.textAlign='center';x.fillText(A.big,W/2,AY+AH*.72);x.restore()}
@@ -5666,6 +5688,7 @@ async function scAnnMag(x,T,W,H,P,serif,num,sans){
   let y=AY+AH+86;
   x.fillStyle=T.ink;x.font=`700 54px ${serif}`;x.fillText(fitText(x,A.line,W-P*2),P,y);
   y+=58;x.fillStyle=T.sub;x.font=`600 30px ${num}`;x.letterSpacing='4px';x.fillText(annDateText(),P,y);x.letterSpacing='0px';
+  if(K)y=drawAnnStats(x,T,P,y+30,W-P*2,num,sans)-10;
   if(SC.cap){y+=64;x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y)}
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
@@ -6404,7 +6427,7 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
     ['在家換裝也算，不一定要出門。','首頁的資訊都是目前那隻娃娃自己的：點「本月穿搭」或最下面的「全部穿搭紀錄」，看的是他的紀錄。','所有娃娃的穿搭紀錄在「洞察」最上面，可以依娃娃、在家／出門篩選。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
-    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
+    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡；小卡可以放上來家裡幾天、換裝幾次、出門幾次（也可以隱藏）。','首頁第二排是目前這隻娃娃的出門、穿搭紀錄、相簿和合身娃衣，點了就進去看。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','要賣掉或送人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字，可以直接貼給新主人。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
