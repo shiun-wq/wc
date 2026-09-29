@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=3"></script>
+<script src="i18n/i18n.js?v=4"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -529,6 +529,9 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
 .stat div.tap{cursor:pointer}
+.th.cdot{display:flex;align-items:center;justify-content:center;gap:0}
+.th.cdot i{width:26px;height:26px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+.th.cdot i+i{margin-left:-8px}
 .stat div.tap:active{transform:scale(.97)}
 .awaycar{width:min(62vw,300px);height:auto;z-index:1}
 .awaycar .car{animation:drive 2.4s ease-in-out infinite}
@@ -2417,12 +2420,43 @@ function todayPick(){
   // 整套：開著而且有合身的套裝時，大約三次有一次整套推薦
   const sets=pickSetsOn()?fitSets(d):[];
   if(sets.length&&r()<.33){const w=sets.map(l=>1+l.reduce((a,i)=>a+styleBonus(i,d),0));let t=r()*w.reduce((a,b)=>a+b,0);for(let k=0;k<sets.length;k++){t-=w[k];if(t<=0)return sets[k]}return sets[sets.length-1]}
-  const dress=by('dress'),top=by('top'),bottom=by('bottom'),out=[];
-  if(dress.length&&(r()<.45||!top.length||!bottom.length))out.push(one(dress));
-  else{if(top.length)out.push(one(top));if(bottom.length)out.push(one(bottom))}
-  if(!out.length)out.push(one(pool));
-  for(const sl of ['head','outer','shoes'])if(r()<.45){const x=one(by(sl));if(x)out.push(x)}
-  return out.filter(Boolean);
+  const dress=by('dress'),top=by('top'),bottom=by('bottom');
+  const once=()=>{const out=[];
+    if(dress.length&&(r()<.45||!top.length||!bottom.length))out.push(one(dress));
+    else{if(top.length)out.push(one(top));if(bottom.length)out.push(one(bottom))}
+    if(!out.length)out.push(one(pool));
+    for(const sl of ['head','outer','shoes'])if(r()<.45){const x=one(by(sl));if(x)out.push(x)}
+    return out.filter(Boolean)};
+  // 先抽幾組，再挑顏色、風格最搭的那組（同一天結果固定）
+  const hist=colorPairs();let best=null,bs=-1e9;
+  for(let k=0;k<12;k++){const o=once(),sc=outfitScore(o,hist)+r()*.5;if(sc>bs){bs=sc;best=o}}
+  return best;
+}
+/* 搭配評分：顏色和風格合不合
+   - 白黑灰米棕是百搭色；同色系很安全；幾組經典配色加分；容易打架的配色扣分
+   - 鮮豔的顏色超過兩種會太花
+   - 風格有重疊加分；差太多的風格（甜系配哥德之類）扣分
+   - 你以前常一起穿的配色也加分 */
+const NEUTRAL_FAM=new Set(['白','黑','灰','米','棕']);
+const GOOD_PAIRS=new Set(['粉|白','白|藍','粉|紫','紅|黑','黃|藍','綠|米','米|藍','粉|藍','紫|白','綠|白','黃|白','粉|米','紅|白','棕|綠','黑|紫','棕|橘','棕|紅','米|粉','米|黃']);
+const BAD_PAIRS=new Set(['紅|綠','橘|紫','紅|紫','橘|粉','紅|粉','黃|紫','綠|紫','紅|橘','橘|藍']);
+const STYLE_CLASH=[['哥德','甜系'],['哥德','萌系'],['哥德','動物系'],['睡衣風','華麗'],['睡衣風','學院風'],['中式','Lolita'],['休閒','華麗'],['休閒','Lolita']];
+function outfitScore(o,hist){
+  const fams=o.map(i=>(i.colors||[]).length?colorFam(i.colors[0]):'').filter(f=>famLabel[f]);
+  let sc=0;const loud=new Set(fams.filter(f=>!NEUTRAL_FAM.has(f)));
+  for(let a=0;a<fams.length;a++)for(let b=a+1;b<fams.length;b++){
+    const x=fams[a],y=fams[b],k=[x,y].sort().join('|'),k2=x+'|'+y,k3=y+'|'+x;
+    if(x===y)sc+=2;else if(GOOD_PAIRS.has(k2)||GOOD_PAIRS.has(k3))sc+=2.5;else if(BAD_PAIRS.has(k2)||BAD_PAIRS.has(k3))sc-=4;
+    else if(NEUTRAL_FAM.has(x)||NEUTRAL_FAM.has(y))sc+=1;else sc-=1.5;
+    if(hist&&hist[k])sc+=Math.min(3,hist[k]);
+  }
+  if(loud.size>2)sc-=3*(loud.size-2);
+  const st=o.map(i=>new Set((i.styles||[]).map(x=>x.name)));
+  for(let a=0;a<st.length;a++)for(let b=a+1;b<st.length;b++){
+    if([...st[a]].some(x=>st[b].has(x)))sc+=1.5;
+    if(STYLE_CLASH.some(([p,q])=>st[a].has(p)&&st[b].has(q)&&!st[a].has(q)||st[a].has(q)&&st[b].has(p)&&!st[a].has(p)))sc-=3;
+  }
+  return sc;
 }
 function todayPickHTML(){
   const d=mainDoll();
@@ -2470,7 +2504,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-20';
+const APP_VER='2026.10.01-21';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -4881,11 +4915,13 @@ async function delLook(id){
 const isMember=()=>!!S.settings.member;
 function matchStats(){
   const items=S.items.filter(i=>i.category!=='套裝'),ok=new Set(items.map(i=>i.id));
-  const partners={},wearN={},pair={};
+  const partners={},wearN={},pair={},sid={};items.forEach(i=>{if(i.setId)sid[i.id]=i.setId});
   S.wears.forEach(w=>{
     const ids=[...new Set(w.itemIds)].filter(i=>ok.has(i));
-    ids.forEach(a=>{wearN[a]=(wearN[a]||0)+1;partners[a]=partners[a]||new Set();ids.forEach(b=>{if(a!==b)partners[a].add(b)})});
-    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=[ids[i],ids[j]].sort().join('|');pair[k]=(pair[k]||0)+1}
+    // 同一套的零件本來就一起穿，不算「搭過」，也不算「總是一起出場」
+    const same=(a,b)=>{const x=sid[a],y=sid[b];return x&&x===y};
+    ids.forEach(a=>{wearN[a]=(wearN[a]||0)+1;partners[a]=partners[a]||new Set();ids.forEach(b=>{if(a!==b&&!same(a,b))partners[a].add(b)})});
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){if(same(ids[i],ids[j]))continue;const k=[ids[i],ids[j]].sort().join('|');pair[k]=(pair[k]||0)+1}
   });
   const byId=id=>S.items.find(x=>x.id===id);
   const looks=S.looks.map(l=>({l,n:S.wears.filter(w=>w.lookId===l.id).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n).slice(0,3);
@@ -4946,7 +4982,9 @@ const AI_DESC={
 };
 const MEMBER_ONLY=[
   ['🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合、每隻娃娃最愛的那件'],
+  ['🏆','套裝排行','最常整套出場的套裝，還有常常只拿一部分出來搭的'],
   ['🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色'],
+  ['🎄','季節・節日・配色','季節服、節日服穿過幾件，還有你最常用的配色'],
   ['📅','穿搭習慣','換裝的星期分佈、每月穿搭趨勢、最近喜歡的風格有沒有改變'],
   ['🎯','適合給哪隻娃娃','買前檢查時，依每隻娃娃平常穿的風格推薦買給誰'],
   ['💰','花費分析','每月花多少、每穿一次的成本、最划算和買了還沒穿的、賣掉回血多少']
@@ -5059,11 +5097,12 @@ function ideaRandom(){
   if(pickSetsOn()){const sets=fitSets(dd);if(sets.length&&Math.random()<.33){const l=sets[Math.floor(Math.random()*sets.length)],st=[...new Set(l.flatMap(i=>(i.styles||[]).map(x=>x.name)))].slice(0,2);
     showIdea({ai:false,ids:l.map(i=>i.id),title:`${setName(l[0].setId)||'整套'}・整套穿`,reason:`直接穿整套「${setName(l[0].setId)||l[0].name}」${st.length?`，是${st.join('、')}的感覺`:''}。想混搭的話，可以把「有套裝就整套」關掉。`,tip:SCENE_TIP[IDEA.scene]&&!IDEA.custom?SCENE_TIP[IDEA.scene]:''});return}}
   const w=i=>1+styleBonus(i,dd)+(IDEA.press&&isPressed(i)?3:0)+(sleepy&&(i.styles||[]).some(x=>x.name==='睡衣風')?8:0)+(IDEA.theme?(i.holiday===IDEA.theme?8:0)+(i.colors||[]).filter(c=>tf.has(colorFam(c))).length*2:0);
-  const pick=(list,base)=>{
+  const hist=colorPairs();
+  // ctx：已經選好的衣服；新的一件跟它們顏色、風格越搭，越容易被抽中（撞色、風格打架的幾乎不會抽到）
+  const pick=(list,ctx)=>{
     if(!list.length)return null;
-    const sc=list.map(i=>{let s=w(i);if(base){
-      const bs=new Set((base.styles||[]).map(x=>x.name)),bc=new Set((base.colors||[]).map(colorFam));
-      s+=(i.styles||[]).filter(x=>bs.has(x.name)).length*2+(i.colors||[]).filter(c=>bc.has(colorFam(c))).length}
+    const base0=outfitScore(ctx||[],hist);
+    const sc=list.map(i=>{let s=w(i);if(ctx&&ctx.length){const d=outfitScore([...ctx,i],hist)-base0;s=d<0?s*Math.max(.03,1+d/5):s+d}
       return s});
     let t=Math.random()*sc.reduce((a,b)=>a+b,0);
     for(let k=0;k<list.length;k++){t-=sc[k];if(t<=0)return list[k]}
@@ -5077,7 +5116,7 @@ function ideaRandom(){
   if(lead.length){base=pick(lead);useDress=slotOf(base.category)==='dress'}
   else{useDress=dress.length&&(!top.length||!bottom.length||Math.random()<.4);base=useDress?pick(dress):pick(top.length?top:pool)}
   const out=[base];
-  const add=(slot,p)=>{if(Math.random()<p){const x=pick(by(slot).filter(i=>!out.includes(i)),base);if(x)out.push(x)}};
+  const add=(slot,p)=>{if(Math.random()<p){const x=pick(by(slot).filter(i=>!out.includes(i)),out);if(x)out.push(x)}};
   if(!useDress&&slotOf(base.category)==='top')add('bottom',1);
   add('outer',.3);add('head',.6);add('socks',.3);add('shoes',.5);add('bag',.3);add('acc',.3);
   const styles=[...new Set(out.flatMap(i=>(i.styles||[]).map(x=>x.name)))].slice(0,2);
@@ -6193,7 +6232,7 @@ function renderInsight(){
   }
   const it=UI.insTab||'base';
   const tabs=`<div class="swap dtabs">${[['base','📊 一般分析'],['vip','👑 會員分析']].map(([k,l])=>`<button class="${it===k?'on':''}" onclick="insTab('${k}')">${l}</button>`).join('')}</div>`;
-  el.innerHTML=top+tabs+(it==='vip'?matchSection()+dollStyleSection()+habitSection(items)+spendSection():h);
+  el.innerHTML=top+tabs+(it==='vip'?matchSection()+setSection()+dollStyleSection()+useSection(items)+habitSection(items)+spendSection():h);
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
@@ -6235,6 +6274,77 @@ function dollStyleSection(){
       </div></div>`}).join('')}</div>`;
 }
 // 會員：穿搭習慣（星期幾、每月趨勢、最近的風格變化）
+// 會員：套裝排行——整套穿出場幾次、哪些套裝常常只拿一部分出來搭
+function setWearStats(){
+  const g={};S.items.forEach(i=>{if(!i.setId)return;const x=g[i.setId]=g[i.setId]||{id:i.setId,pieces:[],parent:null};if(i.category==='套裝')x.parent=i;else x.pieces.push(i)});
+  return Object.values(g).filter(x=>x.pieces.length>=2).map(x=>{
+    let full=0,part=0;const used={};
+    S.wears.forEach(w=>{const ids=new Set(w.itemIds||[]);const k=x.pieces.filter(i=>ids.has(i.id));
+      if((x.parent&&ids.has(x.parent.id))||k.length===x.pieces.length)full++;
+      else if(k.length){part++;k.forEach(i=>used[i.id]=(used[i.id]||0)+1)}});
+    return {...x,full,part,used,name:setName(x.id)||(x.parent&&x.parent.name)||x.pieces[0].name,cover:x.parent&&img(x.parent)?x.parent:x.pieces[0]};
+  });
+}
+function setSection(){
+  const head=`<h2 class="sec">套裝排行 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>🏆 英倫偵探套裝</b><span>整套穿了 6 次</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>草莓睡衣組</b><span>常只拿「帽子」出來搭</span></div></div>
+    </div>
+    <div class="lk-cover"><b>哪一套最常整套出場？</b>
+      <span>套裝整套穿的次數排行，還有哪些套裝常常只拿一部分出來混搭</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const st=setWearStats();
+  if(!st.length)return head+'<div class="hint">建檔時把同一套的娃衣設成套裝，這裡會排出最常整套出場的套裝。</div>';
+  const th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
+  const go=x=>x.parent?`openItem('${x.parent.id}')`:`openItem('${x.pieces[0].id}')`;
+  const top=st.filter(x=>x.full).sort((a,b)=>b.full-a.full||b.part-a.part).slice(0,5);
+  const part=st.filter(x=>x.part).sort((a,b)=>b.part-a.part).slice(0,4);
+  const never=st.filter(x=>!x.full&&!x.part);
+  let h=head;
+  h+=top.length?`<p class="mh">最常整套出場</p><div class="blist">${top.map((x,k)=>`<div class="rowitem" onclick="${go(x)}">${th(x.cover)}<div class="tx"><b>${k===0?'🏆 ':''}${esc(x.name)}</b><span>整套穿了 ${x.full} 次${x.part?`・拆開搭 ${x.part} 次`:''}</span></div><div class="rt">›</div></div>`).join('')}</div>`
+    :'<div class="hint">還沒有整套穿出場的套裝。</div>';
+  if(part.length)h+=`<p class="mh">常常只拿一部分出來搭</p><div class="blist">${part.map(x=>{const fav=Object.entries(x.used).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([id])=>x.pieces.find(i=>i.id===id)).filter(Boolean);
+    return `<div class="rowitem" onclick="${go(x)}">${th(fav[0]||x.cover)}<div class="tx"><b>${esc(x.name)}</b><span>拆開搭 ${x.part} 次・最常拿出來的是${fav.map(i=>`「${esc(pieceShort(i,x.name))}」`).join('、')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`;
+  if(never.length)h+=`<p class="hint" style="margin-top:4px">還有 ${never.length} 套一次都還沒穿過${never.length<=3?`：${never.map(x=>esc(x.name)).join('、')}`:''}。</p>`;
+  return h;
+}
+// 零件名稱常常是「套裝名－帽子」，顯示時拿掉前面的套裝名
+const pieceShort=(i,set)=>{const n=i.name||'';const m=n.replace(set,'').replace(/^[\s－\-—・:：]+/,'');return m||n};
+// 會員：季節服、節日服真的有穿到嗎；還有你最常怎麼配色
+function colorPairs(){
+  const cnt={};
+  S.wears.forEach(w=>{const f=[...new Set((w.itemIds||[]).map(id=>S.items.find(i=>i.id===id)).filter(i=>i&&i.category!=='套裝'&&(i.colors||[]).length).map(i=>colorFam(i.colors[0])).filter(f=>famLabel[f]))];
+    for(let a=0;a<f.length;a++)for(let b=a+1;b<f.length;b++){const k=[f[a],f[b]].sort().join('|');cnt[k]=(cnt[k]||0)+1}});
+  return cnt;
+}
+function useSection(items){
+  const head=`<h2 class="sec">季節・節日・配色 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>聖誕節服 5 件，穿過 2 件</b><span>節日服使用率 40%</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>最常把 棕色 配 白色</b><span>一起出場 7 次</span></div></div>
+    </div>
+    <div class="lk-cover"><b>節日服買了有穿到嗎？</b>
+      <span>季節服、節日服各穿過幾件，還有你最常用的配色組合</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const worn=i=>wearCount(i.id)>0;
+  const bar=(lb,list)=>{const n=list.length,w=list.filter(worn).length;return `<div class="bar"><div class="lb"><span>${esc(lb)}</span><em>${n} 件・穿過 ${w} 件（${Math.round(w/n*100)}%）</em></div><div class="track"><i class="worn" style="width:${w/n*100}%"></i></div></div>`};
+  let h=head,any=false;
+  const hol={};items.forEach(i=>{if(i.holiday)(hol[i.holiday]=hol[i.holiday]||[]).push(i)});
+  const hk=Object.keys(hol).sort((a,b)=>hol[b].length-hol[a].length);
+  if(hk.length){any=true;h+=`<p class="mh">節日服</p>`+hk.slice(0,6).map(k=>bar(k,hol[k])).join('')}
+  const sea={};items.forEach(i=>{if(i.season)(sea[i.season]=sea[i.season]||[]).push(i)});
+  const sk=['春','夏','秋','冬','四季'].filter(k=>sea[k]);
+  if(sk.length){any=true;h+=`<p class="mh">季節服</p>`+sk.map(k=>bar(k==='四季'?'四季都能穿':k+'天',sea[k])).join('')}
+  const cp=Object.entries(colorPairs()).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  if(cp.length){any=true;h+=`<p class="mh">你最常用的配色</p><div class="blist">${cp.map(([k,n])=>{const [a,b]=k.split('|');
+    return `<div class="rowitem"><div class="th duo cdot"><i style="background:${FAM_HEX[a]||'#ccc'}"></i><i style="background:${FAM_HEX[b]||'#ccc'}"></i></div><div class="tx"><b>${famLabel[a]} × ${famLabel[b]}</b><span>一起出場 ${n} 次</span></div></div>`}).join('')}</div>
+    <p class="hint" style="margin-top:6px">首頁「今天穿這套？」會參考你常用的配色。</p>`}
+  if(!any)h+='<div class="hint">幫娃衣填上季節、節日和顏色，記錄幾次穿搭之後，這裡就會開始出現。</div>';
+  return h;
+}
 function habitSection(items){
   const head=`<h2 class="sec">穿搭習慣 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
@@ -6704,7 +6814,7 @@ const HELP=[
     ['到貨 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放；標記「紀念品」的不會進去。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','出售貼文可以選要不要寫品牌、作品、購買管道、產地，還有無菸、無寵物環境。','賣掉後移到回憶箱，會記下賣了多少錢，洞察頁會算「賣出回血」。回血只算娃衣，娃娃離開不算在裡面。']],
   // ── 穿搭
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
-    ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定）。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
+    ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定），也會看顏色：白黑灰米棕百搭、同色系安全，避開撞色和風格差太多的組合，你常用的配色也會加分。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['📷','放照片'],['☑️','勾選衣服']],
     ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
@@ -6727,7 +6837,7 @@ const HELP=[
     ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','「多選」可以一次改進度、預計到貨、尺寸，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 資料
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
-    ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面有最常穿、冷落的娃衣、各類型的數量，和每隻娃娃的穿搭風格。','花費分析（會員）會算每月花多少、平均每穿一次的成本，還有賣掉娃衣「回血」多少；回血只算娃衣。']],
+    ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
   ['🔔','提醒與通知',[['⚙️','設定'],['🔔','提醒與通知'],['📱','手機通知']],
     ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；把哇娃衣櫃加到主畫面、開了手機通知，也會跳通知給你。','有新版本時畫面下方會出現「有新版本，點一下更新」。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
