@@ -1,4 +1,4 @@
-package com.wawacloset.app;
+package com.shiunxun.wawacloset;
 
 import com.getcapacitor.BridgeActivity;
 
