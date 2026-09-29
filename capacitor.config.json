@@ -1,0 +1,12 @@
+{
+  "appId": "com.shiunxun.wawacloset",
+  "appName": "哇娃衣櫃",
+  "webDir": "www",
+  "backgroundColor": "#F5F0EB",
+  "ios": {
+    "contentInset": "never"
+  },
+  "android": {
+    "backgroundColor": "#F5F0EB"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+www/
+.DS_Store
+
+# 簽章檔、金鑰：絕對不要提交
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+keystore.properties
+google-services.json
+GoogleService-Info.plist
