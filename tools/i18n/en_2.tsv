@@ -1,0 +1,260 @@
+500	Out · at home
+501	Outings
+502	Share
+503	Share card
+504	Share card preview
+505	Share footprints
+506	Analyzing
+507	Analysis failed: 
+508	Analysis failed: {0}
+509	Analyzing this piece…
+510	Cut {0} pieces, {1} couldn't be separated (no charge this time). Tap a small box to add them by hand
+511	Delete
+512	Delete {0}? Outfit records will be kept.
+513	Delete size {0}?
+514	After deleting
+515	Delete these {0}
+516	Delete these {0} on-order records?
+517	Delete this piece
+518	Delete this piece? It will also be removed from outfit records.
+519	Delete this Look
+520	Delete this Look? Outfit records will be kept.
+521	Delete this outing
+522	Delete this outing?
+523	Delete this record
+524	Delete this outfit record?
+525	Delete this?
+526	Delete this setup?
+527	Delete this doll
+528	Delete category "{0}"?
+529	In Settings → Reminders & notifications you can turn each on or off: anniversaries, holidays, long time no change (15 / 30 days), travel memories, arrivals, and dolls not seen in a while.
+530	Upload your first photos in "Add"
+531	Add a cut-out photo of your doll on the doll shelf to put them on the canvas for try-ons.
+532	Add dolls on the doll shelf to mark who this outfit is for.
+533	Home since
+534	Arrival date
+535	Arrival day, birthday, your own anniversaries
+536	Home reminds you 7 days before, the day before and on the day of arrival anniversaries and birthdays; you can make keepsake cards too.
+537	Arrival anniversary
+538	Home since: {0}
+539	Pick your country in Settings
+540	Clothes not worn within 60 days of arrival, or for 180 days, are stashed automatically (13 months for holiday wear). You can also stash by hand; items marked "keepsake" won't be stashed.
+541	Arrived! Ready to add
+542	Arrived! Time to welcome them home
+543	Arrived! Take a photo to add it
+544	When things arrive, the intake page reminds you to add them together
+545	Arrival date
+546	Arrival date{0}
+547	Reminds you 7 days before, the day before, and on the day
+548	{0} left
+549	{0} left
+550	No image on the clipboard
+551	Add some streamers, balloons or a tiny cake, with bokeh string lights in the back for the mood.
+552	Add
+553	Add clothes
+554	Add to {0} items
+555	Canada
+556	Add tags
+557	Add to styling
+558	Animal
+559	Check the clothes
+560	Check the clothes to sell and fill in price and current condition to get a sale image and ready-to-paste text.
+561	Bags
+562	Beijing
+563	North
+564	Hokkaido
+565	Hokkaido & Tohoku
+566	North
+567	Chiba
+568	Nantou County
+569	South
+570	Khaki
+571	Reason: {0} · {1}{2}
+572	Original photo
+573	Where did you go (optional)
+574	Top up
+575	Last year
+576	Removal strength
+577	Go add
+578	Take a look
+579	Cut out
+580	Cutting out
+581	Cut-out done
+582	Cut-out service
+583	Cut-out service (a paid service you set up)
+584	Cut-out service response
+585	Cut out (looks better on home)
+586	Visited
+587	{0} visited
+588	Countries visited
+589	Places visited: {0}{1}
+590	Cancel
+591	只回覆這兩個字：正常
+592	Only 1 use
+593	Only the fields you change are updated; empty ones stay as they are.
+594	Member-only analysis
+595	Only {0}
+596	Clothes only. A doll leaving isn't "recovery"; the sale price stays only in that doll's farewell record.
+597	Pick several at once. Photos are compressed on your device and never uploaded automatically.
+598	Pick many photos at once. Shoot on a plain background that contrasts with the clothes for the cleanest cut-out.
+599	Available
+600	Maybe think about how to style it
+601	Maybe think about what to wear and where to take photos that day
+602	Can be formal or cute, not just loungewear
+603	You can use points instead: each time
+604	AI can identify what's worn in the photo; when most pieces are from one set, the rest of that set is listed so you can add the whole set.
+605	Worth tidying up
+606	Set a return date for a 3-day countdown; tap "Home" when they're back to restart counting and make a welcome-home card.
+607	Can read the list
+608	Possibly similar
+609	Taichung City
+610	Taipei City
+611	Tainan City
+612	Taitung County
+613	Taiwan
+614	"Edit" at the top right changes details and accessories
+615	"Select" at the top right changes tags, holiday, category, size, brand, origin, purchase date and arrival date at once.
+616	Varies
+617	Not enough fitting clothes yet
+618	Kedah
+619	Jilin
+620	Kelantan
+621	Kuala Lumpur
+622	Suspender skirt
+623	Overalls
+624	Items from the same group buy or shop, one per line. A number at the end is used as the price.
+625	Same set
+626	Once you agree, points are used automatically when this month's quota runs out, without asking again.
+627	Same style
+628	Same style, different color
+629	Sync to the {0} pieces from this set ({1})
+630	Same spot
+631	Same type
+632	{0} more of the same type · worn {1} times
+633	Name
+634	Name or account
+635	Name
+636	Name, brand, where bought, purchase date, origin, holiday, season, size, tags and keepsake changes are applied too
+637	Name (leave it to the AI)
+638	No
+639	Incl. {0}
+640	With photos, use this when switching phones
+641	and ones you sold
+642	Wakayama
+643	Brown
+644	Café
+645	Brand
+646	Brand{0}
+647	Items (one per line)
+648	Wa
+649	Wawa Closet
+650	WawaCloset_{0}_{1}.jpg
+651	WawaCloset-backup-{0}{1}.json
+652	Gothic
+653	Which doll
+654	Departure date
+655	Single piece
+656	Add pieces (tap to put on the canvas, tap again to remove):
+657	Pieces
+658	Chiayi City
+659	Chiayi County
+660	Thu
+661	All seasons
+662	Sichuan
+663	Back
+664	Back to brushing
+665	When they're back with you, tap "Home" to make a welcome-home card.
+666	Go back and edit
+667	Home
+668	Return date can't be before departure
+669	Memories
+670	Memory box
+671	The memory box is empty
+672	No model list in the response
+673	Back to settings
+674	Favorite combo: beret × suspender skirt
+675	Scarves
+676	Image
+677	Image downloaded
+678	Image style
+679	Image comparison didn't work ({0}), 
+680	Image comparison didn't work, no charge this time
+681	Couldn't load the image
+682	Group-buy host / maker / doll mom
+683	Group-buy host / maker / doll mom (optional)
+684	Where you bought it: official store, Taobao, a group-buy host, secondhand, from a friend… You can choose whether to show it when selling.
+685	Add prices in each piece's "Edit", or the amount in doll details, and this will start calculating.
+686	At home
+687	You can dress up formal or cute at home too. A desk, sofa or windowsill makes a little set; a warm lamp makes it cozy.
+688	Celebrate at home or go out, and make a keepsake card too
+689	Changing clothes at home counts too; choose "Out" to record which city or country you went to, and it goes into footprints.
+690	At-home outfits
+691	At home together
+692	At home / out
+693	With the artisan
+694	Done on your phone, no AI, no uses
+695	Before saying goodbye, look back at the memories you made together.
+696	Tap "Add to considering" on the pre-buy check result
+697	Tap a visited city or country on the footprint map to see photos taken there.
+698	Tap "Japan" on the footprint map to see photos taken there
+699	They're on the way, maybe decide once they arrive?
+700	Wearing
+701	Drag the photo in the preview to adjust its position
+702	Region
+703	Loading map…
+704	Tap a place on the map to see photos
+705	Place
+706	Place name (optional), e.g. Jiufen, Disneyland, café
+707	Environment
+708	Keelung City
+709	Saitama
+710	Fill in
+711	Add arrival date, birthday
+712	Stashed
+713	Stashed · selling · memory box
+714	Stashed first 📦
+715	"Stashed" counts from the arrival date
+716	"Stashed" counts from the arrival date, so long preorders aren't stashed as soon as they arrive.
+717	Stashed clothes
+718	Stashed clothes appear in home reminders and sale posts. Take them out anytime.
+719	Broken
+720	Damaged
+721	Summer
+722	Outerwear
+723	Photo outing
+724	Appearance
+725	Many per image
+726	Many per image is great for posting lots at once; one big image each shows details better for buyers.
+727	Select
+728	Night
+729	Oita
+730	Size
+731	Big-name, official, well-kept clothes sell better with the brand and series listed. Whether to show where you bought them is up to you.
+732	Daejeon
+733	Takes about 10–30 seconds
+734	Daegu
+735	Osaka
+736	days
+737	days not worn
+738	Tianjin
+739	Failed
+740	Failed: 
+741	Nara
+742	Apply
+743	Apply to {0} items
+744	Apply to {0} records
+745	Outfit
+746	Set
+747	For sets, tap "AI analysis" to split them into pieces, or set the category to "Set" and pick the pieces yourself (free), then "Sticker each piece". "AI whole set in one" counts as 1 use however many pieces.
+748	Set name
+749	Make stickers for each piece of a set so they can be styled separately later.
+750	Set: let AI split it
+751	Set: {0}
+752	Set: I'll pick
+753	Cream
+754	Milk tea
+755	OK, I'll remind you in 2 weeks
+756	If it was sold or given away, use "Sell → move to memory box" instead to keep a record.
+757	如果清單裡有同一套（名稱開頭一樣）的單品，可以整套一起用，但不一定每次都要整套。
+758	Name
+759	Doll

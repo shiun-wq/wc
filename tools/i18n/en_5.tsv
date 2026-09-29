@@ -1,0 +1,260 @@
+1280	Monthly spending, cost per wear, best value and bought-but-unworn clothes, plus how much you recovered from selling clothes
+1281	Ask every time
+1282	Ask every time (choose when making stickers)
+1283	Every card comes in Cream, Rose or Night, as a 4:5 post or 9:16 story, and you can add a line.
+1284	$24 per wear
+1285	{0} per wear · worn {1} times · {2}
+1286	Every record makes your closet insights more accurate
+1287	Each doll's usual types, styles and colors
+1288	Each doll's favorite
+1289	Each doll's outfits
+1290	Which styles suit each doll?
+1291	${0} per point
+1292	{0} more than last month
+1293	{0} fewer than last month
+1294	Compare with closet
+1295	Buy less often
+1296	Sweater
+1297	Permanently delete {0} items
+1298	Permanently delete this item's memory?
+1299	Delete permanently, can't be undone
+1300	Taipa
+1301	Gangwon-do
+1302	Jiangsu
+1303	Jiangxi
+1304	Decided not to buy
+1305	No
+1306	Items without an arrival date count "stashed" from the purchase date.
+1307	None
+1308	Nothing identical, but a few have a very similar style. Think about whether this one brings new outfits.
+1309	No free quota
+1310	No clothes checked
+1311	No clothes on order
+1312	Leave empty if none
+1313	No matching clothes found
+1314	No date
+1315	No matching {0} clothes. Try unchecking "Only {1}"
+1316	No matching clothes
+1317	No matching records
+1318	No internet, the map can't load for now
+1319	Never worn
+1320	Okinawa
+1321	Sabah
+1322	Hebei
+1323	Henan
+1324	France
+1325	Note: this page is running inside another window. In Claude's preview window outside connections are blocked by the sandbox, so download the HTML and open it in a browser.
+1326	Thailand
+1327	Dresses
+1328	Insights
+1329	Insights cover the whole closet, not per doll: at the top are on-order items in all sizes and all dolls' outfit records.
+1330	Insights: closet analysis
+1331	Insights: on order, all outfit records and analysis
+1332	Zhejiang
+1333	Hainan
+1334	Dark
+1335	Light
+1336	Washed
+1337	Clear
+1338	Clear brand
+1339	Clear all data
+1340	Clear date
+1341	Clear origin
+1342	Clear
+1343	Test
+1344	Testing
+1345	Toggle freely while testing. AI uses this month: 
+1346	Test mode: adds {0} points directly (the real version will be an NT${1} purchase)
+1347	For testing: reset this month's AI uses
+1348	Test connection
+1349	Hubei
+1350	Hunan
+1351	Shiga
+1352	Paint missed parts back with "Keep" and erase extras with "Remove"; pinch to zoom for fine areas.
+1353	Penghu County
+1354	Australia
+1355	Macau
+1356	Macau Peninsula
+1357	Jeju
+1358	Browser IndexedDB
+1359	Gray
+1360	Gray
+1361	Why aren't they with you?
+1362	None
+1363	Pet-free
+1364	No character
+1365	Can't read the clipboard, please pick a photo instead
+1366	No flaws
+1367	Smoke-free
+1368	Photo ready
+1369	If the photo has a date and location, you'll be offered that day and place.
+1370	The photo has no date or location
+1371	The photo was taken in {0}
+1372	Clothes in the photo not added yet? Add them in "Add" first, then come back to check them.
+1373	Care records
+1374	Kumamoto
+1375	Popular
+1376	Crawler outfit
+1377	Condition log
+1378	Condition & care
+1379	Rose
+1380	Perlis
+1381	Flaws
+1382	Flaws: 
+1383	Flaws: {0}
+1384	Gansu
+1385	Sweet
+1386	Sweet · pinks
+1387	Birthday
+1388	Origin
+1389	When opened via file:// the page origin is null and many API servers refuse it. Put the file on any website (GitHub Pages is free and enough) and it will work.
+1390	Clothes you checked with "Pre-buy check" but haven't decided on can wait here while you think.
+1391	Used {0} {1}-themed pieces.
+1392	Use original
+1393	Paint with your finger: "Keep" restores missed parts, "Remove" erases extras.
+1394	Continue with points
+1395	Leave a memory (optional)
+1396	Leave empty = use the model above
+1397	The canvas is empty
+1398	The canvas is empty, add some clothes first
+1399	Terengganu
+1400	Issues found
+1401	Yellowing
+1402	White
+1403	White
+1404	Outline width
+1405	's
+1406	's {0}
+1407	's sticker is ready
+1408	Currently
+1409	No stashed clothes right now
+1410	Nothing under consideration right now
+1411	Current condition:
+1412	Current progress
+1413	Make a sticker directly
+1414	Wear the whole "{0}" set{1}. Prefer mixing? Turn off "Whole sets".
+1415	Direct API
+1416	Municipality
+1417	Similarity {0}%{1}
+1418	Album
+1419	Album: doll photos
+1420	Saved ${0}
+1421	Provinces
+1422	See all {0} photos
+1423	See all {0}
+1424	See all {0}
+1425	Exhibition
+1426	See what types, styles and colors each doll wears out, and who new clothes would suit
+1427	Take a look
+1428	See which piece is your all-rounder
+1429	View on order
+1430	Looks best for
+1431	View footprints
+1432	Really delete these {0} items?
+1433	Glasses
+1434	Pajamas
+1435	Pajamas with a tiny blanket and pillow, just a night light on, makes a soothing shot.
+1436	Pajama style
+1437	Before bed
+1438	Got it, don't show again
+1439	Ishikawa
+1440	Sarawak
+1441	Confirm {0}
+1442	Move {0} items to the memory box?
+1443	Move to the memory box
+1444	{1} these {0} items?
+1445	Nothing is saved until you confirm. Uncheck any that are wrong.
+1446	Demo dolls: Wei Ting · Liang Zhan · Little Wei Ting · Little Liang Zhan (handmade)
+1447	Demo clothes: Papas "Light & Shadow · Black", Cotton Planet "Fox-ear Moss", Yupu "Letter Top", Cube Diary "Rock Rhapsody", Sesame Sandwich "Headphones"
+1448	Happy {1}, {0}! Dress {2} in their favorite outfit today and celebrate at home or go out.
+1449	Happy {1}, {0}! Open the app to see how to celebrate
+1450	Kanagawa
+1451	Fukui
+1452	Fukuoka
+1453	Fukushima
+1454	Fujian
+1455	Unofficial
+1456	DM
+1457	DM for price
+1458	DM to ask
+1459	Autumn
+1460	Akita
+1461	Move to the memory box
+1462	After moving to the memory box, it's no longer counted in the closet, styling or analysis, but outfit records are kept. You can bring it back later.
+1463	Move
+1464	Move mode: drag with one finger, tap ✋ again to paint
+1465	Back to considering
+1466	Once moved, they're no longer counted in the closet, styling or analysis; outfit records are kept. Bring them back from the memory box later.
+1467	Remove
+1468	Remove tag
+1469	Worn {0} times
+1470	Worn 8 times
+1471	Wore {0} pieces
+1472	Worn {0} times
+1473	Worn {0} times{1}
+1474	Outfits
+1475	{0} outfits · {1} outings · {2} pieces worn
+1476	Outfit card
+1477	Outfit card · Polaroid
+1478	Outfit cards come in Classic, Polaroid and Magazine; with a photo, drag in the preview to adjust its position.
+1479	Outfit photo identify
+1480	Outfit records
+1481	Outfit records · footprints
+1482	Not enough outfit records yet, record a few more
+1483	Outfit records: photos, at home or where you went
+1484	Outfit habits
+1485	Times worn
+1486	Worn {0} times
+1487	Worn {0} times{1}
+1488	Worn
+1489	Worn · most worn first
+1490	Clothes worn
+1491	Clothes worn and suitable styles
+1492	Worn ratio
+1493	Wearing: {0}
+1494	Step {0} of {1}
+1495	First doll outfit, a gift from a friend, event exclusive…
+1496	First outing was {0}{1}
+1497	First time? See the illustrated guide, step by step
+1498	About 6MB the first time, fast after that
+1499	First meeting
+1500	A dress from my first group buy, it went so many places with Snowy
+1501	First doll, a gift from a friend, event exclusive…
+1502	Brush
+1503	Brush repair
+1504	selected
+1505	(all dolls)
+1506	etc.
+1507	and {0} more items
+1508	and {0} more
+1509	and {0} more places
+1510	Waiting to come home
+1511	Waiting to come home · 
+1512	Dolls waiting to come home
+1513	Holidays
+1514	Holiday theme
+1515	Holiday theme{0}
+1516	Holiday theme (optional)
+1517	Holiday wear
+1518	Holiday wear is worn once a year, so "stashed" is extended to 13 months; home reminds you 3 weeks before the holiday.
+1519	Holiday wear is worn once a year, so it only counts as stashed after 13 months unworn.
+1520	Holiday party
+1521	Simple cut-out
+1522	Used by the simple cut-out. Raise it if the background isn't fully removed, lower it if the clothes get eaten. Simple cut-out is free but needs a plain background; see photo tips on the add page.
+1523	Beige
+1524	Beige
+1525	Pink
+1526	Pink
+1527	Pink, red, hearts
+1528	tones
+1529	Series
+1530	Keepsake
+1531	Keepsake reason
+1532	Keepsake card
+1533	Keepsake cards can show days at home, outfit changes and outings, or hide them; for a footprint card tap "Share footprints" on the doll's footprints page.
+1534	Keepsake
+1535	Keepsake dolls are never asked to go in the archive.
+1536	Anniversaries
+1537	Anniversaries, holidays and dolls that haven't changed in a while will be reminded here
+1538	Anniversary name, e.g. first trip abroad
+1539	Set anniversaries on the doll shelf: add the arrival date, or add a birthday under "Anniversaries".

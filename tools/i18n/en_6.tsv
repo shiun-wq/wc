@@ -1,0 +1,260 @@
+1540	Anniversary celebrations
+1541	Anniversary reminders, care log, accessories, waiting to come home
+1542	Red
+1543	Red
+1544	Red, green, white
+1545	Red, gold, Chinese style
+1546	Labuan
+1547	Purple
+1548	Purple
+1549	Give them a chance to shine, or 
+1550	Classic
+1551	Green
+1552	Green
+1553	Web
+1554	The web version is in test mode; tapping adds points directly without real payment.
+1555	The web version is in testing, so you can turn on a member trial directly; the app release will use a real subscription.
+1556	Edit
+1557	Edit Look
+1558	When editing a piece, tap the "!" after a field title for an explanation. Series, collections and events (e.g. Love and Deepspace) work best as "tags".
+1559	Edit doll
+1560	Edit outfit record
+1561	Cities & counties
+1562	Zoom out
+1563	Total sold for (optional)
+1564	Always together
+1565	United States
+1566	Gunma
+1567	Wings
+1568	Wings & tail
+1569	Considering
+1570	Considering · on order
+1571	Considering · on order · stashed · sale posts · memory box
+1572	Considered for {0} days
+1573	Ears
+1574	Earmuffs
+1575	Christmas
+1576	Christmas, New Year, Halloween…
+1577	Clothes worn once a year like Christmas or New Year. "Stashed" is extended to 13 months, and home reminds you before the holiday.
+1578	Vest
+1579	Can we reach the server
+1580	Torn or loose seams
+1581	Belts
+1582	Myself
+1583	Myself or an artisan
+1584	Handle myself
+1585	Custom categories (tap to delete)
+1586	Keep at least one
+1587	Pick at least one
+1588	Good
+1589	Colors are fairly concentrated
+1590	Top spending categories
+1591	Hualien County
+1592	Spending analysis
+1593	Spending analysis (members) shows monthly spending, average cost per wear, and how much you "recovered" by selling clothes; recovery counts clothes only.
+1594	Miaoli County
+1595	United Kingdom
+1596	Ibaraki
+1597	Strawberry lace dress 680&#10;Bear cape 450&#10;White socks
+1598	Central China
+1599	North China
+1600	South China
+1601	East China
+1602	Glam
+1603	Philippines
+1604	Cute
+1605	Halloween
+1606	Ulsan
+1607	Mint
+1608	Blue
+1609	Blue
+1610	Processing {0} photos…
+1611	In progress
+1612	Handled
+1613	Handled ✓
+1614	The day the clothes arrived home. "Stashed" counts from the arrival date; without it, from the purchase date, or the day added.
+1615	No need to scroll to the bottom when there are lots of clothes: "Save outfit record" stays pinned at the bottom.
+1616	Lay the whole piece flat
+1617	Closet
+1618	Filter the closet by category, status, size and tags; the count at the top shows pieces and sets separately.
+1619	Closet usage
+1620	Closet & adding
+1621	Closet colors
+1622	Fewer than two {0} clothes in the closet. Remember to pick a size when adding, and an outfit for {1} will appear here every day.
+1623	Might already be in your closet
+1624	Not enough fitting clothes in the closet yet. Add a few more first.
+1625	Looks like you already have something nearly identical. Pull it out and compare before ordering.
+1626	You have {0} {1}-themed clothes, {2}.
+1627	You have {0} {1}-themed clothes. Open the app to style them
+1628	No {0}-themed clothes in the closet, so more {1} pieces were picked for a holiday feel.
+1629	Nothing similar in your closet
+1630	Nothing similar in your closet, this one will be new.
+1631	No {0}-themed clothes yet. No need to buy new ones; {1} clothes can create a {2} feel too.
+1632	The closet is still empty
+1633	Closet categories
+1634	Closet: filter by category, status and size together
+1635	Condition
+1636	Condition: {0}{1}{2}
+1637	Blocked by CORS: the server doesn't allow this origin to read /models
+1638	Blocked by CORS: the server didn't return Access-Control-Allow-Origin
+1639	Skirts
+1640	Magnets added
+1641	Decoration fell off
+1642	Fragile decorations
+1643	Skeleton added
+1644	In production
+1645	Making sale images…
+1646	Method
+1647	Making sticker…
+1648	Making sticker, the AI image takes a few seconds…
+1649	Copy text
+1650	Copy this text
+1651	Brown
+1652	Pants
+1653	Tights
+1654	Socks
+1655	Shirts
+1656	Northwest
+1657	West
+1658	Southwest
+1659	Tibet
+1660	Put them in the archive for now? Nothing is deleted; photos and memories stay, and you can take them out anytime.
+1661	When passing them to a new owner, tap "Copy doll profile" to turn the arrival date, care log and accessories into text.
+1662	Add Wawa Closet to your Home Screen and open it from there to turn on notifications.
+1663	Enter a model that **generates images**, e.g. gemini-3-pro-image-preview or others with "image" in the name. Text-only models just reply with text and can't make stickers. Tap "Fetch list" above to see what's available. Only used with "Direct API"; with the server, its image model is used.
+1664	How to cut out?
+1665	To change accessories, tap "Edit" at the top right.
+1666	To care for
+1667	Info for buyers
+1668	Before selling or giving them away, tap "Let them go" to gather your memories together; afterwards they stay in the archive, and you can put them back if it was a mistake.
+1669	Character
+1670	Character birthday
+1671	Noted. Change it back when you find it
+1672	Remember my choice (change later in Settings)
+1673	Log what's worn and where you went each day, and make memory cards
+1674	Add photos to outfit records
+1675	Choose "Out" when recording an outfit to pick the city or country, and write a place name too (e.g. Jiufen, Disneyland).
+1676	Choose "Out" when recording
+1677	Log
+1678	Record 3 or more outfits to see this.
+1679	Record today's outfit
+1680	Record today's outfit
+1681	Record today's outfit
+1682	When recording outings, {0} of your country are listed first; other countries count as "abroad". Footprints and travel memories use this too.
+1683	Log condition
+1684	Record outfit
+1685	After recording outfits, clothes they've worn will be listed here
+1686	Upload a doll photo when recording an outfit; the AI guesses which pieces are worn from your closet's names, types and colors, then you confirm
+1687	Add a photo when recording outfits and it goes into {0}'s album.
+1688	Add a photo when recording outfits and it goes into {0}album
+1689	Photos added to outfit records go into that doll's album automatically, sorted by month.
+1690	Pick the doll when recording outfits; each doll appears here after 2 or more records.
+1691	Record your first outfit
+1692	Set
+1693	Settings
+1694	Settings → Backup & data
+1695	Settings → Reminders & notifications
+1696	Settings saved
+1697	Help
+1698	Notes (optional)
+1699	Who handles it
+1700	Who has been to the most places
+1701	Please set up the API in Settings first
+1702	Please enter the API endpoint first
+1703	Please enter a model name first
+1704	請混搭，不要整套都用同一套裝的單品。
+1705	Please check the results
+1706	Please check the results; the other pieces of the set are listed too
+1707	Please type "delete"
+1708	Pick a size to add it
+1709	Thank you {0} for {1} days together
+1710	Thank you {0} for {1} years together. Go out, or dress {2} in their favorite outfit at home to celebrate, and take a photo to remember it.
+1711	Thank you {0}, safe travels
+1712	Thank you for coming into my life 🤍
+1713	Thank you for being with me through…
+1714	Thank you, goodbye 👋
+1715	Read model list
+1716	Include {0} in the picture
+1717	find them a new home
+1718	Let buyers know how many times it was worn
+1719	Guizhou
+1720	Bought {0} →
+1721	Bought
+1722	What you bought, what you wore
+1723	Record it under on order once bought
+1724	Bought but never worn
+1725	Bought but never worn: bear cape
+1726	Bought it, add to closet
+1727	Items never worn within {0} days of buying, or last worn {1} days ago, are added automatically (based on today's date on your phone; from the purchase date if set, otherwise the day added). You can also add or remove them on the item page; keepsakes are never included.
+1728	Pre-buy check
+1729	Pre-buy check · considering · on order
+1730	Suggests which doll to buy for based on each doll's usual style during pre-buy checks
+1731	Pre-buy check: nearly identical items come first
+1732	Paste the item you want
+1733	Paste a photo or screenshot of the doll clothes you want, and see if your closet has something similar. Checks left this month: 
+1734	Sticker
+1735	Sticker done
+1736	Sticker updated
+1737	Making stickers
+1738	Stickers
+1739	Post 4:5
+1740	Post text (editable)
+1741	Data
+1742	All data is stored on this device. Clearing browser data erases it, so export a copy regularly.{0}
+1743	Data is only stored on this device, remember to make a "Full backup" in Settings now and then.
+1744	Data is only stored in this phone's browser, 
+1745	Data and photos are only stored on this phone and never uploaded anywhere. Switching phones or clearing data will erase them.
+1746	Sold for (optional, kept only in {0}'s record, not counted as recovery)
+1747	Sale price
+1748	Recovered from sales
+1749	Recovered from sales · {0}
+1750	Recovered from sales
+1751	Sold, given away or broken clothes can be moved to the memory box from the item page to keep their stories
+1752	Sold
+1753	Sold it? Move it to the memory box to record the sale price.
+1754	After selling, move it to the memory box to record how much it sold for; Insights calculates "recovered from sales". This counts clothes only, not dolls.
+1755	Enter the sale price when moving sold clothes to the memory box, and this shows how much you recovered. Clothes only; a doll leaving isn't counted.
+1756	Sold something very similar
+1757	Bought
+1758	Purchase price
+1759	Purchase year
+1760	Purchase date
+1761	Purchase date{0}
+1762	Shopping
+1763	On order
+1764	On order{0}
+1765	Clothes on order
+1766	Reminds you on home and the intake page when clothes on order arrive within 7 days, or have arrived but aren't added yet
+1767	When clothes on order arrive, the top of the intake page reminds you; "Add all to intake" brings them in at once with the arrival date filled in.
+1768	On order (all)
+1769	On order: each item's size, progress and ETA
+1770	Where bought
+1771	Where bought{0}
+1772	Where bought / group-buy host
+1773	Via server
+1774	Pilling
+1775	Remind me after this many days without an outfit record (changing at home counts too)
+1776	Buying more often
+1777	Vietnam
+1778	More visits, darker
+1779	Footprints
+1780	Footprint card
+1781	Footprints: places you've been together
+1782	Paired with 12 pieces
+1783	Paired with {0} different pieces · worn {1} times
+1784	Same as last month
+1785	Group buy
+1786	Different from each doll's usual style, might become a new look.
+1787	Comparing with the {1} most similar {0} in your closet…
+1788	Follow system
+1789	Cotai
+1790	Coloane
+1791	Loading tap-to-cut model…
+1792	Light backup
+1793	Enter a redeem code
+1794	Straighten
+1795	Identify failed: 
+1796	Welcome home
+1797	Like new
+1798	Kinki
+1799	Back
