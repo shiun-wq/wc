@@ -2596,7 +2596,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-34';
+const APP_VER='2026.10.01-35';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -8027,24 +8027,47 @@ async function diagnose(btn){
     ${advice?`<div class="note" style="margin-top:12px">${advice}</div>`:''}
     <button class="btn wide" style="margin-top:12px" onclick="openSettings('dev')">回設定</button>`);
 }
-function exportBackup(withImages){
-  const clone=JSON.parse(JSON.stringify({items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,memory:S.memory,orders:S.orders,sizes:S.settings.sizes,customCats:customCats(),hiddenCats:S.settings.hiddenCats||[]}));
-  if(!withImages){
-    clone.items.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
-    clone.wears.forEach(w=>w.photo=null);
-    clone.dolls.forEach(d=>{d.photo=null;d.raw=null});
-    clone.wish.forEach(w=>w.photo=null);
-    clone.orders.forEach(w=>w.photo=null);
-    clone.memory.forEach(i=>{i.photo=null;i.cutout=null;i.cutSrc=null;i.cutMask=null});
+// 備份：照片很多時，不能把整份資料複製好幾次再變成一個超長字串（iPhone 會記憶體不夠、整頁當掉）。
+// 改成一筆一筆轉成小段文字，照片直接接在後面，最後交給 Blob 組成檔案。
+const BK_IMG={items:['photo','cutout','cutSrc','cutMask'],memory:['photo','cutout','cutSrc','cutMask'],dolls:['photo','raw'],wears:['photo'],wish:['photo'],orders:['photo','photoSrc']};
+function backupParts(withImages){
+  const parts=[],data={items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,memory:S.memory,orders:S.orders};
+  parts.push(`{"format":"doll-wardrobe","version":1,"exportedAt":${JSON.stringify(new Date().toISOString())},"withImages":${withImages},"data":{`);
+  let first=true;
+  for(const [k,list] of Object.entries(data)){
+    parts.push(`${first?'':','}${JSON.stringify(k)}:[`);first=false;
+    const flds=BK_IMG[k]||[];
+    (list||[]).forEach((o,i)=>{
+      const c={...o};flds.forEach(f=>delete c[f]);
+      let j=JSON.stringify(c);
+      // 輕量備份：照片欄位都寫 null；完整備份：原本有的欄位原樣放回去
+      const imgs=flds.filter(f=>!withImages||o[f]!==undefined);
+      if(!imgs.length){parts.push((i?',':'')+j);return}
+      parts.push((i?',':'')+j.slice(0,-1));
+      imgs.forEach((f,n)=>{const v=withImages?o[f]:null,pre=(j.length>2||n)?',':'';
+        if(typeof v!=='string'){parts.push(`${pre}"${f}":${JSON.stringify(v)}`);return}
+        // data URL 只有英數和 +/=;:,，不用跳脫，直接接上去，省一次複製
+        if(/^data:[\w/+.-]+;base64,[A-Za-z0-9+/=]*$/.test(v.slice(0,64))&&!/["\\]/.test(v.slice(-64)))parts.push(`${pre}"${f}":"`,v,'"');
+        else parts.push(`${pre}"${f}":${JSON.stringify(v)}`)});
+      parts.push('}');
+    });
+    parts.push(']');
   }
-  const out={format:'doll-wardrobe',version:1,exportedAt:new Date().toISOString(),withImages,data:clone};
-  const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+  parts.push(`,"sizes":${JSON.stringify(S.settings.sizes||[])},"customCats":${JSON.stringify(customCats())},"hiddenCats":${JSON.stringify(S.settings.hiddenCats||[])}}}`);
+  return parts;
+}
+async function exportBackup(withImages){
+  toast(withImages?'正在準備完整備份…照片多的話要等一下':'正在準備備份…');
+  await new Promise(r=>setTimeout(r,60));
+  let blob;
+  try{blob=new Blob(backupParts(withImages),{type:'application/json'})}
+  catch(e){toast('手機記憶體不夠，備份失敗。先關掉其他 App 再試一次，或先用輕量備份');return}
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=`哇娃衣櫃備份-${today()}${withImages?'':'-無照片'}.json`;
   if(withImages){S.settings.lastBackup=Date.now();save();if(UI.tab==='home')renderHome()}
-  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-  toast('備份檔已下載');
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  toast(`備份檔已下載（${blob.size>1048576?(blob.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(blob.size/1024))+' KB'}）`);
 }
 async function importBackup(ev){
   const f=ev.target.files[0];ev.target.value='';
