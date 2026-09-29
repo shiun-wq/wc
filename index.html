@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=2"></script>
+<script src="i18n/i18n.js?v=3"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -528,6 +528,8 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.stat div.tap{cursor:pointer}
+.stat div.tap:active{transform:scale(.97)}
 .awaycar{width:min(62vw,300px);height:auto;z-index:1}
 .awaycar .car{animation:drive 2.4s ease-in-out infinite}
 .awaycar .road{animation:road 1s linear infinite}
@@ -2468,7 +2470,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-19';
+const APP_VER='2026.10.01-20';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5401,8 +5403,9 @@ function footSection(){
   const byDoll=S.dolls.map(d=>{const P=d.outPlaces||{},rs=[...new Set((d.outs||[]).map(t=>{const sp=spNorm(P[t]);return sp?spotText({c:sp.c,r:sp.r}):''}).filter(Boolean))];return {d,n:(d.outs||[]).length,rs}}).filter(x=>x.n).sort((a,b)=>b.rs.length-a.rs.length||b.n-a.n);
   const unit=unitOf(hc);
   return `<div class="stat">
-      <div><b>${fp.length}</b><span>出門次數</span></div><div><b>${home}</b><span>在家穿搭</span></div>
+      <div class="tap" onclick="openWearsOf('','出門')"><b>${fp.length}</b><span>出門次數 ›</span></div><div class="tap" onclick="openWearsOf('','在家')"><b>${home}</b><span>在家穿搭 ›</span></div>
       <div><b>${regs.size}${all.length?`<small style="font-size:14px"> / ${all.length}</small>`:''}</b><span>${esc(hc)}${esc(unit)}</span></div><div><b>${cts.size}</b><span>去過的國家</span></div></div>
+    <button class="btn ghost wide sm" style="margin:-4px 0 14px" onclick="openWearsOf('')">📖 全部穿搭紀錄（${S.wears.length} 筆）</button>
     ${newest?`<div class="note">最近解鎖的地方：<strong>${esc(spotText({c:newest.sp.c,r:isAbroad(newest.sp)?'':newest.sp.r}))}</strong>（${newest.date}${newest.d?`，${esc(newest.d.name)} 第一次去`:''}）</div>`:''}
     ${hc==='台灣'?`<p class="mh">${esc(hc)}</p>`+mapBox('tw',footCounts(fp.map(f=>f.sp)).reg):REGIONS[hc]?`<div class="twgrid">${REGIONS[hc].groups.map(([g,l])=>`<div>${g?`<small>${g}</small>`:''}${l.map(r=>`<span class="${cnt['r:'+r]?'on':''}">${shortRegion(r,hc)}${cnt['r:'+r]?`<i>${cnt['r:'+r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>`
       :regs.size?`<div class="parts" style="margin:8px 0 0">${[...regs].map(r=>`<button type="button" class="on" style="pointer-events:none">📍 ${esc(r)} ${cnt['r:'+r]}</button>`).join('')}</div>`:''}
@@ -6062,6 +6065,13 @@ async function scShare(){
 /* ============================================================
    10. 衣櫃洞察
    ============================================================ */
+// 切換一般／會員分析：切換鈕在畫面上方外面的話，捲回切換鈕（避開上面固定的標題列）
+function insTab(k){
+  UI.insTab=k;renderInsight();
+  const t=document.querySelector('#insight .dtabs'),hd=document.querySelector('header.top');if(!t)return;
+  const off=(hd?hd.getBoundingClientRect().height:0)+8,top=t.getBoundingClientRect().top;
+  if(top<off)window.scrollTo(0,window.scrollY+top-off);
+}
 function renderInsight(){
   const el=document.getElementById('insight');
   const items=S.items.filter(i=>i.category!=='套裝');
@@ -6112,6 +6122,8 @@ function renderInsight(){
     h+=`<div class="note">你最常穿的那幾件，共同點是：<strong>${traits.map(esc).join('、')}</strong>。下次挑娃衣時可以拿這個當參考。</div>`;
   }
 
+  // 下面分成「一般分析／會員分析」兩頁，不用一路往下滑
+  const top=h;h='';
   // 娃娃出場排行
   const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
   if(dollRank.length){
@@ -6179,7 +6191,9 @@ function renderInsight(){
       <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
-  el.innerHTML=h+matchSection()+dollStyleSection()+habitSection(items)+spendSection();
+  const it=UI.insTab||'base';
+  const tabs=`<div class="swap dtabs">${[['base','📊 一般分析'],['vip','👑 會員分析']].map(([k,l])=>`<button class="${it===k?'on':''}" onclick="insTab('${k}')">${l}</button>`).join('')}</div>`;
+  el.innerHTML=top+tabs+(it==='vip'?matchSection()+dollStyleSection()+habitSection(items)+spendSection():h);
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
