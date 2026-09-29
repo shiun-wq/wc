@@ -9,6 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
+<script src="i18n/i18n.js?v=1"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -124,10 +125,14 @@ header.top h1::before{
   background:url(icons/mascot.png) center/contain no-repeat;
 }
 header.top h1 .wa{color:#C9615A}
+header.top h1{white-space:nowrap}
+/* 英文字比較寬：標題縮一點，衣櫃件數下面已經有，上面就不放 */
+html[lang=en] header.top h1{letter-spacing:.02em}
+@media (max-width:430px){html[lang=en] header.top .sub{font-size:0;letter-spacing:0}}
 .pro{font-family:var(--sans);font-size:9px;font-weight:800;letter-spacing:.06em;padding:1px 5px;border-radius:5px;color:#5A3E12;-webkit-text-fill-color:#5A3E12;background:linear-gradient(135deg,#F6D98A,#E3B85A);display:inline-block;line-height:1.35;vertical-align:3px;margin-left:5px;box-shadow:0 1px 2px rgba(90,62,18,.18)}
 .qa i,.buybar i{position:relative}
 .pro.corner{position:absolute;top:-5px;right:-9px;margin:0;vertical-align:0;font-style:normal;font-size:7.5px;padding:1px 4px;letter-spacing:.04em;box-shadow:0 0 0 2px var(--card),0 1px 3px rgba(90,62,18,.25)}
-header.top .sub{font-size:12px;color:var(--muted);margin-left:auto;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+header.top .sub{font-size:12px;white-space:nowrap;color:var(--muted);margin-left:auto;letter-spacing:.06em;font-variant-numeric:tabular-nums}
 .iconbtn{width:var(--tap);height:var(--tap);margin-right:-8px;border-radius:14px;display:grid;place-items:center;color:var(--ink-2);transition:background .2s,transform .2s var(--ease)}
 .iconbtn:active{background:var(--berry-soft);transform:scale(.92)}
 
@@ -1264,6 +1269,11 @@ const uid=p=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).sli
 // 用手機的當地日期（toISOString 是 UTC，台灣早上 8 點前會變成昨天）
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const days=d=>d?Math.floor((Date.now()-new Date(d))/864e5):null;
+// 畫面上的字可能已經被換成別的語言，程式要讀原本的中文時用這個
+const txt=el=>el.dataset&&el.dataset.o!=null?el.dataset.o:el.textContent;
+const LANGS=[['auto','跟隨手機'],['zh-Hant','繁體中文'],['zh-Hans','简体中文'],['en','English']];
+function langPref(){try{return localStorage.getItem('lang')||'auto'}catch(e){return 'auto'}}
+function setLang(l){try{localStorage.setItem('lang',l)}catch(e){}location.reload()}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const slotOf=c=>(CATS.find(x=>x[0]===c)||[])[1]||null;
 
@@ -2102,7 +2112,14 @@ async function listModels(endpoint,key){
   }
   throw new Error(last==='CORS'?'伺服器沒開放讀取模型清單，直接手動輸入模型名稱就好':'抓取失敗（'+last+'），可以手動輸入');
 }
+// 用別的語言時，請 AI 用那個語言寫給使用者看的文字；類別、風格這些選項值還是要照原本的中文
+function aiLang(p){
+  const L=window.LANG;if(L!=='en'&&L!=='zh-Hans')return p;
+  return p+(L==='en'?'\n\n(Language: write any free text meant for the user — names, descriptions, advice, captions — in English. But any value that must be chosen from a list given above, such as category, type, style, color or scene, must stay exactly as the original Chinese option.)'
+    :'\n\n（語言：給使用者看的文字——名稱、描述、建議、文案——請用簡體中文寫；但要從上面清單中選的值，例如類別、類型、風格、顏色、場景，必須照原本的繁體中文選項原樣回傳。）');
+}
 async function callAI(task,prompt,imageDataURL){
+  prompt=aiLang(prompt);
   const content=[{type:'text',text:prompt}];
   if(imageDataURL)content.unshift({type:'image_url',image_url:{url:imageDataURL}});
   return aiText(await aiChat(task,content));
@@ -2451,7 +2468,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-17';
+const APP_VER='2026.10.01-18';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -3576,7 +3593,7 @@ function archiveItem(id){
   openSheet(`<h3>移到回憶箱</h3>
     <div class="row" style="gap:12px;margin-bottom:14px"><div class="th memth">${img(i)?`<img src="${img(i)}" alt="">`:""}</div>
       <div><b>${esc(i.name)}</b><div class="hint">穿過 ${wearCount(id)} 次${i.price?`・買 ${fmt$(money(i.price))}`:''}</div></div></div>
-    <label class="f"><span>它去哪裡了</span><div class="parts" id="mv_r" style="margin-top:0">${MEM_REASONS.map(r=>`<button type="button" class="${r===MV.reason?'on':''}" onclick="MV.reason='${r}';document.querySelectorAll('#mv_r button').forEach(b=>b.classList.toggle('on',b.textContent==='${r}'));document.getElementById('mv_p').style.display='${r}'==='賣掉了'?'':'none'">${r}</button>`).join('')}</div></label>
+    <label class="f"><span>它去哪裡了</span><div class="parts" id="mv_r" style="margin-top:0">${MEM_REASONS.map(r=>`<button type="button" class="${r===MV.reason?'on':''}" onclick="MV.reason='${r}';document.querySelectorAll('#mv_r button').forEach(b=>b.classList.toggle('on',txt(b)==='${r}'));document.getElementById('mv_p').style.display='${r}'==='賣掉了'?'':'none'">${r}</button>`).join('')}</div></label>
     <div class="split">
       <label class="f"><span>日期</span><input type="date" value="${MV.date}" onchange="MV.date=this.value"></label>
       <label class="f" id="mv_p"><span>賣出價格</span><input type="number" inputmode="decimal" placeholder="選填" oninput="MV.price=this.value"></label>
@@ -4059,7 +4076,7 @@ function openBatch(kind){
   openSheet(kind==='origin'?`<h3>批次改產地</h3>
     <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的產地。</p>
     <label class="f"><span>產地</span><input type="text" id="b_val" value="${esc(same)}" placeholder="例如 中國" maxlength="20"></label>
-    <div class="parts" style="margin:-4px 0 12px">${originList().map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>
+    <div class="parts" style="margin:-4px 0 12px">${originList().map(o=>`<button type="button" onclick="document.getElementById('b_val').value=txt(this)">${esc(o)}</button>`).join('')}</div>
     <div class="row"><button class="btn ghost grow" onclick="applyBatch('origin',true)">清空產地</button><button class="btn grow" onclick="applyBatch('origin')">套用到 ${ids.length} 件</button></div>`
   :`<h3>批次改${BATCH[kind][0]}</h3>
     <p class="hint" style="margin:-6px 0 12px">一次改 ${ids.length} 件娃衣的${BATCH[kind][0]}。${kind==='home'?'壓箱底會從到貨日開始算，預購等很久的衣服不會一進來就壓箱底。':'沒填到貨日期的，壓箱底會從購入日期開始算。'}</p>
@@ -4073,9 +4090,9 @@ function openBatch2(kind,ids){
   let h='';
   if(kind==='brand'){const brands=[...new Set(S.items.map(i=>(i.brand||'').trim()).filter(Boolean))];
     h=`<h3>批次改品牌</h3><label class="f"><span>品牌</span><input type="text" id="b_val" maxlength="30" placeholder="例如 某某娃衣屋"></label>
-    ${brands.length?`<div class="parts" style="margin:-4px 0 12px">${brands.map(o=>`<button type="button" onclick="document.getElementById('b_val').value=this.textContent">${esc(o)}</button>`).join('')}</div>`:''}${apply('清空品牌')}`}
+    ${brands.length?`<div class="parts" style="margin:-4px 0 12px">${brands.map(o=>`<button type="button" onclick="document.getElementById('b_val').value=txt(this)">${esc(o)}</button>`).join('')}</div>`:''}${apply('清空品牌')}`}
   if(kind==='size')h=`<h3>批次改尺寸</h3><p class="hint" style="margin:-6px 0 12px">選一個尺寸，這 ${ids.length} 件原本的尺寸會換成它。${UI.batchSet!==false&&batchHasSet()?'選到的套裝，拆出來的單品也會一起改。':''}</p>
-    <div class="parts" id="b_size">${sizes().map(z=>`<button type="button" onclick="document.querySelectorAll('#b_size button').forEach(b=>b.classList.toggle('on',b===this));document.getElementById('b_val').value=this.textContent">${esc(z)}</button>`).join('')}</div>
+    <div class="parts" id="b_size">${sizes().map(z=>`<button type="button" onclick="document.querySelectorAll('#b_size button').forEach(b=>b.classList.toggle('on',b===this));document.getElementById('b_val').value=txt(this)">${esc(z)}</button>`).join('')}</div>
     <input type="hidden" id="b_val" value="">
     <button class="btn wide" style="margin-top:12px" onclick="applyBatch('size')">套用</button>`;
   if(kind==='cat')h=`<h3>批次改類型</h3><p class="hint" style="margin:-6px 0 12px">想要新的類型（例如 日卡套裝、和服），先到 設定 → 衣櫃類別 新增。</p>
@@ -4085,7 +4102,7 @@ function openBatch2(kind,ids){
   if(kind==='tag'){const tags=allTags();
     h=`<h3>加標籤</h3><p class="hint" style="margin:-6px 0 12px">標籤可以放作品、系列、活動，例如「戀與深空」。一件可以有很多個標籤，衣櫃上方可以用標籤篩選。</p>
     <label class="f"><span>標籤（多個用逗號分開）</span><input type="text" id="b_val" placeholder="例如 戀與深空"></label>
-    ${tags.length?`<div class="parts" style="margin:-4px 0 12px">${tags.map(o=>`<button type="button" onclick="const e=document.getElementById('b_val');e.value=(e.value?e.value+'、':'')+this.textContent">${esc(o)}</button>`).join('')}</div>`:''}
+    ${tags.length?`<div class="parts" style="margin:-4px 0 12px">${tags.map(o=>`<button type="button" onclick="const e=document.getElementById('b_val');e.value=(e.value?e.value+'、':'')+txt(this)">${esc(o)}</button>`).join('')}</div>`:''}
     <button class="btn wide" onclick="applyBatch('tag')">加到 ${ids.length} 件</button>`}
   if(kind==='untag'){const tags=[...new Set(its.flatMap(i=>i.tags||[]))];
     h=`<h3>移除標籤</h3>${tags.length?`<p class="hint" style="margin:-6px 0 12px">點要從這 ${ids.length} 件拿掉的標籤。</p><div class="parts">${tags.map(t=>`<button type="button" onclick="applyBatch('untag',false,decodeURIComponent('${encodeURIComponent(t)}'))">#${esc(t)} ×</button>`).join('')}</div>`:'<p class="hint">選到的娃衣都還沒有標籤。</p>'}`}
@@ -4303,7 +4320,7 @@ async function saveEdit(id){
   const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]])))),oldName=i.name;
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.brand=v('e_brand');i.shop=v('e_shop');
   i.buyDate=v('e_buy');i.homeDate=v('e_home');i.origin=v('e_origin').trim();i.holiday=v('e_hol');i.tags=parseTags(v('e_tags'));i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
-  i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>b.textContent);
+  i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>txt(b));
   i.keepsake=document.getElementById('e_keep').classList.contains('on');
   i.keepsakeReason=v('e_kr');
   const sync=document.getElementById('e_sync');
@@ -5001,8 +5018,8 @@ function drawIdea(){
     <p class="mh" style="margin-top:0">節日主題（選填）</p>
     <div class="parts" id="id_th" style="margin-top:0">${['',...hols].map(n=>`<button type="button" data-k="${n}" class="${IDEA.theme===n?'on':''}" onclick="IDEA.theme='${n}';document.querySelectorAll('#id_th button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${n}'))">${n?holIcon(n)+' '+n:'不限'}</button>`).join('')}</div>
     <p class="mh">今天在哪裡？</p>
-    <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div>
-    <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&b.textContent===IDEA.scene))">
+    <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',txt(b)==='${x}'))">${x}</button>`).join('')}</div>
+    <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&txt(b)===IDEA.scene))">
     ${liveDolls().length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${liveDolls().map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
     <label class="remember" style="margin-top:12px"><input type="checkbox" ${IDEA.press?'checked':''} onchange="IDEA.press=this.checked"> 優先用壓箱底的娃衣 📦</label>
     <label class="remember" style="margin-top:6px"><input type="checkbox" ${pickSetsOn()?'checked':''} onchange="S.settings.pickSets=this.checked;save()"> 有套裝就整套搭（關掉＝都混搭）</label>
@@ -6296,6 +6313,7 @@ function thumb(src,max){
   });
 }
 async function callAIImgs(task,prompt,imgs){
+  prompt=aiLang(prompt);
   const content=[...imgs.map(u=>({type:'image_url',image_url:{url:u}})),{type:'text',text:prompt}];
   return aiText(await aiChat(task,content));
 }
@@ -6743,7 +6761,7 @@ function helpZoom(src){
   const d=document.createElement('div');d.className='hzoom';d.innerHTML=`<img src="${src}" alt="">`;d.onclick=()=>d.remove();document.body.appendChild(d);
 }
 // 設定：第一層是分類清單，點進去才是各自的設定（像手機的設定 App）
-const SET_PAGES={help:'使用說明',member:'會員與 AI',notify:'提醒與通知',region:'我住在',look:'外觀',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
+const SET_PAGES={help:'使用說明',member:'會員與 AI',notify:'提醒與通知',region:'我住在',look:'外觀',lang:'語言',cats:'衣櫃類別',sizes:'娃衣尺寸',sticker:'貼圖製作',data:'備份與資料',dev:'開發者模式'};
 function openSettings(page){
   const st=S.settings,c=cfg();
   const th=st.theme||'light';
@@ -6770,6 +6788,7 @@ function openSettings(page){
     <p class="setlabel">其他</p>
     <div class="setgroup">
       ${row('region','🌏','我住在',homeCountry())}
+      ${row('lang','🌐','語言',langPref()==='auto'?'跟隨手機':`<span translate="no">${LANGS.find(x=>x[0]===langPref())[1]}</span>`)}
       ${row('look','🎨','外觀',{light:'淺色',dark:'深色',auto:'跟隨系統'}[th])}
       ${row('data','💾','備份與資料',ago===null?'還沒備份過':ago===0?'今天備份過':`${ago} 天前備份`)}
       ${devMode()?row('dev','🛠️','開發者模式','AI 連線設定'):''}
@@ -6834,6 +6853,10 @@ function openSettings(page){
   if(page==='look')body=`<div class="swap" id="s_theme">
       ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
     </div>`;
+  if(page==='lang')body=`<div class="setgroup">
+      ${LANGS.map(([k,l])=>`<button class="setrow" onclick="setLang('${k}')"><span><b ${k==='auto'?'':'translate="no"'}>${l}</b></span><em>${langPref()===k?'✓':''}</em></button>`).join('')}
+    </div>
+    <p class="hint" style="margin:10px 4px 0">只會改變畫面上的文字，衣櫃裡的資料不會變。使用說明的圖片目前只有繁體中文。</p>`;
   if(page==='cats')body=`
     <div class="card">
       <p class="hint" style="margin:0 0 8px">點一下可以在衣櫃裡隱藏／顯示這個類別（深色的是顯示中）。</p>
