@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=6"></script>
+<script src="i18n/i18n.js?v=8"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -528,6 +528,20 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+
+/* 我的會員 */
+.mcard{padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,var(--gold-soft),var(--berry-soft));margin-bottom:6px}
+.mcard b{display:block;font-size:15px;margin-bottom:4px}.mcard span{font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.mhub{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:12px;border-bottom:1px solid var(--line)}
+.mhub:last-child{border-bottom:0}.mhub:active{background:var(--swatch)}
+.mhub>i{font-style:normal;font-size:20px;width:28px;text-align:center;flex:0 0 28px}
+.mhub b{font-size:14px;font-weight:600;display:block}.mhub small{display:block;font-size:12px;color:var(--muted);line-height:1.45;margin-top:2px}
+.mhub>em{font-style:normal;text-align:right;flex:0 0 auto;min-width:44px}.mhub>em b{font-family:var(--num);font-size:20px;color:var(--berry-deep);display:inline}
+.mhub>em small{display:inline;margin-left:2px}.mhub>em.arr{color:var(--muted);font-size:18px;min-width:0}
+
+/* 調整商品圖 */
+.cropbox{position:relative;width:100%;max-width:340px;aspect-ratio:1;margin:0 auto;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px var(--line);touch-action:none}
+.cropbox canvas{display:block;touch-action:none;cursor:grab}
 
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -1099,7 +1113,7 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
     </button>
     <h1 id="title"><span class="wa">哇</span>娃衣櫃</h1>
     <span class="sub" id="topsub"></span>
-    <button class="wchip" id="wchip" onclick="go('wallet')" aria-label="錢包"></button>
+    <button class="wchip" id="wchip" onclick="isMember()?openMemberHub():go('wallet')" aria-label="錢包"></button>
     <button class="iconbtn" onclick="openSettings()" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H2a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -1143,6 +1157,7 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
         <span class="hint">可一次選多張。照片會在你的裝置上壓縮，不會自動上傳。</span>
       </div>
       <input type="file" id="files" accept="image/*" multiple hidden onchange="onFiles(event)">
+      <p class="hint" style="text-align:center;margin:-4px 0 14px">還沒到貨的？<a href="javascript:void 0" style="color:var(--berry-deep);font-weight:600" onclick="UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)">用訂單截圖記進購買中 ›</a></p>
       <div id="arriveTip"></div>
       <div id="cutTip"></div>
       <div id="queue"></div>
@@ -1303,7 +1318,7 @@ const slotOf=c=>(CATS.find(x=>x[0]===c)||[])[1]||null;
 /* ---- 存檔：照片分開存 ----
    照片（base64）很大，每次都把整個衣櫃重寫一遍會越來越慢。
    主資料只存文字，照片各自一個 key，只有新增或改過的照片才寫入，刪掉的也會一起清。 */
-const IMG_FIELDS={items:['photo','cutout','cutSrc','cutMask'],memory:['photo','cutout','cutSrc','cutMask'],dolls:['photo','raw'],wears:['photo'],wish:['photo'],orders:['photo']};
+const IMG_FIELDS={items:['photo','cutout','cutSrc','cutMask'],memory:['photo','cutout','cutSrc','cutMask'],dolls:['photo','raw'],wears:['photo'],wish:['photo'],orders:['photo','photoSrc']};
 const IMGSAVED=new Map();   // key -> 上次寫進資料庫的內容
 let SAVING=null,SAVE_AGAIN=false;
 async function save(){
@@ -2522,7 +2537,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-23';
+const APP_VER='2026.10.01-25';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -3505,7 +3520,7 @@ async function shotAdd(ev){
 }
 function shotPrompt(){
   return `這是購物 App（淘寶、閒魚、拼多多、蝦皮、Mercari…）訂單列表的截圖，商品是娃娃的衣服（娃衣）或配件。請列出截圖裡每一件商品，只回傳 JSON：
-{"items":[{"shop":"店家名稱","name":"簡短品名","price":24.9,"currency":"CNY","qty":1,"size":"20cm","category":"類型","brand":"","stage":"進度","cancelled":false,"box":[x,y,w,h]}]}
+{"items":[{"shop":"店家名稱","name":"簡短品名","price":24.9,"currency":"CNY","qty":1,"size":"20cm","category":"類型","brand":"","stage":"進度","cancelled":false,"box":[x,y,w,h],"colors":["白色"],"styles":[{"name":"學院風","score":80}],"motifs":["格紋"]}]}
 規則：
 - name：用規格／款式為主（例如「短袖校服」「黑藍格子褲」），太短看不出是什麼時才加系列名；去掉「現貨」「預售」「包郵」「*如量特大提前截止」這類促銷字；用繁體中文。
 - price：這一件的單價（數字）；currency：價格的幣別代碼（中國的店用 CNY，日本 JPY，台灣 TWD，美國 USD，韓國 KRW）。
@@ -3516,9 +3531,20 @@ function shotPrompt(){
 - stage：從「開團中、已付款、製作中、運送中、已到貨」選一個：待付款→開團中；待發貨、預售、製作中→製作中；已發貨、待收貨、運輸中→運送中；已完成、已簽收、待評價、交易成功→已到貨；看不出來→已付款。
 - cancelled：整行被刪除線劃掉、寫退款／已取消的是 true。
 - box：這件商品小圖在截圖裡的位置，用 0～1000 的比例（左上角 x、y，寬 w、高 h）。沒有小圖就給 null。
+- colors：看商品小圖的主要顏色，中文色名，最多 3 個；styles：從 ${STYLE_WORDS.join('、')} 挑 1～2 個（score 0～100）；motifs：看得出來的圖案或元素（草莓、小熊、格紋、蕾絲…），看不出來就空陣列。
 - 截圖被切到、看不完整的商品也要列，看不清楚的欄位留空。`;
 }
-// 從原圖剪下商品小圖（比例座標 0～1000）
+// 從原圖剪下商品小圖（比例座標 0～1000）；另外多留一圈存成 src，剪歪了可以在單筆裡調整
+function shotSrc(im,box){
+  if(!Array.isArray(box)||box.length<4)return null;
+  const [x,y,w,h]=box.map(Number);if(![x,y,w,h].every(isFinite)||w<20||h<20)return null;
+  const W=im.width,H=im.height,side=Math.max(w/1000*W,h/1000*H),cx=(x+w/2)/1000*W,cy=(y+h/2)/1000*H,pad=side*.45;
+  const ex=Math.max(0,cx-side/2-pad),ey=Math.max(0,cy-side/2-pad),ew=Math.min(W,cx+side/2+pad)-ex,eh=Math.min(H,cy+side/2+pad)-ey;
+  const c=document.createElement('canvas'),s=Math.min(1,900/Math.max(ew,eh));c.width=Math.round(ew*s);c.height=Math.round(eh*s);
+  c.getContext('2d').drawImage(im,ex,ey,ew,eh,0,0,c.width,c.height);
+  const sd=Math.min(side,ew,eh);
+  return {src:c.toDataURL('image/jpeg',.85),rect:{x:Math.max(0,cx-sd/2-ex)/ew,y:Math.max(0,cy-sd/2-ey)/eh,w:sd/ew}};
+}
 function shotCrop(im,box){
   if(!Array.isArray(box)||box.length<4)return null;
   let [x,y,w,h]=box.map(Number);if(![x,y,w,h].every(isFinite)||w<20||h<20)return null;
@@ -3537,9 +3563,10 @@ async function shotRead(){
     try{
       const j=parseJSON(await callAIImgs('tag',shotPrompt(),[s.ai]));
       const list=Array.isArray(j)?j:(j.items||[]);ok++;spendQuota('tag');
-      list.forEach(x=>{if(!x||!x.name)return;const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1)),cur=String(x.currency||'').toUpperCase()||SH.cur,photo=shotCrop(s.im,x.box);
+      list.forEach(x=>{if(!x||!x.name)return;const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1)),cur=String(x.currency||'').toUpperCase()||SH.cur,photo=shotCrop(s.im,x.box),sr=photo?shotSrc(s.im,x.box):null;
         for(let k=0;k<qty;k++)rows.push({on:!x.cancelled,cancelled:!!x.cancelled,name:String(x.name).trim(),orig:+x.price||0,cur,category:allCats().includes(x.category)?x.category:'',size:sizes().includes(x.size)?x.size:'',
-          brand:String(x.brand||'').trim(),shop:String(x.shop||'').trim(),stage:ORDER_STAGES.includes(x.stage)?x.stage:'已付款',photo})});
+          brand:String(x.brand||'').trim(),shop:String(x.shop||'').trim(),stage:ORDER_STAGES.includes(x.stage)?x.stage:'已付款',photo,photoSrc:sr&&sr.src,photoCrop:sr&&sr.rect,
+          colors:Array.isArray(x.colors)?x.colors.slice(0,3).map(String):[],styles:Array.isArray(x.styles)?x.styles.filter(y=>y&&STYLE_WORDS.includes(y.name||y)).map(y=>({name:y.name||y,score:+y.score||70})).slice(0,3):[],motifs:Array.isArray(x.motifs)?x.motifs.slice(0,4).map(String):[]})});
     }catch(e){fail++}
   }
   SH.busy=false;
@@ -3575,7 +3602,7 @@ async function shotSave(){
   const rows=SH.rows.filter(r=>r.on&&r.name.trim());if(!rows.length){toast('至少勾一件');return}
   const home=homeCur(),ORG={CNY:'中國',JPY:'日本',KRW:'韓國',TWD:'台灣',USD:'美國'};
   rows.forEach(r=>{const fx=r.cur!==home&&r.orig;
-    const o={id:uid('o'),kind:'item',name:r.name.trim(),price:r.price===''?'':String(r.price),category:r.category,size:r.size,brand:r.brand,shop:r.shop,origin:ORG[r.cur]||'',stage:r.stage,eta:'',orderDate:today(),photo:r.photo||null,
+    const o={id:uid('o'),kind:'item',name:r.name.trim(),price:r.price===''?'':String(r.price),category:r.category,size:r.size,brand:r.brand,shop:r.shop,origin:ORG[r.cur]||'',stage:r.stage,eta:'',orderDate:today(),photo:r.photo||null,photoSrc:r.photoSrc||null,photoCrop:r.photoCrop||null,colors:r.colors,styles:r.styles,motifs:r.motifs,
       note:fx?`原價 ${CUR_SIGN[r.cur]||r.cur}${r.orig}（匯率 ${Math.round(fxRate(r.cur)*1000)/1000}）`:'',createdAt:Date.now()};
     if(o.stage==='已到貨')o.arrived=today();S.orders.push(o)});
   await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');toast(`已記下 ${rows.length} 件`);
@@ -3621,7 +3648,7 @@ async function batchOrderIntake(){
   const os=OBT.ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&o.kind!=='doll'&&o.stage==='已到貨');
   const ok=os.filter(o=>o.photo),no=os.length-ok.length;
   ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
   UI.osel=new Set();UI.omulti=false;await save();closeSheet();
   if(ok.length){go('intake');toast(`${ok.length} 筆加入建檔${no?`，另外 ${no} 筆沒有照片，要拍照後再建檔`:''}`)}
   else{renderWish();toast('這幾筆都還沒有照片，按「拿去建檔」會請你拍一張')}
@@ -3643,6 +3670,7 @@ function drawOrder(){
       <input type="file" id="o_ph" accept="image/*" hidden onchange="orderPhoto(event)">
       <label class="f grow" style="margin:0"><span>${isDoll?'娃娃名字':'名稱'}</span><input type="text" value="${esc(d.name)}" placeholder="${isDoll?'例如 小白':'例如 草莓蕾絲洋裝'}" oninput="OD.name=this.value"></label>
     </div>
+    ${d.photo?`<div class="row" style="gap:8px;margin:-4px 0 12px"><button type="button" class="btn sm ghost" onclick="orderCropOpen()">✂️ 調整${isDoll?'照片':'商品圖'}</button><button type="button" class="btn sm ghost" onclick="document.getElementById('o_ph').click()">換一張</button><button type="button" class="btn sm ghost" style="color:var(--muted)" onclick="OD.photo=null;OD.photoSrc=null;OD.photoCrop=null;drawOrder()">拿掉</button></div>`:''}
     <div class="split">
       ${isDoll?`<label class="f"><span>尺寸</span><select onchange="OD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>`
       :`<label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${allCats().map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`}
@@ -3665,8 +3693,56 @@ function drawOrder(){
     <button class="btn wide" onclick="saveOrder()">儲存</button>
     ${d.id?`<button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delOrder('${d.id}')">刪除</button>`:''}`);
 }
+/* ---- 調整商品圖：方框固定，拖曳移動、滑桿或兩指縮放 ----
+   src 是比較大的原圖（截圖匯入時會多留一圈），rect 是目前框的位置（比例 0～1，正方形）。 */
+let CROP={};
+function openCrop(src,rect,done,title){
+  CROP={src,rect,done,im:null,z:1,px:0,py:0,F:0};
+  openSheet(`<h3>${title||'調整商品圖'}</h3>
+    <p class="hint" style="margin:-6px 0 12px">拖曳移動，用下面的滑桿或兩指放大縮小，框裡的就是存下來的樣子。</p>
+    <div class="cropbox" id="cropbox"><canvas id="cropcv"></canvas></div>
+    <label class="f" style="margin-top:12px"><span>放大</span><input type="range" id="cropz" min="1" max="5" step="0.01" value="1" oninput="cropZoom(+this.value)"></label>
+    <button class="btn wide" onclick="cropDone()">用這個位置</button>
+    <button class="btn ghost wide" style="margin-top:8px" onclick="CROP.done(null)">取消</button>`);
+  loadImg(src).then(im=>{CROP.im=im;cropInit()});
+}
+function cropInit(){
+  const box=document.getElementById('cropbox'),cv=document.getElementById('cropcv');if(!box||!CROP.im)return;
+  const F=CROP.F=box.clientWidth,im=CROP.im,dpr=window.devicePixelRatio||1;
+  cv.width=F*dpr;cv.height=F*dpr;cv.style.width=cv.style.height=F+'px';
+  CROP.b=F/Math.min(im.width,im.height);
+  const r=CROP.rect;
+  if(r&&r.w>0){const side=r.w*im.width,ds=F/side;CROP.z=Math.max(1,Math.min(5,ds/CROP.b));const d=CROP.b*CROP.z;CROP.px=-r.x*im.width*d;CROP.py=-r.y*im.height*d}
+  else{CROP.z=1;const d=CROP.b;CROP.px=(F-im.width*d)/2;CROP.py=(F-im.height*d)/2}
+  document.getElementById('cropz').value=CROP.z;cropClamp();cropDraw();
+  // 拖曳、兩指縮放
+  const pts=new Map();let last=null,pinch=null;
+  cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:CROP.z}}else last={x:e.clientX,y:e.clientY}};
+  cv.onpointermove=e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===2&&pinch){const [a,b]=[...pts.values()];cropZoom(pinch.z*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d);document.getElementById('cropz').value=CROP.z;return}
+    if(last){CROP.px+=e.clientX-last.x;CROP.py+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};cropClamp();cropDraw()}};
+  cv.onpointerup=cv.onpointercancel=e=>{pts.delete(e.pointerId);pinch=null;last=pts.size===1?[...pts.values()][0]:null};
+}
+function cropClamp(){const im=CROP.im,d=CROP.b*CROP.z,F=CROP.F;
+  CROP.px=Math.min(0,Math.max(F-im.width*d,CROP.px));CROP.py=Math.min(0,Math.max(F-im.height*d,CROP.py))}
+// 以框的中心縮放
+function cropZoom(z){z=Math.max(1,Math.min(5,z));const F=CROP.F,d0=CROP.b*CROP.z,d1=CROP.b*z,cx=(F/2-CROP.px)/d0,cy=(F/2-CROP.py)/d0;
+  CROP.z=z;CROP.px=F/2-cx*d1;CROP.py=F/2-cy*d1;cropClamp();cropDraw()}
+function cropDraw(){const cv=document.getElementById('cropcv');if(!cv||!CROP.im)return;const g=cv.getContext('2d'),s=cv.width/CROP.F,d=CROP.b*CROP.z;
+  g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(CROP.im,CROP.px*s,CROP.py*s,CROP.im.width*d*s,CROP.im.height*d*s)}
+function cropDone(){
+  const im=CROP.im;if(!im)return;const d=CROP.b*CROP.z,sx=-CROP.px/d,sy=-CROP.py/d,sw=CROP.F/d;
+  const out=document.createElement('canvas'),n=Math.min(600,Math.round(sw));out.width=out.height=n;
+  const g=out.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,n,n);g.drawImage(im,sx,sy,sw,sw,0,0,n,n);
+  CROP.done({photo:out.toDataURL('image/jpeg',.85),rect:{x:sx/im.width,y:sy/im.height,w:sw/im.width}});
+}
+// 購買中的單筆：調整商品圖／換一張（換了之後直接進調整畫面）
+function orderCropOpen(){
+  const src=OD.photoSrc||OD.photo;if(!src)return;
+  openCrop(src,OD.photoSrc?OD.photoCrop:null,r=>{if(r){OD.photo=r.photo;OD.photoCrop=r.rect;if(!OD.photoSrc)OD.photoSrc=src}drawOrder()});
+}
 function addMonths(m){const d=new Date();d.setMonth(d.getMonth()+m);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-async function orderPhoto(ev){const f=ev.target.files[0];ev.target.value='';if(!f)return;OD.photo=await compress(f);drawOrder()}
+async function orderPhoto(ev){const f=ev.target.files[0];ev.target.value='';if(!f)return;const im=await fileToImg(f);OD.photoSrc=drawScaled(im,1200).toDataURL('image/jpeg',.85);OD.photoCrop=null;OD.photo=await compress(f);orderCropOpen()}
 async function saveOrder(){
   if(!OD.name.trim()){toast('幫它取個名字吧');return}
   const o={...OD,name:OD.name.trim()};
@@ -3700,7 +3776,7 @@ function orderToIntake(id){
   }
   o.filed=true;save();
   UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
   go('intake');toast('已加入建檔，選好尺寸、做成貼圖就完成了');
 }
 async function setWish(id,st){const w=S.wish.find(x=>x.id===id);w.status=st;w.decidedAt=st==='wait'?null:Date.now();await save();renderWish()}
@@ -5110,7 +5186,7 @@ function renderMatch(){
   const el=document.getElementById('matchStats');if(el)el.innerHTML=matchSection();
 }
 function matchSection(){
-  const head=`<h2 class="sec">搭配分析 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="match">搭配分析 <span class="vip">會員</span></h2>`;
   if(!isMember()){
     return head+`<div class="locked">
       <div class="lk-blur">
@@ -5179,6 +5255,47 @@ function openMember(){
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
     <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。<br>網頁版目前是測試階段，可以直接開啟會員試用；上架成 App 後會換成正式的訂閱方案。</div>
     <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
+}
+
+/* ---- 我的會員：會員自己看的頁面 ----
+   本月 AI 還剩多少、每個會員功能在哪裡，點一下直接過去 */
+const MEMBER_GO={
+  tag:["closeSheet();go('intake')",'建檔時拍照，按「AI 分析」'],
+  img:["closeSheet();go('intake')",'建檔做貼圖時選「AI 出圖」'],
+  wearid:["closeSheet();openWear()",'記穿搭時放照片，按「AI 辨識」'],
+  idea:["closeSheet();openIdea()",'首頁「幫我搭一套」→ AI 建議'],
+  buy:["closeSheet();openBuyCheck()",'想買之前丟照片或商品截圖']
+};
+function goVip(k){closeSheet();UI.insTab='vip';go('insight');
+  setTimeout(()=>{const h=document.querySelector(`#insight h2[data-sec="${k}"]`),hd=document.querySelector('header.top');if(h)window.scrollTo(0,h.getBoundingClientRect().top+window.scrollY-(hd?hd.getBoundingClientRect().height:0)-8)},350)}
+function openMemberHub(){
+  if(!isMember())return openMember();
+  const u=usage(),nextM=(()=>{const d=new Date();return `${d.getMonth()===11?1:d.getMonth()+2}/1`})();
+  const q=k=>{const Q=QUOTA[k],used=u[k]||0,max=quotaMax(k),left=Math.max(0,max-used),[ico,desc]=AI_DESC[k]||['✦',''];
+    return `<button class="mhub" onclick="${MEMBER_GO[k][0]}"><i>${ico}</i><div class="grow"><b>${Q.name}${Q.memberOnly?'<span class="pro">PRO</span>':''}</b>
+      <small>${MEMBER_GO[k][1]}</small><div class="track" style="height:6px;margin-top:6px"><i class="worn" style="width:${max?left/max*100:0}%"></i></div></div>
+      <em><b>${left}</b><small>/ ${max}</small></em></button>`};
+  const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
+  openSheet(`<h3>♛ 我的會員</h3>
+    <div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>
+    <p class="mlabel">本月 AI 額度・點一下直接去用</p>
+    <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
+    <p class="mlabel">會員專屬功能</p>
+    <div class="mbox">
+      ${go('📸','截圖匯入購買中','丟購物 App 的訂單截圖，一次記進購買中',"closeSheet();UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)")}
+      ${go('🛍️','買前檢查','衣櫃裡有沒有很像的、以前賣掉過的、還在路上的',"closeSheet();openBuyCheck()")}
+      ${go('🎯','適合給哪隻娃娃','買前檢查的結果裡，依娃娃平常的風格推薦',"closeSheet();openBuyCheck()")}
+    </div>
+    <p class="mlabel">會員分析・在「洞察 → 👑 會員分析」</p>
+    <div class="mbox">
+      ${go('🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合',"goVip('match')")}
+      ${go('🏆','套裝排行','最常整套出場、常常只拿一部分出來搭的套裝',"goVip('set')")}
+      ${go('🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色',"goVip('doll')")}
+      ${go('🎄','季節・節日・配色','季節服、節日服穿過幾件，你最常用的配色',"goVip('use')")}
+      ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
+      ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
+    </div>
+    <div class="row" style="gap:8px;margin-top:14px"><button class="btn ghost grow" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points}</button><button class="btn ghost grow" onclick="openMember()">免費版和會員的差別</button></div>`);
 }
 async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
@@ -6423,7 +6540,7 @@ function dollProfile(d){
 }
 // 會員：每隻娃娃都穿什麼、適合什麼
 function dollStyleSection(){
-  const head=`<h2 class="sec">每隻娃娃的穿搭 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="doll">每隻娃娃的穿搭 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>梁湛：常穿上衣、外套</b><span>休閒・酷帥・黑色系</span></div></div>
@@ -6458,7 +6575,7 @@ function setWearStats(){
   });
 }
 function setSection(){
-  const head=`<h2 class="sec">套裝排行 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="set">套裝排行 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>🏆 英倫偵探套裝</b><span>整套穿了 6 次</span></div></div>
@@ -6492,7 +6609,7 @@ function colorPairs(){
   return cnt;
 }
 function useSection(items){
-  const head=`<h2 class="sec">季節・節日・配色 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="use">季節・節日・配色 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>聖誕節服 5 件，穿過 2 件</b><span>節日服使用率 40%</span></div></div>
@@ -6518,7 +6635,7 @@ function useSection(items){
   return h;
 }
 function habitSection(items){
-  const head=`<h2 class="sec">穿搭習慣 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="habit">穿搭習慣 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>最常在星期六換裝</b><span>週末佔 62%</span></div></div>
@@ -6929,7 +7046,7 @@ function soldSection(){
     <div class="tx"><b>${esc(i.name)}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
 }
 function spendSection(){
-  const head=`<h2 class="sec">花費分析 <span class="vip">會員</span></h2>`;
+  const head=`<h2 class="sec" data-sec="spend">花費分析 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked">
     <div class="lk-blur">
       <div class="rowitem"><div class="th"></div><div class="tx"><b>娃衣花費 $12,480</b><span>平均每穿一次 $86</span></div></div>
@@ -7006,7 +7123,7 @@ const HELP=[
     ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
   // ── 購物
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註。','「多選」可以一次改進度、預計到貨、尺寸、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 資料
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
     ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
@@ -7094,6 +7211,7 @@ function openSettings(page){
   const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${SET_PAGES[page]}</h3>`;
   let body='';
   if(page==='member')body=`
+    <button class="btn wide" style="margin-bottom:12px" onclick="${isMember()?'openMemberHub()':'openMember()'}">${isMember()?'♛ 我的會員：可以用哪些功能':'看看會員可以做什麼'}</button>
     <div class="card">
       <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
         <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
