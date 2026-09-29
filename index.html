@@ -504,14 +504,31 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .footrow b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .footrow b i{font-style:normal;font-weight:400;color:var(--placeholder)}
 .footrow em{font-style:normal;color:var(--muted)}
-.twmap{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:12px 0 4px;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
-.twmap{grid-auto-rows:38px}.twmap.sm{grid-auto-rows:28px}
-.twmap span{position:relative;display:grid;place-items:center;border-radius:10px;background:var(--swatch);color:var(--muted);font-size:12px;letter-spacing:.02em}
-.twmap span.isle{border:1px dashed var(--line-2);background:none}
-.twmap span.on{background:var(--berry);color:var(--on-ink);font-weight:600;border:none}
-.twmap span i{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--gold);color:#fff;font:600 10px/17px var(--sans);font-style:normal}
-.twmap.sm{gap:4px;padding:10px;margin:10px 0 6px}.twmap.sm span{font-size:10.5px;border-radius:8px}
+.fmap{margin:6px 0 4px;padding:12px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);min-height:120px}
+.fmap svg{display:block;width:100%;height:auto;max-height:400px}
+.fmap[data-map="tw"] svg{max-width:300px;margin:0 auto}
+.fmap.sm{padding:8px;margin:8px 0}.fmap.sm[data-map="tw"] svg{max-width:190px}
+.fmap path{fill:var(--line);stroke:var(--card);stroke-width:.6;stroke-linejoin:round}
+.fmap .h1{fill:#E8B9C6}.fmap .h2{fill:#CF8499}.fmap .h3{fill:#B25873}.fmap .h4{fill:#843B52}
+.fmap .home{fill:var(--gold-soft);stroke:var(--gold)}
+.fmap circle.dot{fill:var(--line);stroke:var(--card);stroke-width:1}
+.fmap .inset{fill:none;stroke:var(--line-2);stroke-dasharray:4 3}
+.fmload{display:grid;place-items:center;min-height:100px;font-size:12.5px;color:var(--muted)}
+.fmleg{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0 0 12px;font-size:11.5px;color:var(--muted)}
+.fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
+.fmleg .h1{background:#E8B9C6}.fmleg .h2{background:#CF8499}.fmleg .h3{background:#B25873}.fmleg .h4{background:#843B52}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.archive{margin:18px 0 6px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.archive summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer}.archive summary::-webkit-details-marker{display:none}
+.archive summary b{font-size:14.5px}.archive summary span{flex:1;font-size:12.5px;color:var(--muted)}.archive summary em{font-style:normal;color:var(--muted);transition:transform .2s}
+.archive[open] summary em{transform:rotate(90deg)}
+.shelf.arch{opacity:.85;filter:saturate(.7)}
+.dbye{display:flex;gap:8px;margin-top:22px}
+.farewell h3{text-align:center;margin:6px 0 4px}.farewell>.hint{text-align:center;margin:0 0 14px}
+.fwlist{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line)}
+.fwlist div{display:flex;gap:10px;align-items:flex-start}.fwlist p{margin:0;font-size:13.5px;line-height:1.6}.fwlist b{color:var(--berry-deep)}
+.fwphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.fwphotos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
+.fwfav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.fwfav div{text-align:center}.fwfav img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;background:var(--swatch)}.fwfav small{font-size:11px;color:var(--muted)}
 .dprof .dhead{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding-right:52px}.dprof .dhead h3{margin:0;flex:1}
 .dprof .dhead small{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:6px}
 .dprof .hero{cursor:default;margin-bottom:14px}
@@ -2158,7 +2175,10 @@ addEventListener('keydown',e=>{if(e.key==='Escape'&&NAV.open)closeSheet()});
 /* ============================================================
    0. 首頁
    ============================================================ */
-function mainDoll(){return S.dolls.find(d=>d.id===S.settings.mainDoll)||S.dolls[0]||null}
+// 封存（收起來暫時不玩）或已經離開（賣掉、送人）的娃娃，不會出現在首頁、提醒和挑娃娃的地方，回憶都留著
+const isLive=d=>d&&!d.archived&&!d.gone;
+const liveDolls=()=>S.dolls.filter(isLive);
+function mainDoll(){const L=liveDolls();return L.find(d=>d.id===S.settings.mainDoll)||L[0]||null}
 function dollWears(d){return S.wears.filter(w=>w.dollId===d.id||(!w.dollId&&w.dollName&&w.dollName===d.name))}
 const DOLL_SVG=`<svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round">
   <circle cx="60" cy="50" r="36"/><circle cx="30" cy="22" r="10"/><circle cx="90" cy="22" r="10"/>
@@ -2189,8 +2209,8 @@ function renderHome(){
       :`<div class="hname"><b>把你的娃娃放在這裡</b></div>
       <p class="hgreet">新增娃娃後，首頁就會是娃娃的專屬舞台</p>
       <button class="btn" style="margin-top:4px" onclick="openDoll()">新增我的娃娃</button>`}
-    ${S.dolls.length>1?(()=>{const hs=homeDolls(d);return `<div class="dswitch">${hs.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}"><i>${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</i><small>${esc(x.name)}</small></button>`).join('')}
-      ${S.dolls.length>hs.length?`<button onclick="go('dolls')" aria-label="全部娃娃"><i><span>+${S.dolls.length-hs.length}</span></i><small>全部</small></button>`:''}</div>`})():''}
+    ${liveDolls().length>1?(()=>{const hs=homeDolls(d);return `<div class="dswitch">${hs.map(x=>`<button class="${x===d?'on':''}" onclick="setMainDoll('${x.id}')" aria-label="${esc(x.name)}"><i>${x.photo?`<img src="${x.photo}" alt="">`:`<span>${esc((x.name||'?').slice(0,1))}</span>`}</i><small>${esc(x.name)}</small></button>`).join('')}
+      ${liveDolls().length>hs.length?`<button onclick="go('dolls')" aria-label="全部娃娃"><i><span>+${liveDolls().length-hs.length}</span></i><small>全部</small></button>`:''}</div>`})():''}
   </section>
 
   ${homeCards()}
@@ -2268,14 +2288,16 @@ function todayPickHTML(){
 // 首頁：購買中、待處理、一年前的今天
 function homeMoreHTML(){
   const h=[];
-  const po=S.orders.filter(o=>!o.filed);
+  // 首頁跟著主角娃娃的尺寸：20cm 的娃娃只看 20cm 的購買中（沒填尺寸的也列）
+  const hd=mainDoll(),ms=hd&&hd.size;
+  const po=S.orders.filter(o=>!o.filed&&(!ms||o.kind==='doll'||!o.size||o.size===ms));
   if(po.length){
     const soon=po.filter(o=>o.eta).sort((a,b)=>a.eta.localeCompare(b.eta))[0];
     h.push(`<section class="hcard" onclick="UI.wishTab='order';go('wish')">
-      <div class="hct"><b>📦 購買中</b><span>${po.length} 件${soon?'・'+orderEta(soon):''}</span><em>›</em></div>
+      <div class="hct"><b>📦 購買中${ms?`<small style="font-weight:400;color:var(--muted);margin-left:6px">${esc(ms)}</small>`:''}</b><span>${po.length} 件${soon?'・'+orderEta(soon):''}</span><em>›</em></div>
       <div class="ostrip">${po.slice(0,4).map(o=>`<div><b>${o.kind==='doll'?'🧸 ':''}${esc(o.name)}</b><small>${o.kind==='doll'?'等待到家・':''}${esc(o.stage)}</small></div>`).join('')}</div></section>`);
   }
-  const dcare=S.dolls.flatMap(d=>dollOpen(d).map(c=>({d,c})));
+  const dcare=liveDolls().flatMap(d=>dollOpen(d).map(c=>({d,c})));
   if(dcare.length){const away=dcare.filter(x=>x.c.status==='處理中');
     h.push(`<button class="hstat memlink" onclick="go('dolls')"><span>🧸 娃娃整理</span><b>${dcare.length}</b><small>${away.length?`${esc(away[0].d.name)} 在手作娘那裡（${esc(away[0].c.type)}）`:dcare.slice(0,2).map(x=>esc(x.d.name)+' '+esc(x.c.type)).join('、')}</small><em>›</em></button>`)}
   const bad=S.items.filter(i=>openIssues(i).length);
@@ -2293,7 +2315,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.09.30-4';
+const APP_VER='2026.10.01-1';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2363,7 +2385,14 @@ function homeCards(){
       <span>${(a.length?a:sn).slice(0,3).map(o=>esc(o.name||'未命名')).join('、')}${(a.length?a:sn).length>3?' 等':''}${a.length?'。到建檔頁一起建檔吧。':'。'+orderEta(sn[0])+'。'}</span>
       <div class="row"><button class="btn sm" onclick="go('intake')">${a.length?'去建檔':'看看'}</button></div></section>`)}
   // 0b. 很久沒換裝（出門或在家記錄穿搭都算；最多顯示一張，列出其他隻）
-  const idle=idleDolls().filter(x=>!st.annHide['idle:'+x.d.id+':'+x.last]);
+  const sleepy=sleepyDolls().filter(x=>!st.annHide['arch:'+x.d.id+':'+x.last]);
+  if(sleepy.length){const x=sleepy[0],nm=esc(x.d.name);
+    h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['arch:${x.d.id}:${x.last}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>🌙 ${nm} 已經 ${x.n} 天沒出場了</b>
+      <span>要不要先收進封存櫃？收起來不會刪除，照片和回憶都在，想玩的時候隨時拿出來。</span>
+      <div class="row"><button class="btn sm" onclick="archiveDoll('${x.d.id}')">收進封存櫃</button><button class="btn sm ghost" onclick="S.settings.annHide['arch:${x.d.id}:${x.last}']=1;save();renderHome();toast('好，那就多陪陪 ${nm} 吧')">還想陪他</button></div></section>`)}
+  const sleepSet=new Set(sleepy.map(x=>x.d.id));
+  const idle=idleDolls().filter(x=>!sleepSet.has(x.d.id)&&!st.annHide['idle:'+x.d.id+':'+x.last]);
   if(idle.length){
     const x=idle[0],nm=esc(x.d.name);
     h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['idle:${x.d.id}:${x.last}']=1;save();renderHome()" aria-label="隱藏">×</button>
@@ -2408,8 +2437,8 @@ async function setMainDoll(id){S.settings.mainDoll=id;await save();renderHome()}
 // 首頁切換列：有釘選就顯示釘選的（最多 5 隻），沒有就顯示最常帶出門的 5 隻；目前這隻一定在裡面
 const PIN_MAX=5;
 function homeDolls(cur){
-  const pins=S.dolls.filter(d=>d.pin).slice(0,PIN_MAX);
-  let list=pins.length?pins:S.dolls.slice().sort((a,b)=>outCount(b)-outCount(a)||(a.createdAt||0)-(b.createdAt||0)).slice(0,PIN_MAX);
+  const pins=liveDolls().filter(d=>d.pin).slice(0,PIN_MAX);
+  let list=pins.length?pins:liveDolls().sort((a,b)=>outCount(b)-outCount(a)||(a.createdAt||0)-(b.createdAt||0)).slice(0,PIN_MAX);
   if(cur&&!list.includes(cur))list=[cur,...list.slice(0,PIN_MAX-1)];
   return list;
 }
@@ -2473,7 +2502,7 @@ function lastActive(d){
 }
 function idleDolls(){
   const lim=outRemind();if(!lim)return [];
-  return S.dolls.map(d=>({d,last:lastActive(d),n:dayNum(today())-dayNum(lastActive(d))})).filter(x=>x.n>=lim).sort((a,b)=>b.n-a.n);
+  return liveDolls().map(d=>({d,last:lastActive(d),n:dayNum(today())-dayNum(lastActive(d))})).filter(x=>x.n>=lim).sort((a,b)=>b.n-a.n);
 }
 const annKey=a=>a.d.id+':'+a.kind+':'+(a.id||'')+':'+a.n+':'+(a.date||'').slice(0,4);
 const annStage=a=>a.left===0?'today':a.left===1?'tomorrow':'week';
@@ -2502,7 +2531,7 @@ function homeDays(d){return d.home?dayNum(today())-dayNum(d.home):null}
 // 今天或接下來 7 天內的紀念日：每年到家日，和第 100／500／1000… 天
 function dollAnniv(){
   const t=today(),out=[];
-  S.dolls.forEach(d=>{
+  liveDolls().forEach(d=>{
     // 自訂紀念日（生日、角色生日…）：每年的月／日
     (d.dates||[]).forEach(x=>{
       if(!/^\d\d-\d\d$/.test(x.md||''))return;
@@ -2541,31 +2570,107 @@ const DOLL_SORT=[['out','常帶出門'],['wear','常換裝'],['new','最新到�
 const outCount=d=>(d.outs||[]).length;
 // 娃娃櫃裡比較小隻的（例如 10cm 跟 20cm 放一起）站得矮一點，看得出大小
 function dollSmall(d){
-  const cm=x=>parseFloat(x&&x.size)||0,max=Math.max(0,...S.dolls.map(cm));
+  const cm=x=>parseFloat(x&&x.size)||0,max=Math.max(0,...liveDolls().map(cm));
   return cm(d)>0&&max>0&&cm(d)<=max*.6;
+}
+// 封存櫃：收起來的、已經離開的娃娃（回憶都還在，點進去可以看）
+function archiveHTML(){
+  const ar=S.dolls.filter(d=>d.archived&&!d.gone),gone=S.dolls.filter(d=>d.gone);
+  if(!ar.length&&!gone.length)return '';
+  const cell=d=>`<button class="dcell" onclick="openDoll('${d.id}')"><div class="dstand small">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph sm">${DOLL_SVG}</div>`}</div>
+    <b>${esc(d.name)}</b><span>${d.gone?`${esc(d.gone.reason)}・${esc((d.gone.date||'').slice(0,7).replace('-','/'))}`:`收起來 ${dayNum(today())-dayNum(d.archived.date)} 天`}</span></button>`;
+  return `<details class="archive" ${UI.archOpen?'open':''} ontoggle="UI.archOpen=this.open"><summary><b>📦 封存櫃</b><span>${ar.length?`收起來 ${ar.length} 隻`:''}${ar.length&&gone.length?'・':''}${gone.length?`離開的 ${gone.length} 隻`:''}</span><em>›</em></summary>
+    ${ar.length?`<p class="mh">收起來的</p><div class="shelf arch">${ar.map(cell).join('')}</div>`:''}
+    ${gone.length?`<p class="mh">已經離開的</p><div class="shelf arch">${gone.map(cell).join('')}</div>`:''}
+    <p class="hint">收起來的娃娃不會出現在首頁和提醒裡，想玩的時候點進去按「拿出來」。</p></details>`;
+}
+async function archiveDoll(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  d.archived={date:today()};d.pin=false;if(S.settings.mainDoll===id)S.settings.mainDoll='';
+  await save();closeSheet();if(UI.tab==='dolls')renderDolls();else renderHome();
+  toast(`${d.name} 收進封存櫃了，想玩隨時拿出來`);
+}
+async function unarchiveDoll(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  delete d.archived;delete d.gone;d.backAt=today();
+  await save();DD={...d};drawDoll();if(UI.tab==='dolls')renderDolls();else renderHome();
+  toast(`歡迎回來，${d.name}！`);
+}
+// 很久沒出場（預設 90 天）：問要不要收進封存櫃。剛加進 App 或剛拿出來的從那天起算
+const ARCH_DAYS=90;
+function sleepyDolls(){
+  const ymdOf=t=>ymd(t||Date.now());
+  return liveDolls().map(d=>{const last=[lastActive(d),ymdOf(d.createdAt),d.backAt||''].sort().pop();return {d,last,n:dayNum(today())-dayNum(last)}})
+    .filter(x=>x.n>=ARCH_DAYS).sort((a,b)=>b.n-a.n);
+}
+// 讓娃娃離開（賣掉、送人）之前：整理一起走過的回憶，謝謝他
+let FW={};
+function openFarewell(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  FW={id,reason:'賣掉了',price:'',note:''};
+  const start=d.home||ymd(d.createdAt||Date.now()),days=Math.max(1,dayNum(today())-dayNum(start)+1);
+  const ws=dollWears(d),P=d.outPlaces||{},outs=(d.outs||[]).slice().sort();
+  const sps=outs.map(t=>spNorm(P[t])).filter(Boolean),{regs,cts}=footCount(sps);
+  const places=[...new Set(sps.map(sp=>spotText(sp)))];
+  const cnt={};ws.forEach(w=>(w.itemIds||[]).forEach(i=>cnt[i]=(cnt[i]||0)+1));
+  const favs=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([i,n])=>({it:S.items.find(x=>x.id===i),n})).filter(x=>x.it&&img(x.it)).slice(0,4);
+  const photos=ws.filter(w=>w.photo).slice(0,6);
+  const first=outs[0],firstSp=first&&P[first]?spotText(P[first]):'';
+  const mem=[
+    [`🏡`,`${start.replace(/-/g,'/')} 來到家裡，一起過了 <b>${days}</b> 天`],
+    outs.length?[`🚶`,`一起出門 <b>${outs.length}</b> 次${regs.size?`，去過 ${regs.size} 個${esc(unitOf(homeCountry()))}`:''}${cts.size?`、${cts.size} 個國家`:''}`]:null,
+    first?[`📍`,`第一次出門是 ${first.replace(/-/g,'/')}${firstSp?`，去了${esc(firstSp)}`:''}`]:null,
+    places.length?[`🗺️`,`去過的地方：${places.slice(0,6).map(esc).join('、')}${places.length>6?` 等 ${places.length} 個`:''}`]:null,
+    ws.length?[`👗`,`換過 <b>${ws.length}</b> 套衣服`]:null,
+    (d.dates||[]).length?[`🎂`,`一起過了 ${(d.dates||[]).map(x=>esc(x.label)).join('、')}`]:null
+  ].filter(Boolean);
+  openSheet(`<div class="sethead"><button onclick="drawDoll()">‹ ${esc(d.name)}</button></div>
+    <div class="farewell">
+      <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
+      <h3>謝謝 ${esc(d.name)} 陪你 ${days} 天</h3>
+      <p class="hint">在說再見之前，看看你們一起留下的回憶。</p>
+      <div class="fwlist">${mem.map(([ic,t])=>`<div><span>${ic}</span><p>${t}</p></div>`).join('')}</div>
+      ${photos.length?`<p class="mh">一起拍的照片</p><div class="fwphotos">${photos.map(w=>`<img src="${w.photo}" alt="">`).join('')}</div>`:''}
+      ${favs.length?`<p class="mh">最常穿的娃衣</p><div class="fwfav">${favs.map(x=>`<div><img src="${img(x.it)}" alt=""><small>${x.n} 次</small></div>`).join('')}</div>`:''}
+      <p class="mh" style="margin-top:18px">${esc(d.name)} 要去哪裡？</p>
+      <div class="swap" id="fw_r" style="margin:0 0 12px">${['賣掉了','送人了','其他'].map(r=>`<button type="button" data-k="${r}" class="${FW.reason===r?'on':''}" onclick="FW.reason='${r}';document.querySelectorAll('#fw_r button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${r}'));document.getElementById('fw_p').hidden='${r}'!=='賣掉了'">${r}</button>`).join('')}</div>
+      <label class="f" id="fw_p"><span>賣了多少（選填）</span><input type="number" inputmode="decimal" placeholder="例如 450" oninput="FW.price=this.value"></label>
+      <label class="f"><span>想對 ${esc(d.name)} 說的話（選填）</span><textarea maxlength="200" placeholder="謝謝你陪我度過…" oninput="FW.note=this.value"></textarea></label>
+      <button class="btn wide" onclick="saveFarewell()">謝謝你，再見 👋</button>
+      <button class="btn ghost wide" style="margin-top:8px" onclick="archiveDoll('${d.id}')">還捨不得，先收進封存櫃</button>
+      <p class="hint" style="margin-top:10px;text-align:center">離開後照片、足跡和穿搭紀錄都會留在封存櫃，隨時可以回來看。</p>
+    </div>`);
+}
+async function saveFarewell(){
+  const d=S.dolls.find(x=>x.id===FW.id);if(!d)return;
+  d.gone={date:today(),reason:FW.reason,price:FW.reason==='賣掉了'&&FW.price?String(money(FW.price)):'',note:FW.note.trim()};
+  delete d.archived;d.pin=false;if(S.settings.mainDoll===d.id)S.settings.mainDoll='';
+  await save();closeSheet();if(UI.tab==='dolls')renderDolls();else renderHome();
+  toast(`謝謝 ${d.name}，一路順風`);
 }
 function renderDolls(){
   const el=document.getElementById('dollList');
   const srt=UI.dollSort||'out';
   const key={out:outCount,wear:d=>dollWears(d).length,new:d=>d.home||String(d.createdAt||''),price:d=>+d.price||0}[srt];
-  const dsz=[...new Set(S.dolls.map(d=>d.size).filter(Boolean))];
+  const L=liveDolls();
+  const dsz=[...new Set(L.map(d=>d.size).filter(Boolean))];
   if(!['全部尺寸',...dsz].includes(UI.dollSize||'全部尺寸'))UI.dollSize='全部尺寸';
   const fsz=UI.dollSize||'全部尺寸';
-  const list=S.dolls.filter(d=>fsz==='全部尺寸'||d.size===fsz).sort((a,b)=>{const x=key(a),y=key(b);return x<y?1:x>y?-1:0});
+  const list=L.filter(d=>fsz==='全部尺寸'||d.size===fsz).sort((a,b)=>{const x=key(a),y=key(b);return x<y?1:x>y?-1:0});
   const total=S.dolls.reduce((a,d)=>a+(+d.price||0),0);
-  const cnt=f=>S.dolls.filter(f).length;
   // 依照「常帶出門」排出前三名
-  const rank=S.dolls.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
+  const rank=L.filter(d=>outCount(d)>0).sort((a,b)=>outCount(b)-outCount(a)).slice(0,3).map(d=>d.id);
   const rows=[];for(let i=0;i<list.length+1;i+=4)rows.push(list.slice(i,i+4));
   const tabs=`<div class="swap dtabs">${[['doll','🧸 娃娃'],['foot','📍 足跡']].map(([k,l])=>`<button class="${(UI.dollTab||'doll')===k?'on':''}" onclick="UI.dollTab='${k}';renderDolls();window.scrollTo(0,0)">${l}</button>`).join('')}</div>`;
+  setTimeout(fillMaps,0);
   if(UI.dollTab==='foot'){el.innerHTML=tabs+(footSection()||`<div class="empty"><strong>還沒有出門紀錄</strong>帶娃娃出門時按「今天帶出門」，或記穿搭時選「出門」，去過的地方會標在地圖上</div>`);return}
   el.innerHTML=tabs+`
     <div class="stat">
-      <div><b>${S.dolls.length}</b><span>隻娃娃</span></div>
+      <div><b>${L.length}</b><span>隻娃娃${S.dolls.length>L.length?`・封存 ${S.dolls.length-L.length}`:''}</span></div>
       <div><b>${total?'$'+total.toLocaleString():'—'}</b><span>娃娃總花費</span></div>
     </div>
     ${dsz.length>1?`<div class="chips">${['全部尺寸',...dsz].map(z=>`<button class="chip ${fsz===z?'on':''}" onclick="UI.dollSize=decodeURIComponent('${encodeURIComponent(z)}');renderDolls()">${esc(z)}</button>`).join('')}</div>`:''}
-    ${S.dolls.length>1?`<div class="chips">${DOLL_SORT.map(([k,l])=>`<button class="chip ${srt===k?'on':''}" onclick="UI.dollSort='${k}';renderDolls()">${l}</button>`).join('')}</div>`:''}
+    ${L.length>1?`<div class="chips">${DOLL_SORT.map(([k,l])=>`<button class="chip ${srt===k?'on':''}" onclick="UI.dollSort='${k}';renderDolls()">${l}</button>`).join('')}</div>`:''}
     <div class="cabinet">
       ${rows.map((r,ri)=>`<div class="shelf">${r.map(d=>{
         const n=rank.indexOf(d.id);
@@ -2577,6 +2682,7 @@ function renderDolls(){
           ${d.attr==='has'&&d.work?`<em>${esc(d.work)}</em>`:d.src?`<em class="src">${esc(d.src)}</em>`:''}
         </button>`}).join('')}${ri===rows.length-1?`<button class="dcell add" onclick="openDoll()"><div class="dstand"><span>＋</span></div><b>新增娃娃</b></button>`:''}</div>`).join('')}
     </div>
+    ${archiveHTML()}
     ${(()=>{const w=S.orders.filter(o=>o.kind==='doll'&&!o.filed);return `<h2 class="sec">等待到家</h2>
       ${w.length?`<div class="blist">${w.map(o=>`<div class="rowitem" onclick="openOrder('${o.id}')"><div class="th">${o.photo?`<img src="${o.photo}" alt="">`:'<span class="oph">🧸</span>'}</div>
         <div class="tx"><b>${esc(o.name)}</b><span>${esc(o.stage)}${orderEta(o)?'・'+orderEta(o):''}</span><div class="ostage">${ORDER_STAGES.map((st,i)=>`<i class="${i<=ORDER_STAGES.indexOf(o.stage)?'on':''}"></i>`).join('')}</div></div>
@@ -2617,23 +2723,29 @@ function drawDollPage(d){
   const fit=d.size?S.items.filter(i=>(i.sizes||[]).includes(d.size)).length:0,nd=dollNextDates(d),out=(d.outs||[]).includes(today());
   openSheet(`<div class="dprof">
     <div class="dhead"><h3>${esc(d.name)}${d.size?`<small>${esc(d.size)}</small>`:''}</h3><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div>
+    ${d.gone?`<div class="note">👋 ${esc(d.gone.date.replace(/-/g,'/'))} ${esc(d.gone.reason)}${d.gone.price?`・$${(+d.gone.price).toLocaleString()}`:''}。回憶都留在這裡。</div>`:d.archived?`<div class="note">📦 ${esc(d.archived.date.replace(/-/g,'/'))} 收進封存櫃，不會出現在首頁和提醒裡。</div>`:''}
     <div class="hero dollhero">${d.photo?`<img src="${d.photo}" alt="">`:`<div class="ph">${DOLL_SVG}</div>`}</div>
-    ${d.home&&homeDays(d)>=0?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
+    ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`}
     <div class="stat" style="grid-template-columns:1fr 1fr 1fr">
       <div><b>${outCount(d)}</b><span>出門次數</span></div>
       <div><b>${dollWears(d).length}</b><span>穿搭紀錄</span></div>
       <div><b>${fit}</b><span>合身娃衣</span></div></div>
-    <div class="row" style="margin-bottom:6px">
+    ${isLive(d)?'':'<!--'}<div class="row" style="margin-bottom:6px">
       <button class="btn ${out?'ghost':''} grow" onclick="dollOut()">${out?'今天出門了 ✓':'🚶 今天帶出門'}</button>
-      <button class="btn ghost grow" onclick="setMainDoll('${d.id}').then(openWear)">👗 記錄穿搭</button></div>
-    ${nd.length?`<p class="dsec">紀念日</p><div class="danns">${nd.slice(0,4).map(x=>`<div><span>${x.ic}</span><b>${esc(x.label)}</b><em>${+x.md.slice(0,2)}/${+x.md.slice(3)}・${x.left===0?'就是今天':x.left===1?'明天':`再 ${x.left} 天`}</em></div>`).join('')}</div>`:''}
+      <button class="btn ghost grow" onclick="setMainDoll('${d.id}').then(openWear)">👗 記錄穿搭</button></div>${isLive(d)?'':'-->'}
+    ${nd.length&&isLive(d)?`<p class="dsec">紀念日</p><div class="danns">${nd.slice(0,4).map(x=>`<div><span>${x.ic}</span><b>${esc(x.label)}</b><em>${+x.md.slice(0,2)}/${+x.md.slice(3)}・${x.left===0?'就是今天':x.left===1?'明天':`再 ${x.left} 天`}</em></div>`).join('')}</div>`:''}
     <p class="dsec">回憶</p>
     ${dollFootBlock(d)}
     <p class="dsec">整理</p>
     ${dollCareBlock(d)+dollAccBlock(d)}
     ${d.note?`<p class="dsec">備註</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.note)}</p></div>`:''}
+    ${d.gone&&d.gone.note?`<p class="dsec">道別的話</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.gone.note)}</p></div>`:''}
+    ${isLive(d)?`<div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
+      <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>`
+      :`<button class="btn quiet wide" style="margin-top:14px" onclick="unarchiveDoll('${d.id}')">${d.gone?'其實還在身邊（放回娃娃櫃）':'拿出來'}</button>`}
   </div>`);
+  fillMaps();
 }
 function drawDollEdit(){
   const d=DD,saved=d.id?S.dolls.find(x=>x.id===d.id):null;
@@ -2882,7 +2994,7 @@ function ordersHTML(){
     ${UI.omulti?`<i class="ochk">${on?'✓':''}</i>`:''}
     <div class="th">${o.photo?`<img src="${o.photo}" alt="">`:`<span class="oph">${dl?'🧸':esc((o.category||'?').slice(0,2))}</span>`}</div>
     <div class="bd"><b>${dl?'🧸 ':''}${esc(o.name||'未命名')}${dl?'<small style="color:var(--muted);font-weight:400">　等待到家</small>':''}</b>
-      <span>${[dl?o.size:o.category,o.price?'$'+money(o.price).toLocaleString():'',o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
+      <span>${[dl?o.size:[o.size,o.category].filter(Boolean).join(' '),o.price?'$'+money(o.price).toLocaleString():'',o.shop,o.origin].filter(Boolean).map(esc).join('・')}</span>
       <div class="ostage">${ORDER_STAGES.map((st,i)=>`<i class="${i<=k?'on':''}" title="${st}"></i>`).join('')}</div>
       <span class="wl">${esc(o.stage)}${orderEta(o)?'・'+orderEta(o):''}</span>
       ${o.note?`<span class="wn">${esc(o.note)}</span>`:''}
@@ -2904,10 +3016,11 @@ function renderOrderBar(){
 // 一次記多筆：每行一件，最後面的數字當金額；購買管道、進度、預計到貨一起套用
 let OB={};
 function openOrderBulk(){
-  OB={lines:'',category:'',shop:'',origin:'',stage:'開團中',eta:'',orderDate:today()};
+  OB={lines:'',category:'',size:defaultSizes()[0]||'',shop:'',origin:'',stage:'開團中',eta:'',orderDate:today()};
   openSheet(`<h3>一次記多筆</h3>
     <p class="hint" style="margin:-6px 0 12px">同一團、同一家買的，一行寫一件。最後面寫數字就會當成金額。</p>
     <label class="f"><span>品項（一行一件）</span><textarea id="ob_lines" rows="6" placeholder="草莓蕾絲洋裝 680&#10;小熊斗篷 450&#10;白色襪子" oninput="OB.lines=this.value"></textarea></label>
+    <label class="f"><span>尺寸</span><div class="parts" id="ob_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${OB.size===z?'on':''}" onclick="OB.size=OB.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#ob_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OB.size))">${esc(z)}</button>`).join('')}</div></label>
     <div class="split">
       <label class="f"><span>類型（選填）</span><select onchange="OB.category=this.value"><option value="">各自不同</option>${allCats().map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>
       <label class="f"><span>購買管道／團主</span><input type="text" oninput="OB.shop=this.value"></label>
@@ -2929,14 +3042,14 @@ function parseBulk(txt){
 }
 async function saveOrderBulk(){
   const rows=parseBulk(OB.lines);if(!rows.length){toast('先寫至少一件');return}
-  rows.forEach(r=>S.orders.push({id:uid('o'),kind:'item',name:r.name,price:r.price,category:OB.category,shop:OB.shop.trim(),origin:OB.origin.trim(),stage:OB.stage,eta:OB.eta,orderDate:OB.orderDate,photo:null,note:'',createdAt:Date.now()}));
+  rows.forEach(r=>S.orders.push({id:uid('o'),kind:'item',name:r.name,price:r.price,category:OB.category,size:OB.size,shop:OB.shop.trim(),origin:OB.origin.trim(),stage:OB.stage,eta:OB.eta,orderDate:OB.orderDate,photo:null,note:'',createdAt:Date.now()}));
   await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');toast(`已記下 ${rows.length} 筆`);
 }
-// 批次修改：進度、預計到貨、店家、產地、類型，到貨的一起拿去建檔，或刪除
+// 批次修改：進度、預計到貨、尺寸、購買管道、產地、類型，到貨的一起拿去建檔，或刪除
 let OBT={};
 function openOrderBatch(){
   const ids=[...UI.osel].filter(id=>S.orders.some(o=>o.id===id));if(!ids.length)return;
-  OBT={ids,stage:'',eta:'',shop:'',origin:'',category:''};
+  OBT={ids,stage:'',eta:'',shop:'',origin:'',category:'',size:''};
   const arrived=ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o.kind!=='doll'&&o.stage==='已到貨');
   openSheet(`<h3>批次修改 ${ids.length} 筆</h3>
     <p class="hint" style="margin:-6px 0 12px">只會改你有動到的欄位，沒填的保持原樣。</p>
@@ -2947,6 +3060,7 @@ function openOrderBatch(){
       <label class="f"><span>購買管道／團主</span><input type="text" oninput="OBT.shop=this.value"></label>
       <label class="f"><span>產地</span><input type="text" list="originDL4" oninput="OBT.origin=this.value"><datalist id="originDL4">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
     </div>
+    <label class="f"><span>尺寸</span><div class="parts" id="obt_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${OBT.size===z?'on':''}" onclick="OBT.size=OBT.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#obt_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OBT.size))">${esc(z)}</button>`).join('')}</div></label>
     <label class="f"><span>類型</span><select onchange="OBT.category=this.value"><option value="">不改</option>${allCats().map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>
     <button class="btn wide" onclick="applyOrderBatch()">套用到 ${ids.length} 筆</button>
     ${arrived.length?`<button class="btn quiet wide" style="margin-top:8px" onclick="batchOrderIntake()">已到貨的 ${arrived.length} 筆拿去建檔</button>`:''}
@@ -2956,7 +3070,7 @@ async function applyOrderBatch(){
   const {ids}=OBT;let n=0;
   ids.forEach(id=>{const o=S.orders.find(x=>x.id===id);if(!o)return;
     if(OBT.stage)setStage(o,OBT.stage);if(OBT.eta)o.eta=OBT.eta;if(OBT.shop.trim())o.shop=OBT.shop.trim();if(OBT.origin.trim())o.origin=OBT.origin.trim();
-    if(OBT.category&&o.kind!=='doll')o.category=OBT.category;n++});
+    if(OBT.category&&o.kind!=='doll')o.category=OBT.category;if(OBT.size)o.size=OBT.size;n++});
   UI.osel=new Set();await save();closeSheet();renderWish();toast(`已更新 ${n} 筆`);
 }
 async function batchOrderDel(){
@@ -2967,7 +3081,7 @@ async function batchOrderDel(){
 async function batchOrderIntake(){
   const os=OBT.ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&o.kind!=='doll'&&o.stage==='已到貨');
   const ok=os.filter(o=>o.photo),no=os.length-ok.length;
-  ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:defaultSizes(),
+  ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
     colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
   UI.osel=new Set();UI.omulti=false;await save();closeSheet();
   if(ok.length){go('intake');toast(`${ok.length} 筆加入建檔${no?`，另外 ${no} 筆沒有照片，要拍照後再建檔`:''}`)}
@@ -2976,7 +3090,7 @@ async function batchOrderIntake(){
 let OD={};
 function openOrder(id){
   const o=id?S.orders.find(x=>x.id===id):null;
-  OD=o?{...o}:{id:null,kind:UI.orderKind||'item',name:'',category:'',price:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
+  OD=o?{...o}:{id:null,kind:UI.orderKind||'item',name:'',category:'',size:UI.orderKind==='doll'?'':(defaultSizes()[0]||''),price:'',shop:'',origin:'',stage:'開團中',eta:'',photo:null,note:''};
   drawOrder();
 }
 function drawOrder(){
@@ -2995,6 +3109,7 @@ function drawOrder(){
       :`<label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${allCats().map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`}
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price)}" placeholder="例如 680" oninput="OD.price=this.value"></label>
     </div>
+    ${isDoll?'':`<label class="f"><span>尺寸</span><div class="parts" id="o_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${d.size===z?'on':''}" onclick="OD.size=OD.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#o_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OD.size))">${esc(z)}</button>`).join('')}</div></label>`}
     <div class="split">
       <label class="f"><span>${isDoll?'團主／作者／娃媽':'購買管道／團主'}</span><input type="text" value="${esc(d.shop)}" oninput="OD.shop=this.value"></label>
       <label class="f"><span>產地</span><input type="text" list="originDL2" value="${esc(d.origin)}" oninput="OD.origin=this.value"><datalist id="originDL2">${originList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></label>
@@ -3044,7 +3159,7 @@ function orderToIntake(id){
     toast('到貨了！拍一張娃衣照片就能建檔');inp.click();return;
   }
   o.filed=true;save();
-  UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:defaultSizes(),
+  UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
     colors:[],styles:[],motifs:[],season:'',holiday:'',material:'',price:o.price||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
   go('intake');toast('已加入建檔，選好尺寸、做成貼圖就完成了');
 }
@@ -3923,7 +4038,7 @@ function renderQueue(){
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
         <div class="parts qsize ${(q.sizes||[]).length?'':'need'}" id="qsize${n}" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
-        ${(q.sizes||[]).length?'':`<div class="hint needtip">請選尺寸（可以複選），沒選不能建檔</div>`}
+        ${(q.sizes||[]).length?'':`<div class="hint needtip">請選一個尺寸，沒選不能建檔</div>`}
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
@@ -3969,12 +4084,12 @@ function cutTip(){
 }
 // 新照片預設沿用上一次選的尺寸；沒選過就用首頁主娃的尺寸
 function defaultSizes(){
-  if(UI.lastSizes)return UI.lastSizes.slice();
+  if(UI.lastSizes)return UI.lastSizes.slice(0,1);
   const d=mainDoll();return d&&d.size?[d.size]:[];
 }
 function toggleQSize(n,z){
   const q=UI.queue[n];q.sizes=q.sizes||[];
-  q.sizes=q.sizes.includes(z)?q.sizes.filter(x=>x!==z):[...q.sizes,z];
+  q.sizes=q.sizes.includes(z)?[]:[z];
   UI.lastSizes=q.sizes.slice();renderQueue();
 }
 function togglePart(n,p){
@@ -4332,8 +4447,8 @@ function openDrawer(){
   const cats=visibleFilters().filter(f=>f!=='套裝');
   openSheet(`
     <h3>加入娃衣</h3>
-    ${S.dolls.some(d=>d.photo)?`<div class="hint" style="margin-bottom:6px">放上娃娃（會在最底層，衣服可以直接拖到身上）：</div>
-      <div class="drawer dolls" style="margin:0 0 12px">${S.dolls.filter(d=>d.photo).map(d=>`<button onclick="addDollToCanvas('${d.id}');closeSheet()" class="${canvasDoll()===d.id?'on':''}"><img src="${d.photo}" alt=""><i class="dn">${esc(d.name)}</i></button>`).join('')}</div>`
+    ${liveDolls().some(d=>d.photo)?`<div class="hint" style="margin-bottom:6px">放上娃娃（會在最底層，衣服可以直接拖到身上）：</div>
+      <div class="drawer dolls" style="margin:0 0 12px">${liveDolls().filter(d=>d.photo).map(d=>`<button onclick="addDollToCanvas('${d.id}');closeSheet()" class="${canvasDoll()===d.id?'on':''}"><img src="${d.photo}" alt=""><i class="dn">${esc(d.name)}</i></button>`).join('')}</div>`
       :`<p class="hint" style="margin:0 0 12px">到娃娃櫃幫娃娃放一張去背照片，就可以把娃娃放上畫布試穿。</p>`}
     ${sets.length?`<div class="hint" style="margin-bottom:8px">整套加入：</div>
       <div class="chips wchips" style="margin-left:0;padding-left:0">${sets.map(s=>`<button class="chip" onclick="addSet('${s.id}');drawerRedraw()">${esc(s.name)}</button>`).join('')}</div>`:''}
@@ -4406,8 +4521,8 @@ function lookSheet(id,presetName){
   LK={id:l?l.id:null,name:l?l.name:(presetName||'Look '+String(S.looks.length+1).padStart(3,'0')),dollId:l?(l.dollId||null):(canvasDoll()||(mainDoll()||{}).id||null)};
   openSheet(`<h3>${l?'編輯 Look':'存成 Look'}</h3>
     <label class="f"><span>名稱</span><input type="text" id="lk_name" value="${esc(LK.name)}" oninput="LK.name=this.value"></label>
-    ${S.dolls.length?`<label class="f"><span>搭給哪隻娃娃</span><div class="parts" id="lk_doll" style="margin-top:0">
-      ${S.dolls.map(d=>`<button type="button" data-id="${d.id}" class="${LK.dollId===d.id?'on':''}" onclick="LK.dollId=LK.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#lk_doll button').forEach(b=>b.classList.toggle('on',b.dataset.id===LK.dollId))">${esc(d.name)}</button>`).join('')}
+    ${liveDolls().length?`<label class="f"><span>搭給哪隻娃娃</span><div class="parts" id="lk_doll" style="margin-top:0">
+      ${liveDolls().map(d=>`<button type="button" data-id="${d.id}" class="${LK.dollId===d.id?'on':''}" onclick="LK.dollId=LK.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#lk_doll button').forEach(b=>b.classList.toggle('on',b.dataset.id===LK.dollId))">${esc(d.name)}</button>`).join('')}
     </div></label>`:`<p class="hint">到娃娃櫃新增娃娃後，就可以標記這套是搭給誰的。</p>`}
     <button class="btn wide" onclick="saveLookSheet()">${l?'儲存':'存成 Look'}</button>
     ${l?`<button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delLook('${l.id}')">刪除這個 Look</button>`:''}`);
@@ -4571,7 +4686,7 @@ function drawIdea(){
     <p class="mh">今天在哪裡？</p>
     <div class="parts" id="id_sc" style="margin-top:0">${SCENES.map(x=>`<button type="button" class="${IDEA.scene===x&&!IDEA.custom?'on':''}" onclick="IDEA.scene='${x}';IDEA.custom='';document.getElementById('id_cu').value='';document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',b.textContent==='${x}'))">${x}</button>`).join('')}</div>
     <input type="text" id="id_cu" style="margin-top:10px" maxlength="20" value="${esc(IDEA.custom)}" placeholder="或自己寫：櫻花季、海邊、聖誕市集…" oninput="IDEA.custom=this.value.trim();document.querySelectorAll('#id_sc button').forEach(b=>b.classList.toggle('on',!IDEA.custom&&b.textContent===IDEA.scene))">
-    ${S.dolls.length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${S.dolls.map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
+    ${liveDolls().length?`<p class="mh" style="margin-top:14px">幫誰搭？（只挑合身的娃衣）</p><div class="parts" id="id_dl" style="margin-top:0">${liveDolls().map(d=>`<button type="button" data-id="${d.id}" class="${IDEA.dollId===d.id?'on':''}" onclick="IDEA.dollId=IDEA.dollId==='${d.id}'?null:'${d.id}';document.querySelectorAll('#id_dl button').forEach(b=>b.classList.toggle('on',b.dataset.id===IDEA.dollId))">${esc(d.name)}</button>`).join('')}</div>`:''}
     <label class="remember" style="margin-top:12px"><input type="checkbox" ${IDEA.press?'checked':''} onchange="IDEA.press=this.checked"> 優先用壓箱底的娃衣 📦</label>
     <div class="row" style="margin-top:14px">
       <button class="btn ghost grow" onclick="ideaRandom()">隨機抽一套<small class="left">免費</small></button>
@@ -4840,20 +4955,41 @@ function dollFootBlock(d){
   const cts=[...new Set(sps.filter(sp=>sp&&isAbroad(sp)).map(sp=>sp.c))];
   return `<div class="care"><div class="row"><b class="grow">📍 足跡</b><button class="btn sm ghost" onclick="openTrip('${d.id}',null,'doll')">＋ 補記出門</button></div>
     ${ts.length?`<div class="hint" style="margin:4px 0 6px">出門 ${ts.length} 次${footSummary(footCount(sps))}</div>
-    ${homeCountry()==='台灣'&&Object.keys(cnt).some(k=>k.startsWith('r:'))?twMap(cnt,true):''}
-    ${cts.length?`<div class="parts" style="margin:0 0 8px">${cts.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)}</button>`).join('')}</div>`:''}
+    ${homeCountry()==='台灣'&&Object.keys(cnt).some(k=>k.startsWith('r:'))?mapBox('tw',footCounts(sps).reg,{small:true}):''}
+    ${cts.length?mapBox('world',footCounts(sps).ct,{small:true,home:homeCountry()})+`<div class="parts" style="margin:0 0 8px">${cts.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)}</button>`).join('')}</div>`:''}
     ${ts.slice(0,5).map(t=>`<button class="footrow" onclick="openTrip('${d.id}','${t}','doll')"><span>${t.slice(5).replace('-','/')}${t.slice(0,4)!==today().slice(0,4)?`<small>${t.slice(0,4)}</small>`:''}</span><b>${P[t]?(isAbroad(spNorm(P[t]))?'✈️ ':'')+esc(spotText(P[t])):'<i>還沒填地點，點這裡補</i>'}</b><em>›</em></button>`).join('')}
     ${ts.length>5?`<div class="hint">還有 ${ts.length-5} 次，全部可以在「娃娃櫃 → 足跡」看</div>`:''}`
     :`<div class="hint" style="margin-top:4px">帶 ${esc(d.name)} 出門時記下去了哪裡，去過的地方會標在地圖上。</div>`}</div>`;
 }
-// 台灣的格子地圖：每個縣市一格，大概照地理位置排（[列, 欄]）
-const TW_TILES={'連江縣':[0,0],'桃園市':[0,2],'台北市':[0,3],'基隆市':[0,4],'新竹市':[1,1],'新竹縣':[1,2],'新北市':[1,3],'宜蘭縣':[1,4],
-  '金門縣':[2,0],'苗栗縣':[2,1],'台中市':[2,2],'花蓮縣':[2,3,2],'彰化縣':[3,1],'南投縣':[3,2],'雲林縣':[4,1],'嘉義縣':[4,2],'台東縣':[4,3,2],
-  '澎湖縣':[5,0],'嘉義市':[5,1],'台南市':[5,2],'高雄市':[6,2],'屏東縣':[6,3]};
-// cnt：{'r:台北市':次數}；沒去過的是淡色
-function twMap(cnt,small){
-  return `<div class="twmap ${small?'sm':''}">${Object.entries(TW_TILES).map(([r,[y,x,h]])=>{const n=cnt['r:'+r]||0;
-    return `<span class="${n?'on':''} ${x===0?'isle':''}" style="grid-row:${y+1}${h?' / span '+h:''};grid-column:${x+1}">${shortRegion(r,'台灣')}${n&&!small?`<i>${n}</i>`:''}</span>`}).join('')}</div>`;
+// 足跡地圖：maps/ 裡是預先投影好的 SVG 路徑（台灣縣市、世界各國）。去越多次顏色越深
+const MAPS={};
+function loadMap(k){return MAPS[k]||(MAPS[k]=fetch('maps/'+k+'.json?v='+APP_VER).then(r=>r.json()).catch(e=>{delete MAPS[k];throw e}))}
+const heat=n=>n>=7?4:n>=4?3:n>=2?2:n?1:0;
+// 先放一個佔位的框，畫面出來之後再把地圖填進去
+function mapBox(kind,cnt,opt={}){
+  return `<div class="fmap ${opt.small?'sm':''}" data-map="${kind}" data-cnt="${esc(JSON.stringify(cnt))}" data-home="${esc(opt.home||'')}"><div class="fmload">地圖載入中…</div></div>
+    ${opt.small?'':`<div class="fmleg"><span>去過</span>${[1,2,3,4].map(l=>`<i class="h${l}"></i>`).join('')}<span>越多次越深</span>${kind==='world'&&opt.home?`<i class="home"></i><span>住的地方</span>`:''}</div>`}`;
+}
+function fillMaps(){
+  document.querySelectorAll('.fmap[data-map]:not(.done)').forEach(async el=>{
+    el.classList.add('done');
+    try{
+      const m=await loadMap(el.dataset.map),cnt=JSON.parse(el.dataset.cnt||'{}'),home=el.dataset.home,world=el.dataset.map==='world';
+      const hit=f=>world?(f.n||[]).reduce((a,n)=>a+(cnt[n]||0),0):(cnt[f.n]||0);
+      const name=f=>world?(f.n||[])[0]||'':f.n;
+      const cls=f=>{const n=hit(f);return n?'h'+heat(n):world&&(f.n||[]).includes(home)?'home':''};
+      el.innerHTML=`<svg viewBox="${m.vb}" role="img">${(m.box||[]).map(([x,y,w,h])=>`<rect class="inset" x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>`).join('')}
+        ${m.f.filter(f=>f.d).map(f=>`<path d="${f.d}" class="${cls(f)}" data-n="${esc(name(f))}" data-k="${hit(f)}"/>`).join('')}
+        ${m.f.filter(f=>f.c&&(hit(f)||!world)).map(f=>`<circle cx="${f.c[0]}" cy="${f.c[1]}" r="${world?4:5}" class="dot ${cls(f)}" data-n="${esc(name(f))}" data-k="${hit(f)}"/>`).join('')}</svg>`;
+      el.onclick=e=>{const t=e.target.closest('[data-n]');if(!t||!t.dataset.n)return;toast(`${t.dataset.n}${+t.dataset.k?`・去過 ${t.dataset.k} 次`:'・還沒去過'}`)};
+    }catch(e){el.innerHTML='<div class="fmload">沒有網路，地圖暫時載不出來</div>';el.classList.remove('done')}
+  });
+}
+// 算次數：自己國家算縣市，國外算國家
+function footCounts(sps){
+  const reg={},ct={};
+  sps.forEach(sp=>{if(!sp)return;if(isAbroad(sp))ct[sp.c]=(ct[sp.c]||0)+1;else if(sp.r)reg[sp.r]=(reg[sp.r]||0)+1});
+  return {reg,ct};
 }
 const shortRegion=(r,c)=>c==='台灣'?(/^(新竹|嘉義)/.test(r)?r:r.replace(/[市縣]$/,'')):c==='日本'&&r!=='北海道'?r.replace(/[都府縣]$/,''):r;
 // 每個地方第一次去的那一筆（自己國家算到縣市，國外算到國家）
@@ -4874,8 +5010,9 @@ function footSection(){
       <div><b>${fp.length}</b><span>出門次數</span></div><div><b>${home}</b><span>在家穿搭</span></div>
       <div><b>${regs.size}${all.length?`<small style="font-size:14px"> / ${all.length}</small>`:''}</b><span>${esc(hc)}${esc(unit)}</span></div><div><b>${cts.size}</b><span>去過的國家</span></div></div>
     ${newest?`<div class="note">最近解鎖的地方：<strong>${esc(spotText({c:newest.sp.c,r:isAbroad(newest.sp)?'':newest.sp.r}))}</strong>（${newest.date}${newest.d?`，${esc(newest.d.name)} 第一次去`:''}）</div>`:''}
-    ${hc==='台灣'?twMap(cnt):REGIONS[hc]?`<div class="twgrid">${REGIONS[hc].groups.map(([g,l])=>`<div>${g?`<small>${g}</small>`:''}${l.map(r=>`<span class="${cnt['r:'+r]?'on':''}">${shortRegion(r,hc)}${cnt['r:'+r]?`<i>${cnt['r:'+r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>`
+    ${hc==='台灣'?`<p class="mh">${esc(hc)}</p>`+mapBox('tw',footCounts(fp.map(f=>f.sp)).reg):REGIONS[hc]?`<div class="twgrid">${REGIONS[hc].groups.map(([g,l])=>`<div>${g?`<small>${g}</small>`:''}${l.map(r=>`<span class="${cnt['r:'+r]?'on':''}">${shortRegion(r,hc)}${cnt['r:'+r]?`<i>${cnt['r:'+r]}</i>`:''}</span>`).join('')}</div>`).join('')}</div>`
       :regs.size?`<div class="parts" style="margin:8px 0 0">${[...regs].map(r=>`<button type="button" class="on" style="pointer-events:none">📍 ${esc(r)} ${cnt['r:'+r]}</button>`).join('')}</div>`:''}
+    <p class="mh">世界</p>${mapBox('world',footCounts(fp.map(f=>f.sp)).ct,{home:hc})}
     ${ab.length?`<div class="parts" style="margin:8px 0 0">${ab.map(c=>`<button type="button" class="on" style="pointer-events:none">✈️ ${esc(c)} ${cnt['c:'+c]}</button>`).join('')}</div>`:''}
     ${topSpots.length?`<h2 class="sec" style="font-size:15px">最常去的地方</h2>${topSpots.map(([k,n])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${n} 次</em></div><div class="tr"><i style="width:${n/topSpots[0][1]*100}%"></i></div></div>`).join('')}`:''}
     ${byDoll.length?`<h2 class="sec" style="font-size:15px">誰去過最多地方</h2><div class="blist">${byDoll.slice(0,6).map(x=>`<div class="rowitem" onclick="openDoll('${x.d.id}')"><div class="th">${x.d.photo?`<img src="${x.d.photo}" alt="">`:''}</div>
@@ -4902,8 +5039,8 @@ function drawWearSheet(){
   WEAR_PRESET=null;
   openSheet(`
     <h3>今天的穿搭</h3>
-    ${S.dolls.length?`<label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
-    <label class="f"><span>哪一隻娃</span><div class="parts" style="margin-top:0">${S.dolls.map(d=>`<button type="button" class="${WEAR.dollId===d.id?'on':''}" onclick="WEAR.dollId=WEAR.dollId==='${d.id}'?null:'${d.id}';WEAR.doll=WEAR.dollId?S.dolls.find(x=>x.id===WEAR.dollId).name:'';drawWearSheet()">${esc(d.name)}</button>`).join('')}</div></label>`
+    ${liveDolls().length?`<label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
+    <label class="f"><span>哪一隻娃</span><div class="parts" style="margin-top:0">${liveDolls().map(d=>`<button type="button" class="${WEAR.dollId===d.id?'on':''}" onclick="WEAR.dollId=WEAR.dollId==='${d.id}'?null:'${d.id}';WEAR.doll=WEAR.dollId?S.dolls.find(x=>x.id===WEAR.dollId).name:'';drawWearSheet()">${esc(d.name)}</button>`).join('')}</div></label>`
     :`<div class="split">
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
@@ -5829,12 +5966,12 @@ function buyOrdersHTML(t){
 }
 // 這件適合給哪隻娃娃：跟每隻娃娃平常穿的類型、風格、顏色比對（在手機上算，不用 AI）
 function buyDollFit(t){
-  if(!S.dolls.length||t.category==='套裝'&&!t.styles.length)return '';
+  if(!liveDolls().length||t.category==='套裝'&&!t.styles.length)return '';
   const head=`<h2 class="sec">適合給哪隻娃娃 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked"><div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最適合：小白</b><span>常穿甜系、粉色系</span></div></div></div>
     <div class="lk-cover"><b>這件買給誰最適合？</b><span>依每隻娃娃平常穿的風格和顏色推薦</span><button class="btn" onclick="openMember()">了解會員</button></div></div>`;
   const tf=new Set(t.colors.map(colorFam)),ts=new Set(t.styles.map(x=>x.name));
-  const rows=S.dolls.map(dollProfile).map(p=>{
+  const rows=liveDolls().map(dollProfile).map(p=>{
     if(p.wears<2)return {p,score:-1,why:['穿搭紀錄還不夠，先多記幾次']};
     let score=0;const why=[];
     const sHit=p.styles.filter(([k])=>ts.has(k));
@@ -5985,7 +6122,7 @@ function mcap(el){
 /* ---- 使用說明：每個主題一張卡，上面是步驟圖（圖示 → 圖示），下面是小撇步 ---- */
 const HELP=[
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['可以一次選很多張照片。','放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。','還沒分析就按「做成貼圖」，會先問你是單件還是套裝。','「AI 整套一張」幾件都只扣 1 次。','尺寸一定要選，之後分析和推薦都會用到。']],
+    ['可以一次選很多張照片。','放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。','還沒分析就按「做成貼圖」，會先問你是單件還是套裝。','「AI 整套一張」幾件都只扣 1 次。','尺寸一定要選（一件選一個），之後分析和推薦都會用到。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
     ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
@@ -5993,17 +6130,17 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
     ['在家換裝也算，不一定要出門。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
-    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。']],
+    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','以前賣掉、送走的娃衣裡有很像的也會提醒你，避免買了又賣。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','同一團買很多件，用「一次記多筆」一行寫一件；「多選」可以一次改進度、預計到貨，到貨的一起拿去建檔。','到貨那天會記下來，建檔後壓箱底從到貨日開始算，不會因為預購等很久就一進來就壓箱底。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你，在建檔頁可以一次全部建檔。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','以前賣掉、送走的娃衣裡有很像的也會提醒你，避免買了又賣。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','同一團買很多件，用「一次記多筆」一行寫一件；「多選」可以一次改進度、預計到貨，到貨的一起拿去建檔。','到貨那天會記下來，建檔後壓箱底從到貨日開始算，不會因為預購等很久就一進來就壓箱底。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你，在建檔頁可以一次全部建檔。','購買中的娃衣可以標尺寸，首頁只會列出主角娃娃那個尺寸的。']],
   ['📦','壓箱底・狀況・出售',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['買來 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','賣掉後移到回憶箱，會記下賣了多少錢。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
   ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['🧸','娃娃櫃 → 足跡']],
-    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，會有地圖標出去過的縣市、幾個國家，和每隻娃娃去過的地方。']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料都存在這支手機上，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟。']],
 ];
@@ -6019,7 +6156,7 @@ const HELP_SHOTS={
   '買前檢查・考慮中・購買中':[['buy-check','買前檢查：衣櫃裡幾乎一樣的排最前面'],['orders','購買中：每件的進度和預計到貨'],['arrive-tip','到貨了，建檔頁會提醒你一起建檔']],
   '備份很重要':[['backup','設定 → 備份與資料']],
   '娃娃的整理與配件':[['doll-care','記錄換骨架、交給手作娘，和配件在不在']],
-  '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-map','娃娃櫃 → 足跡：地圖標出去過的縣市和國家']]
+  '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃頁的足跡'],['foot-map','娃娃櫃 → 足跡：去越多次顏色越深']]
 };
 function helpHTML(){
   return `<p class="hint" style="margin:-6px 0 12px">點一個主題展開。不懂的地方也可以隨時回來看。</p>
