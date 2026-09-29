@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=5"></script>
+<script src="i18n/i18n.js?v=6"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -528,6 +528,24 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+
+/* 截圖匯入 */
+.shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
+.shgrid img{width:100%;height:100%;object-fit:cover}
+.shgrid button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:12px}
+.shadd{display:grid;place-items:center;aspect-ratio:3/4;border-radius:12px;border:1.5px dashed var(--line);color:var(--muted);font-size:13px;cursor:pointer}
+.shrows{display:flex;flex-direction:column;gap:10px}
+.shrow{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:14px;background:var(--card);border:1px solid var(--line);transition:opacity .2s}
+.shrow.off{opacity:.45}
+.shrow .th{width:56px;height:56px;flex:0 0 56px;border-radius:10px;overflow:hidden;background:var(--swatch)}
+.shrow .th img{width:100%;height:100%;object-fit:cover}
+.shrow input[type=text],.shrow input[type=number],.shrow select{min-height:38px;padding:6px 10px;font-size:14px}
+.shrow input[type=number]{width:96px;flex:0 0 96px}
+.shrow select{flex:1;min-width:0}
+.shrow small{display:block;margin-top:6px;color:var(--muted);font-size:12px;line-height:1.5}
+.shrow small b{color:var(--berry-deep)}
+.shck{padding-top:10px}.shck input{width:20px;height:20px;accent-color:var(--berry)}
 .stat div.tap{cursor:pointer}
 .th.cdot{display:flex;align-items:center;justify-content:center;gap:0}
 .th.cdot i{width:26px;height:26px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line)}
@@ -2504,7 +2522,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-22';
+const APP_VER='2026.10.01-23';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -3354,7 +3372,7 @@ async function arrivedToIntake(){
 }
 function ordersHTML(){
   const list=S.orders.filter(o=>!o.filed).sort((a,b)=>ORDER_STAGES.indexOf(a.stage)-ORDER_STAGES.indexOf(b.stage)||(a.eta||'9').localeCompare(b.eta||'9'));
-  const bar=`<div class="row" style="margin:0 0 12px;gap:8px"><button class="btn sm ghost" onclick="openOrderBulk()">＋ 一次記多筆</button><span class="grow"></span>
+  const bar=`<div class="row" style="margin:0 0 12px;gap:8px"><button class="btn sm ghost" onclick="openOrderBulk()">＋ 一次記多筆</button><button class="btn sm ghost" onclick="openOrderShot()">📸 截圖匯入<span class="pro">PRO</span></button><span class="grow"></span>
     ${list.length?`<button class="btn sm ${UI.omulti?'':'ghost'}" onclick="UI.omulti=!UI.omulti;UI.osel=new Set();renderWish()">${UI.omulti?'完成':'☑ 多選'}</button>`:''}</div>`;
   if(!list.length)return bar+`<div class="empty"><strong>沒有在等的娃衣</strong>已經下單、在等預購或運送的，可以記在這裡，進度一目了然，買新的之前也會提醒你</div>`;
   UI.osel=UI.osel||new Set();
@@ -3417,6 +3435,150 @@ async function saveOrderBulk(){
   const rows=parseBulk(OB.lines);if(!rows.length){toast('先寫至少一件');return}
   rows.forEach(r=>S.orders.push({id:uid('o'),kind:'item',name:r.name,price:r.price,category:OB.category,size:OB.size,brand:OB.brand.trim(),shop:OB.shop.trim(),origin:OB.origin.trim(),stage:OB.stage,eta:OB.eta,orderDate:OB.orderDate,photo:null,note:'',createdAt:Date.now()}));
   await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');toast(`已記下 ${rows.length} 筆`);
+}
+/* ---- 截圖匯入購買中（會員）----
+   丟購物 App 的訂單截圖 → AI 讀出店家、品名、單價、數量、進度，順便框出商品小圖
+   → 使用者勾選、修改 → 一次存進購買中。外幣照「當天匯率＋海外手續費」或自己填的匯率換算，原價寫在備註。 */
+const CUR_OF={'台灣':'TWD','香港':'HKD','澳門':'MOP','中國':'CNY','日本':'JPY','韓國':'KRW','泰國':'THB','新加坡':'SGD','馬來西亞':'MYR','越南':'VND','菲律賓':'PHP','美國':'USD','加拿大':'CAD','英國':'GBP','法國':'EUR','澳洲':'AUD'};
+const CUR_NAME={TWD:'台幣',CNY:'人民幣',JPY:'日圓',KRW:'韓元',USD:'美元',HKD:'港幣',MOP:'澳門幣',EUR:'歐元',GBP:'英鎊',THB:'泰銖',SGD:'新加坡幣',MYR:'馬幣',VND:'越南盾',PHP:'菲律賓披索',CAD:'加幣',AUD:'澳幣'};
+const CUR_SIGN={CNY:'¥',JPY:'¥',USD:'US$',KRW:'₩',HKD:'HK$',EUR:'€',GBP:'£',TWD:'NT$'};
+// 連不上匯率服務時的參考值（1 外幣＝多少台幣）
+const FX_TWD={CNY:4.5,JPY:.21,KRW:.023,USD:32,HKD:4.1,MOP:4,EUR:35,GBP:41,THB:.9,SGD:24,MYR:7,VND:.0013,PHP:.56,CAD:23,AUD:21,TWD:1};
+const homeCur=()=>CUR_OF[homeCountry()]||'TWD';
+function fxSet(){S.settings.fx=S.settings.fx||{mode:'auto',fee:1.5,manual:{},cache:null};return S.settings.fx}
+// 當天匯率：一天抓一次，存起來
+async function fxLoad(){
+  const f=fxSet(),base=homeCur();
+  if(f.cache&&f.cache.date===today()&&f.cache.base===base)return f.cache;
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/'+base);const j=await r.json();
+    if(j&&j.rates){f.cache={date:today(),base,rates:j.rates};save();return f.cache}
+  }catch(e){}
+  return f.cache&&f.cache.base===base?f.cache:null;
+}
+// 1 外幣＝多少本國幣（還沒加手續費）
+function fxBase(cur){
+  const f=fxSet(),base=homeCur();if(cur===base)return {rate:1,src:'same'};
+  if(f.mode==='manual'&&+f.manual[cur]>0)return {rate:+f.manual[cur],src:'manual'};
+  const c=f.cache;if(c&&c.base===base&&c.rates&&c.rates[cur])return {rate:1/c.rates[cur],src:'auto',date:c.date};
+  if(base==='TWD'&&FX_TWD[cur])return {rate:FX_TWD[cur],src:'default'};
+  if(FX_TWD[cur]&&FX_TWD[base])return {rate:FX_TWD[cur]/FX_TWD[base],src:'default'};
+  return {rate:1,src:'none'};
+}
+// 實際換算用的匯率：自己填的就照填的；當天匯率再加海外手續費
+function fxRate(cur){const b=fxBase(cur);return b.src==='manual'||b.src==='same'?b.rate:b.rate*(1+(+fxSet().fee||0)/100)}
+// 台幣、日圓、韓元這種不用小數的，換算完取整數
+const fxRound=v=>['TWD','JPY','KRW','VND'].includes(homeCur())||v>=100?Math.round(v):Math.round(v*10)/10;
+let SH={};
+function openOrderShot(){
+  if(!isMember()){openSheet(`<h3>截圖匯入購買中<span class="pro">PRO</span></h3><p class="hint" style="margin:-6px 0 10px">會員專屬功能</p>
+    <div class="note">把購物 App 的訂單截圖丟進來，AI 會讀出店家、品名、價格和進度，還會剪下商品小圖，一次記進購買中。外幣會照匯率換算。</div>
+    <button class="btn wide" style="margin-top:14px" onclick="closeSheet();openMember()">了解會員</button>`);return}
+  SH={shots:[],rows:null,busy:false,cur:'CNY'};drawShot();fxLoad().then(()=>{if(SH.shots&&!SH.rows&&document.getElementById('sh_fx'))drawShot()});
+}
+function fxPanel(cur){
+  const f=fxSet(),b=fxBase(cur),home=homeCur(),r=fxRate(cur),nm=CUR_NAME[cur]||cur,hn=CUR_NAME[home]||home;
+  if(cur===home)return '';
+  return `<div class="card" id="sh_fx" style="margin:0 0 12px">
+    <div class="row" style="gap:8px;align-items:center"><b class="grow" style="font-size:13.5px">1 ${esc(nm)} ＝ ${Math.round(r*1000)/1000} ${esc(hn)}</b>
+      <select style="width:auto" onchange="SH.cur=this.value;drawShot()">${Object.keys(CUR_NAME).filter(k=>k!==home).map(k=>`<option value="${k}" ${k===cur?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></div>
+    <div class="swap" style="margin:10px 0 8px">${[['auto','當天匯率'],['manual','自己填']].map(([k,l])=>`<button type="button" class="${f.mode===k?'on':''}" onclick="fxSet().mode='${k}';save();drawShot()">${l}</button>`).join('')}</div>
+    ${f.mode==='manual'?`<label class="f" style="margin:0"><span>1 ${esc(nm)} 等於多少${esc(hn)}（刷卡帳單上的實際匯率）</span><input type="number" inputmode="decimal" step="0.001" value="${esc(f.manual[cur]||'')}" placeholder="${Math.round(b.rate*1000)/1000}" onchange="fxSet().manual['${cur}']=this.value;save();drawShot()"></label>`
+      :`<div class="row" style="gap:8px;align-items:center"><span class="hint grow" style="margin:0">${b.src==='auto'?`${b.date} 的匯率 ${Math.round(b.rate*1000)/1000}`:'連不上匯率服務，先用參考匯率 '+Math.round(b.rate*1000)/1000}，加上海外手續費</span>
+        <input type="number" inputmode="decimal" step="0.1" style="width:72px" value="${esc(f.fee)}" onchange="fxSet().fee=this.value;save();drawShot()"><span class="hint" style="margin:0">%</span></div>`}
+  </div>`;
+}
+function drawShot(){
+  const st=SH;
+  if(st.rows)return drawShotRows();
+  openSheet(`<h3>截圖匯入購買中<span class="pro">PRO</span></h3>
+    <p class="hint" style="margin:-6px 0 12px">把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格和進度，你確認後再存。每張用 1 次「AI 建檔分析」，本月還有 ${quotaLeft('tag')} 次。</p>
+    <div class="shgrid">${st.shots.map((s,k)=>`<div><img src="${s.small}" alt=""><button type="button" onclick="SH.shots.splice(${k},1);drawShot()" aria-label="移除">✕</button></div>`).join('')}
+      <label class="shadd">＋ 截圖<input type="file" accept="image/*" multiple hidden onchange="shotAdd(event)"></label></div>
+    ${fxPanel(st.cur)}
+    <button class="btn wide" ${st.shots.length&&!st.busy?'':'disabled'} onclick="shotRead()">${st.busy?'AI 讀取中…':`AI 讀取 ${st.shots.length||''} 張`}</button>`);
+}
+async function shotAdd(ev){
+  const fs=[...ev.target.files];ev.target.value='';
+  for(const f of fs.slice(0,6)){const im=await fileToImg(f);SH.shots.push({im,ai:drawScaled(im,1800).toDataURL('image/jpeg',.8),small:drawScaled(im,300).toDataURL('image/jpeg',.7)})}
+  drawShot();
+}
+function shotPrompt(){
+  return `這是購物 App（淘寶、閒魚、拼多多、蝦皮、Mercari…）訂單列表的截圖，商品是娃娃的衣服（娃衣）或配件。請列出截圖裡每一件商品，只回傳 JSON：
+{"items":[{"shop":"店家名稱","name":"簡短品名","price":24.9,"currency":"CNY","qty":1,"size":"20cm","category":"類型","brand":"","stage":"進度","cancelled":false,"box":[x,y,w,h]}]}
+規則：
+- name：用規格／款式為主（例如「短袖校服」「黑藍格子褲」），太短看不出是什麼時才加系列名；去掉「現貨」「預售」「包郵」「*如量特大提前截止」這類促銷字；用繁體中文。
+- price：這一件的單價（數字）；currency：價格的幣別代碼（中國的店用 CNY，日本 JPY，台灣 TWD，美國 USD，韓國 KRW）。
+- qty：數量（×2 就是 2）。
+- size：標題或規格裡寫的娃娃尺寸，例如 10cm、15cm、20cm；沒寫就空字串。
+- category：從這些選一個：${allCats().join('、')}。一整組、有「套裝」「小套裝」的選「套裝」。
+- brand：看得出品牌或系列作者就填（常常就是店名），看不出來空字串。
+- stage：從「開團中、已付款、製作中、運送中、已到貨」選一個：待付款→開團中；待發貨、預售、製作中→製作中；已發貨、待收貨、運輸中→運送中；已完成、已簽收、待評價、交易成功→已到貨；看不出來→已付款。
+- cancelled：整行被刪除線劃掉、寫退款／已取消的是 true。
+- box：這件商品小圖在截圖裡的位置，用 0～1000 的比例（左上角 x、y，寬 w、高 h）。沒有小圖就給 null。
+- 截圖被切到、看不完整的商品也要列，看不清楚的欄位留空。`;
+}
+// 從原圖剪下商品小圖（比例座標 0～1000）
+function shotCrop(im,box){
+  if(!Array.isArray(box)||box.length<4)return null;
+  let [x,y,w,h]=box.map(Number);if(![x,y,w,h].every(isFinite)||w<20||h<20)return null;
+  const W=im.width,H=im.height,px=x/1000*W,py=y/1000*H,pw=w/1000*W,ph=h/1000*H;
+  const c=document.createElement('canvas'),s=Math.min(1,500/Math.max(pw,ph));c.width=Math.round(pw*s);c.height=Math.round(ph*s);
+  c.getContext('2d').drawImage(im,Math.max(0,px),Math.max(0,py),Math.min(pw,W-px),Math.min(ph,H-py),0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',.82);
+}
+async function shotRead(){
+  if(!aiReady()){toast(aiMissing());return}
+  if(!needQuota('tag'))return;
+  SH.busy=true;drawShot();
+  await fxLoad();
+  const rows=[];let ok=0,fail=0;
+  for(const s of SH.shots){
+    try{
+      const j=parseJSON(await callAIImgs('tag',shotPrompt(),[s.ai]));
+      const list=Array.isArray(j)?j:(j.items||[]);ok++;spendQuota('tag');
+      list.forEach(x=>{if(!x||!x.name)return;const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1)),cur=String(x.currency||'').toUpperCase()||SH.cur,photo=shotCrop(s.im,x.box);
+        for(let k=0;k<qty;k++)rows.push({on:!x.cancelled,cancelled:!!x.cancelled,name:String(x.name).trim(),orig:+x.price||0,cur,category:allCats().includes(x.category)?x.category:'',size:sizes().includes(x.size)?x.size:'',
+          brand:String(x.brand||'').trim(),shop:String(x.shop||'').trim(),stage:ORDER_STAGES.includes(x.stage)?x.stage:'已付款',photo})});
+    }catch(e){fail++}
+  }
+  SH.busy=false;
+  if(!rows.length){toast(fail?'AI 這次沒讀出來，換一張清楚一點的截圖再試試（失敗的不扣次數）':'截圖裡沒有找到商品');drawShot();return}
+  // 已經記過的（同名、同店、同價）預設不勾
+  rows.forEach(r=>{r.price=r.orig?fxRound(r.orig*fxRate(r.cur)):'';if(S.orders.some(o=>o.name===r.name&&(o.shop||'')===r.shop&&!o.filed)){r.on=false;r.dup=true}});
+  const cs=rows.map(r=>r.cur).filter(c=>c!==homeCur());if(cs.length)SH.cur=cs[0];
+  SH.rows=rows;drawShot();if(fail)toast(`${fail} 張沒讀出來，沒有扣次數`);
+}
+function shotReprice(){SH.rows.forEach(r=>{if(r.orig)r.price=fxRound(r.orig*fxRate(r.cur))});drawShot()}
+function drawShotRows(){
+  const rows=SH.rows,n=rows.filter(r=>r.on).length,home=homeCur();
+  const foreign=[...new Set(rows.map(r=>r.cur).filter(c=>c!==home))];
+  openSheet(`<h3>確認要記的 ${rows.length} 件</h3>
+    <p class="hint" style="margin:-6px 0 12px">取消勾選的不會存。名稱、金額、類型都可以直接改；小圖剪歪了，存好後在單筆裡換一張就好。</p>
+    ${foreign.length?fxPanel(foreign.includes(SH.cur)?SH.cur:foreign[0]).replace('drawShot()">當天','shotReprice()">當天').replace(/drawShot\(\)/g,'shotReprice()'):''}
+    <div class="shrows">${rows.map((r,k)=>`<div class="shrow ${r.on?'':'off'}">
+      <label class="shck"><input type="checkbox" ${r.on?'checked':''} onchange="SH.rows[${k}].on=this.checked;this.closest('.shrow').classList.toggle('off',!this.checked);document.getElementById('sh_save').textContent=shotSaveLabel()"></label>
+      <div class="th">${r.photo?`<img src="${r.photo}" alt="">`:''}</div>
+      <div class="grow">
+        <input type="text" value="${esc(r.name)}" oninput="SH.rows[${k}].name=this.value">
+        <div class="row" style="gap:6px;margin-top:6px">
+          <select onchange="SH.rows[${k}].category=this.value"><option value="">類型</option>${allCats().map(c=>`<option ${c===r.category?'selected':''}>${esc(c)}</option>`).join('')}</select>
+          <input type="number" inputmode="decimal" value="${esc(r.price)}" placeholder="金額" oninput="SH.rows[${k}].price=this.value">
+        </div>
+        <small>${[r.orig&&r.cur!==home?`${CUR_SIGN[r.cur]||r.cur}${r.orig}`:'',r.size,r.shop,r.stage].filter(Boolean).map(esc).join('・')}${r.cancelled?'・<b>已取消／退款</b>':''}${r.dup?'・<b>好像已經記過</b>':''}</small>
+      </div></div>`).join('')}</div>
+    <button class="btn wide" id="sh_save" style="margin-top:12px" onclick="shotSave()">${shotSaveLabel()}</button>
+    <button class="btn ghost wide" style="margin-top:8px" onclick="SH.rows=null;drawShot()">重新選截圖</button>`);
+}
+const shotSaveLabel=()=>`存進購買中（${SH.rows.filter(r=>r.on).length} 件）`;
+async function shotSave(){
+  const rows=SH.rows.filter(r=>r.on&&r.name.trim());if(!rows.length){toast('至少勾一件');return}
+  const home=homeCur(),ORG={CNY:'中國',JPY:'日本',KRW:'韓國',TWD:'台灣',USD:'美國'};
+  rows.forEach(r=>{const fx=r.cur!==home&&r.orig;
+    const o={id:uid('o'),kind:'item',name:r.name.trim(),price:r.price===''?'':String(r.price),category:r.category,size:r.size,brand:r.brand,shop:r.shop,origin:ORG[r.cur]||'',stage:r.stage,eta:'',orderDate:today(),photo:r.photo||null,
+      note:fx?`原價 ${CUR_SIGN[r.cur]||r.cur}${r.orig}（匯率 ${Math.round(fxRate(r.cur)*1000)/1000}）`:'',createdAt:Date.now()};
+    if(o.stage==='已到貨')o.arrived=today();S.orders.push(o)});
+  await save();closeSheet();UI.wishTab='order';if(UI.tab==='wish')renderWish();else go('wish');toast(`已記下 ${rows.length} 件`);
 }
 // 批次修改：進度、預計到貨、尺寸、品牌、購買管道、產地、類型，到貨的一起拿去建檔，或刪除
 let OBT={};
@@ -4995,6 +5157,7 @@ const MEMBER_ONLY=[
   ['🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色'],
   ['🎄','季節・節日・配色','季節服、節日服穿過幾件，還有你最常用的配色'],
   ['📅','穿搭習慣','換裝的星期分佈、每月穿搭趨勢、最近喜歡的風格有沒有改變'],
+  ['📸','截圖匯入購買中','丟購物 App 的訂單截圖，AI 讀出品名、價格、進度，剪下商品小圖；外幣照當天匯率加海外手續費換算'],
   ['🎯','適合給哪隻娃娃','買前檢查時，依每隻娃娃平常穿的風格推薦買給誰'],
   ['💰','花費分析','每月花多少、每穿一次的成本、最划算和買了還沒穿的、賣掉回血多少']
 ];
@@ -6843,7 +7006,7 @@ const HELP=[
     ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
   // ── 購物
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','「多選」可以一次改進度、預計到貨、尺寸，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註。','「多選」可以一次改進度、預計到貨、尺寸、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 資料
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
     ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
