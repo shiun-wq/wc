@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=15"></script>
+<script src="i18n/i18n.js?v=16"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -596,6 +596,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .dletter.jarrow p{font-family:inherit;font-size:14px}
 
 .dhome.djar{margin-top:-4px}.dhome.djar b{color:var(--berry-deep);font-weight:600}
+.obar{margin:4px 0 12px;gap:8px;flex-wrap:wrap}.obar .btn{white-space:nowrap;position:relative;padding-left:12px;padding-right:12px;flex:0 0 auto}
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
@@ -2591,7 +2592,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-32';
+const APP_VER='2026.10.01-33';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -3574,7 +3575,7 @@ async function arrivedToIntake(){
 }
 function ordersHTML(){
   const list=S.orders.filter(o=>!o.filed).sort((a,b)=>ORDER_STAGES.indexOf(a.stage)-ORDER_STAGES.indexOf(b.stage)||(a.eta||'9').localeCompare(b.eta||'9'));
-  const bar=`<div class="row" style="margin:0 0 12px;gap:8px"><button class="btn sm ghost" onclick="openOrderBulk()">＋ 一次記多筆</button><button class="btn sm ghost" onclick="openOrderShot()">📸 截圖匯入<span class="pro">PRO</span></button><span class="grow"></span>
+  const bar=`<div class="row obar"><button class="btn sm ghost" onclick="openOrderBulk()">＋ 一次記多筆</button><button class="btn sm ghost" onclick="openOrderShot()">📸 截圖匯入<span class="pro corner">PRO</span></button><span class="grow"></span>
     ${list.length?`<button class="btn sm ${UI.omulti?'':'ghost'}" onclick="UI.omulti=!UI.omulti;UI.osel=new Set();renderWish()">${UI.omulti?'完成':'☑ 多選'}</button>`:''}</div>`;
   if(!list.length)return bar+`<div class="empty"><strong>沒有在等的娃衣</strong>已經下單、在等預購或運送的，可以記在這裡，進度一目了然，買新的之前也會提醒你</div>`;
   UI.osel=UI.osel||new Set();
