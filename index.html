@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=8"></script>
+<script src="i18n/i18n.js?v=11"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -542,6 +542,24 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 /* 調整商品圖 */
 .cropbox{position:relative;width:100%;max-width:340px;aspect-ratio:1;margin:0 auto;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px var(--line);touch-action:none}
 .cropbox canvas{display:block;touch-action:none;cursor:grab}
+
+.mfoot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.mfoot .btn{white-space:nowrap;padding-left:8px;padding-right:8px;min-width:0}
+/* 訂閱方案 */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.plancard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 12px 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);text-align:left}
+.plancard:active{transform:scale(.98)}
+.plancard b{font-size:14px}.plancard span{font-size:12.5px;color:var(--ink-2)}.plancard strong{font-family:var(--num);font-size:20px;color:var(--berry-deep)}
+.plancard small{font-size:11.5px;color:var(--muted)}
+.plancard em{position:absolute;top:-9px;right:10px;font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:linear-gradient(135deg,#F6D98A,#E3B85A);color:#5A3E12}
+
+/* 會員小卡樣式 */
+.scvip{margin-top:0}
+.scvip button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.scvip button i{width:14px;height:14px;border-radius:50%;flex:0 0 14px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+
+.bktip{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--swatch);font-size:13px;line-height:1.6}
+.bktip summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.bktip p{margin:8px 0 0;color:var(--ink-2)}
 
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -1895,14 +1913,15 @@ function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.m
    次數只在 AI 成功回應後才扣；每個月 1 號自動重置。上架時改這張表就好。
    ============================================================ */
 const QUOTA={
-  tag:{name:'AI 建檔分析',free:10,member:150},
-  buy:{name:'買前檢查',free:0,member:30,memberOnly:true},
-  img:{name:'AI 出圖去背',free:0,member:30},
-  wearid:{name:'穿搭照辨識',free:3,member:50},
-  idea:{name:'AI 搭配建議',free:3,member:50}
+  tag:{name:'AI 建檔分析',free:10,member:150,trial:20},
+  buy:{name:'買前檢查',free:0,member:30,trial:5,memberOnly:true},
+  img:{name:'AI 出圖去背',free:0,member:30,trial:5},
+  wearid:{name:'穿搭照辨識',free:3,member:50,trial:10},
+  idea:{name:'AI 搭配建議',free:3,member:50,trial:10}
 };
 function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
-const quotaMax=k=>isMember()?QUOTA[k].member:QUOTA[k].free;
+// 試用期間：分析全部打開，但 AI 次數比正式會員少，避免三天內把整個衣櫃都跑完
+const quotaMax=k=>S.settings.member?QUOTA[k].member:trialOn()?QUOTA[k].trial:QUOTA[k].free;
 const quotaLeft=k=>Math.max(0,quotaMax(k)-(usage()[k]||0));
 // 先用額度，額度用完才扣點數
 function spendQuota(k){
@@ -1953,7 +1972,7 @@ function addPoints(n,why){
 }
 function updateWalletChip(){
   const c=document.getElementById('wchip');if(!c)return;
-  c.innerHTML=isMember()?'<i>♛</i>會員':`<i>✦</i>${wallet().points}`;
+  c.innerHTML=S.settings.member?'<i>♛</i>會員':trialOn()?'<i>♛</i>試用':`<i>✦</i>${wallet().points}`;
 }
 // 會員每月額度，換算成點數大概值多少
 const memberValue=()=>Object.entries(QUOTA).reduce((a,[k,q])=>a+(q.member-q.free)*POINT_COST[k],0);
@@ -2537,7 +2556,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-25';
+const APP_VER='2026.10.01-28';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2585,13 +2604,22 @@ function homeCards(){
       <b>${t.title}</b><span>${esc(t.body)}</span>
       <div class="row">${w?`<button class="btn sm" onclick="openShare('wear','${w.id}')">做回憶小卡</button>`:''}<button class="btn sm ghost" onclick="UI.dollTab='foot';go('dolls')">看足跡</button></div></section>`);
   });
+  // 0-2. 會員：年度回顧、換季提醒
+  const rc=recapAlert();
+  if(rc&&!st.annHide[rc.key])h.push(`<section class="notice party"><button class="x" onclick="S.settings.annHide['${rc.key}']=1;save();renderHome()" aria-label="隱藏">×</button>
+    <b>📅 ${rc.y} 年度回顧出爐了</b><span>這一年穿了幾次、去過哪裡、最愛的娃衣是哪件，整理成一張可以分享的小卡。</span>
+    <div class="row"><button class="btn sm" onclick="${isMember()?`UI.recapY='${rc.y}';goVip('year')`:'openMember()'}">${isMember()?'看年度回顧':'會員功能・看看'}</button></div></section>`);
+  const sa=seasonAlert();
+  if(sa&&!st.annHide[sa.key])h.push(`<section class="notice"><button class="x" onclick="S.settings.annHide['${sa.key}']=1;save();renderHome()" aria-label="隱藏">×</button>
+    <b>${{春:'🌸',夏:'🌻',秋:'🍂',冬:'❄️'}[sa.s]} ${sa.s}天到了</b><span>衣櫃裡有 ${sa.n} 件${sa.s}季娃衣${sa.never?`，其中 ${sa.never} 件還沒穿過`:''}${sa.idle?`，${sa.idle} 件超過半年沒穿`:''}，趁這個季節讓它們出場吧。</span>
+    <div class="row"><button class="btn sm" onclick="closetFind('${sa.s}')">看${sa.s}季娃衣</button>${sa.never?`<button class="btn sm ghost" onclick="closetFind('${sa.s}','從未穿過')">還沒穿過的</button>`:''}</div></section>`);
   // 0a. 節日：有節日服 → 前 3 週、前一天、當天提醒；沒有 → 一個月前提醒一次，建議用現有的衣服搭出節日感
   if(st.holOn!==false)holidayAlerts().forEach(x=>{
     if(st.annHide[x.key])return;const n=x.n;
     const hide=`<button class="x" onclick="S.settings.annHide['${x.key}']=1;save();renderHome()" aria-label="隱藏">×</button>`;
     if(x.its.length)h.push(`<section class="notice ${x.left===0?'party':''}">${hide}
       <b>${holIcon(n)} ${x.left===0?`今天是${n}！`:x.left===1?`明天就是${n}了`:`${n}還有 ${x.left} 天`}</b>
-      <span>衣櫃裡有 ${x.its.length} 件${n}主題的娃衣，${x.left===0?'今天就讓它們出場吧':x.left===1?'今晚先把明天要穿的挑好吧':'可以先想想要怎麼搭'}。</span>
+      <span>衣櫃裡有 ${x.its.length} 件${n}主題的娃衣${isMember()&&x.its.some(i=>wearCount(i.id)===0)?`（${x.its.filter(i=>wearCount(i.id)===0).length} 件還沒穿過）`:''}，${x.left===0?'今天就讓它們出場吧':x.left===1?'今晚先把明天要穿的挑好吧':'可以先想想要怎麼搭'}。</span>
       <div class="row"><button class="btn sm" onclick="go('studio');setTimeout(()=>openIdea({theme:'${n}'}),250)">幫我搭一套</button><button class="btn sm ghost" onclick="UI.mode='節日服';UI.hol='${n}';go('closet')">去看看</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
@@ -5159,7 +5187,25 @@ async function delLook(id){
    8b. 搭配分析（會員功能）
    用穿著紀錄算：最常穿的 Look、最萬搭的單品、固定組合、每隻娃娃的最愛。
    ============================================================ */
-const isMember=()=>!!S.settings.member;
+const isMember=()=>!!S.settings.member||trialOn();
+/* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
+const PLANS=[{id:'month',name:'月訂',price:90,per:'月'},{id:'year',name:'年訂',price:790,per:'年',tag:'最划算'}];
+const TRIAL_DAYS=3;
+const trialOn=()=>{const t=S.settings.trial;return !!(t&&Date.now()<t.end)};
+const trialLeft=()=>{const t=S.settings.trial;return t?Math.max(0,Math.ceil((t.end-Date.now())/864e5)):0};
+const trialEndText=()=>{const d=new Date(S.settings.trial.end);return `${d.getMonth()+1}/${d.getDate()}`};
+async function startTrial(){
+  if(S.settings.trial){toast('免費試用已經用過了');return}
+  S.settings.trial={start:Date.now(),end:Date.now()+TRIAL_DAYS*864e5};await save();updateWalletChip();closeSheet();
+  toast(`開始免費試用 ${TRIAL_DAYS} 天！`);setTimeout(openMemberHub,300);
+}
+// 上架前的佔位：這些按鈕之後接 App 內購
+function subscribe(id){const p=PLANS.find(x=>x.id===id);toast(`上架成 App 後，這裡會打開${p?p.name:''}訂閱付款（測試期間可以在最下面直接開啟會員）`)}
+function manageSub(){toast('上架成 App 後，這裡會打開 App Store／Google Play 的訂閱管理，取消或換方案都在那裡')}
+function restorePurchase(){toast('上架成 App 後，換手機或重裝時按這裡，就能把已經買的會員拿回來')}
+function openSubInfo(){openSheet(`<h3>訂閱說明</h3>
+  <div class="note">・會員是自動續訂的訂閱，月訂每個月、年訂每年自動扣款，會在到期前 24 小時內續訂。<br>・想取消的話，到 App Store／Google Play 的「訂閱」裡取消，當期結束前都還可以用。<br>・免費試用 ${TRIAL_DAYS} 天，每個帳號只有一次；試用結束前取消就不會扣款。<br>・衣櫃裡的資料都存在你的手機裡，會員到期不會刪掉任何東西，只是會員功能會先鎖起來。</div>
+  <button class="btn ghost wide" style="margin-top:12px" onclick="openSettings('member')">回會員與 AI</button>`)}
 function matchStats(){
   const items=S.items.filter(i=>i.category!=='套裝'),ok=new Set(items.map(i=>i.id));
   const partners={},wearN={},pair={},sid={};items.forEach(i=>{if(i.setId)sid[i.id]=i.setId});
@@ -5229,6 +5275,9 @@ const AI_DESC={
 };
 const MEMBER_ONLY=[
   ['🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合、每隻娃娃最愛的那件'],
+  ['📅','娃娃的一年','年度回顧：穿了幾次、去過哪裡、最愛的娃衣和出場最多的娃娃，做成分享小卡'],
+  ['🎨','會員小卡樣式','分享小卡多 4 種配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶邊框'],
+  ['🔔','換季提醒','季節一開始提醒這一季的娃衣有幾件還沒穿過；節日提醒也會標出還沒穿過的節日服'],
   ['🏆','套裝排行','最常整套出場的套裝，還有常常只拿一部分出來搭的'],
   ['🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色'],
   ['🎄','季節・節日・配色','季節服、節日服穿過幾件，還有你最常用的配色'],
@@ -5253,8 +5302,10 @@ function openMember(){
     <div class="mbox">${MEMBER_ONLY.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b><small>${d}</small></div><div class="mq"><span>—</span><span class="on">✓</span></div></div>`).join('')}</div>
     <p class="mlabel">一直免費</p>
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
-    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。<br>網頁版目前是測試階段，可以直接開啟會員試用；上架成 App 後會換成正式的訂閱方案。</div>
-    <button class="btn wide" style="margin-top:14px" onclick="setMember(${!isMember()})">${isMember()?'關閉會員功能（測試）':'開啟會員功能（測試）'}</button>`);
+    <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。${PLANS.map(p=>`${p.name} NT$${p.price}`).join('、')}（價格暫定）。</div>
+    <p class="hint" style="margin:10px 2px 0">即將推出：☁️ 雲端自動備份（還在規劃中，不包含在目前的會員方案裡）</p>
+    ${!isMember()&&!S.settings.trial?`<button class="btn wide" style="margin-top:14px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`:''}
+    <button class="btn ghost wide" style="margin-top:8px" onclick="openSettings('member')">${S.settings.member?'會員與 AI 設定':'看訂閱方案'}</button>`);
 }
 
 /* ---- 我的會員：會員自己看的頁面 ----
@@ -5266,6 +5317,7 @@ const MEMBER_GO={
   idea:["closeSheet();openIdea()",'首頁「幫我搭一套」→ AI 建議'],
   buy:["closeSheet();openBuyCheck()",'想買之前丟照片或商品截圖']
 };
+function memberCardTry(){const w=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];if(w)openShare('wear',w.id);else toast('記錄一次穿搭，就能做分享小卡')}
 function goVip(k){closeSheet();UI.insTab='vip';go('insight');
   setTimeout(()=>{const h=document.querySelector(`#insight h2[data-sec="${k}"]`),hd=document.querySelector('header.top');if(h)window.scrollTo(0,h.getBoundingClientRect().top+window.scrollY-(hd?hd.getBoundingClientRect().height:0)-8)},350)}
 function openMemberHub(){
@@ -5277,7 +5329,8 @@ function openMemberHub(){
       <em><b>${left}</b><small>/ ${max}</small></em></button>`};
   const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
   openSheet(`<h3>♛ 我的會員</h3>
-    <div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>
+    ${S.settings.member?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
+      :`<div class="mcard"><b>免費試用中・還剩 ${trialLeft()} 天</b><span>到 ${trialEndText()} 為止，所有會員分析都打開；試用期間 AI 次數比正式會員少一些。喜歡的話到「設定 → 會員與 AI」訂閱。</span><div style="margin-top:10px"><button class="btn sm" onclick="openSettings('member')">看訂閱方案</button></div></div>`}
     <p class="mlabel">本月 AI 額度・點一下直接去用</p>
     <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
     <p class="mlabel">會員專屬功能</p>
@@ -5285,9 +5338,12 @@ function openMemberHub(){
       ${go('📸','截圖匯入購買中','丟購物 App 的訂單截圖，一次記進購買中',"closeSheet();UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)")}
       ${go('🛍️','買前檢查','衣櫃裡有沒有很像的、以前賣掉過的、還在路上的',"closeSheet();openBuyCheck()")}
       ${go('🎯','適合給哪隻娃娃','買前檢查的結果裡，依娃娃平常的風格推薦',"closeSheet();openBuyCheck()")}
+      ${go('🎨','會員小卡樣式','分享小卡多 4 種配色和 4 種邊框，做小卡時選',"closeSheet();memberCardTry()")}
+      ${go('🔔','換季提醒','季節剛開始時，首頁提醒這一季還沒穿過的娃衣',"closeSheet();go('home')")}
     </div>
     <p class="mlabel">會員分析・在「洞察 → 👑 會員分析」</p>
     <div class="mbox">
+      ${go('📅','娃娃的一年','年度回顧，還可以做成分享小卡',"goVip('year')")}
       ${go('🧩','搭配分析','最萬搭的單品、最常穿的 Look、總是一起出場的組合',"goVip('match')")}
       ${go('🏆','套裝排行','最常整套出場、常常只拿一部分出來搭的套裝',"goVip('set')")}
       ${go('🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色',"goVip('doll')")}
@@ -5295,7 +5351,7 @@ function openMemberHub(){
       ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
       ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
     </div>
-    <div class="row" style="gap:8px;margin-top:14px"><button class="btn ghost grow" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points}</button><button class="btn ghost grow" onclick="openMember()">免費版和會員的差別</button></div>`);
+    <div class="mfoot"><button class="btn ghost" onclick="closeSheet();go('wallet')">💰 錢包・${wallet().points} 點</button><button class="btn ghost" onclick="openMember()">📋 方案比較</button></div>`);
 }
 async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
@@ -5992,7 +6048,12 @@ const SHARE_ICO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const CARD_THEMES={
   cream:{name:'奶油',bg:['#F7F2ED','#EFE6DE'],card:'#FFFDFB',ink:'#2F2529',sub:'#8C7F85',accent:'#A24D66',soft:'#F4E7E8',line:'#E6DCD4'},
   rose:{name:'玫瑰',bg:['#F6E3E6','#EEDACB'],card:'#FFF9F8',ink:'#46242F',sub:'#9A7480',accent:'#8E3B55',soft:'#F7E2E6',line:'#EAD3D6'},
-  night:{name:'夜色',bg:['#221B1E','#171214'],card:'#2A2326',ink:'#F2EAE5',sub:'#A0939A',accent:'#E7A3B6',soft:'#3B2830',line:'#3E3438'}
+  night:{name:'夜色',bg:['#221B1E','#171214'],card:'#2A2326',ink:'#F2EAE5',sub:'#A0939A',accent:'#E7A3B6',soft:'#3B2830',line:'#3E3438'},
+  // 會員專屬
+  mint:{vip:1,name:'薄荷',bg:['#E6F2EC','#D8EADF'],card:'#FBFEFC',ink:'#23372E',sub:'#6F8A7E',accent:'#3E8466',soft:'#DDEEE5',line:'#CFE2D7'},
+  lav:{vip:1,name:'薰衣草',bg:['#EEE8F6','#E2D9EF'],card:'#FDFBFF',ink:'#2F2640',sub:'#86799B',accent:'#7457A6',soft:'#E9E0F4',line:'#DCD2EA'},
+  milk:{vip:1,name:'奶茶',bg:['#F1E6DA','#E6D5C3'],card:'#FFFBF6',ink:'#3B2A20',sub:'#957E6D',accent:'#9A6A45',soft:'#F0E2D3',line:'#E3D2C0'},
+  sky:{vip:1,name:'晴空',bg:['#E4EFF8','#D5E5F3'],card:'#FBFDFF',ink:'#1F2F3F',sub:'#71869B',accent:'#3F74A8',soft:'#DCEAF6',line:'#CCDDEC'}
 };
 const SC={};
 const WEEK=['SUN','MON','TUE','WED','THU','FRI','SAT'];
@@ -6012,6 +6073,9 @@ function openShare(kind,id){
     doll=S.dolls.find(d=>d.id===id);title=SC.ann.line;
   }else if(kind==='foot'){
     doll=S.dolls.find(d=>d.id===id);if(!doll)return;title=`${doll.name} 的足跡`;
+  }else if(kind==='year'){
+    if(!isMember()){openMember();return}
+    title=`${id} 娃娃的一年`;
   }else{
     if(!UI.canvas.length){toast('畫布是空的，先加幾件娃衣');return}
     layout=JSON.parse(JSON.stringify(UI.canvas));items=layout.filter(p=>p.itemId).map(p=>p.itemId);
@@ -6024,15 +6088,21 @@ function openShare(kind,id){
   SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
   if(kind!=='ann')SC.ann=null;
   SC.foot=kind==='foot'?id:null;
-  openSheet(`<h3>${SC.ann?(/WELCOME/.test(SC.ann.tag)?'歡迎回家小卡':'紀念小卡'):SC.foot?'足跡小卡':'分享小卡'}</h3>
+  SC.year=kind==='year'?yearStats(id):null;
+  if((CARD_THEMES[SC.theme]||{}).vip&&!isMember())SC.theme='cream';
+  SC.frame=isMember()?(SC.frame||'none'):'none';
+  openSheet(`<h3>${SC.ann?(/WELCOME/.test(SC.ann.tag)?'歡迎回家小卡':'紀念小卡'):SC.foot?'足跡小卡':SC.year?'年度回顧小卡':'分享小卡'}</h3>
     <div class="scwrap"><img id="scImg" alt="分享小卡預覽"><span class="spin dark" id="scSpin"></span></div>
     ${SC.photo&&!SC.ann?`<p class="hint" style="text-align:center;margin:6px 0 0">在預覽上拖曳照片，可以調整照片的位置</p>`:''}
-    <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
-    <div class="swap" id="scLay" ${SC.foot?'hidden':''}>${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
+    <div class="swap" id="scTheme" style="margin-top:12px">${Object.entries(CARD_THEMES).filter(([,t])=>!t.vip).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scSet('theme','${k}')">${t.name}</button>`).join('')}</div>
+    <p class="mlabel" style="margin:4px 2px 6px">會員專屬樣式${isMember()?'':' 🔒'}</p>
+    <div class="swap scvip" id="scTheme2">${Object.entries(CARD_THEMES).filter(([,t])=>t.vip).map(([k,t])=>`<button data-k="${k}" class="${SC.theme===k?'on':''}" onclick="scVip('theme','${k}')"><i style="background:linear-gradient(135deg,${t.bg[0]},${t.accent})"></i>${t.name}</button>`).join('')}</div>
+    <div class="swap scvip" id="scFrame">${CARD_FRAMES.map(([k,l])=>`<button data-k="${k}" class="${SC.frame===k?'on':''}" onclick="${k==='none'?`scSet('frame','none')`:`scVip('frame','${k}')`}">${l}</button>`).join('')}</div>
+    <div class="swap" id="scLay" ${SC.foot||SC.year?'hidden':''}>${[['classic','經典'],['polaroid','拍立得'],['mag','雜誌']].map(([k,l])=>`<button data-k="${k}" class="${SC.lay===k?'on':''}" onclick="scSet('lay','${k}')">${l}</button>`).join('')}</div>
     <div class="swap" id="scRatio">${[['post','貼文 4:5'],['story','限動 9:16']].map(([k,l])=>`<button data-k="${k}" class="${SC.ratio===k?'on':''}" onclick="scSet('ratio','${k}')">${l}</button>`).join('')}</div>
     ${!SC.ann&&!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
     ${SC.ann&&SC.ann.stats&&SC.ann.stats.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.annStats?'checked':''} onchange="SC.annStats=this.checked;S.settings.annStats=this.checked;save();scRender()"> 放上${SC.ann.stats.map(r=>r[0]).join('、')}的次數</label>`:''}
-    ${!SC.ann&&SC.items.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.hideNames?'checked':''} onchange="SC.hideNames=this.checked;S.settings.scHideNames=this.checked;save();scRender()"> 隱藏娃衣名稱（不想讓人知道穿了哪幾件）</label>`:''}
+    ${!SC.ann&&(SC.items.length||SC.year)?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.hideNames?'checked':''} onchange="SC.hideNames=this.checked;S.settings.scHideNames=this.checked;save();scRender()"> 隱藏娃衣名稱（不想讓人知道穿了哪幾件）</label>`:''}
     <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="${SC.ann?'謝謝你來到我身邊 🤍':'今天是草莓甜點日 🍓'}" oninput="scCapChange(this.value)"></label>
     <div class="row">
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
@@ -6042,7 +6112,7 @@ function openShare(kind,id){
 }
 function scSet(k,v){
   SC[k]=v;
-  document.querySelectorAll({theme:'#scTheme',ratio:'#scRatio',lay:'#scLay'}[k]+' button').forEach(b=>b.classList.toggle('on',b.dataset.k===v));
+  document.querySelectorAll({theme:'#scTheme button,#scTheme2 button',ratio:'#scRatio button',lay:'#scLay button',frame:'#scFrame button'}[k]).forEach(b=>b.classList.toggle('on',b.dataset.k===v));
   scRender();
 }
 let scTimer;
@@ -6304,9 +6374,149 @@ async function scMag(x,T,W,H,P,serif,num,sans){
   await scFooter(x,T,P,W,H-P,serif,sans);
 }
 // 隱藏娃衣名稱：有照片的話整個娃衣區都拿掉（當作沒有娃衣）；沒照片時娃衣就是主角，只藏名字
+/* ---- 會員：年度回顧「娃娃的一年」----
+   一年裡穿了幾次、出門幾次、去過哪裡、新來的娃衣和娃娃、最愛的娃衣、出場最多的娃娃，做成可以分享的小卡 */
+function yearStats(y){
+  y=String(y);const ws=S.wears.filter(w=>(w.date||'').startsWith(y));
+  const fp=footprints().filter(f=>f.date.startsWith(y)),places=new Set(fp.map(f=>spKey(f.sp)).filter(Boolean));
+  const items=S.items.filter(i=>i.category!=='套裝'&&(i.homeDate||i.buyDate||ymd(i.createdAt||0)).startsWith(y));
+  const dolls=S.dolls.filter(d=>(d.home||'').startsWith(y));
+  const ic={},dc={},mc={};
+  ws.forEach(w=>{(w.itemIds||[]).forEach(id=>ic[id]=(ic[id]||0)+1);if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1;const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
+  const fav=Object.entries(ic).map(([id,n])=>({it:anyItem(id),n})).filter(x=>x.it&&x.it.category!=='套裝').sort((a,b)=>b.n-a.n).slice(0,3);
+  const mvp=Object.entries(dc).map(([id,n])=>({d:S.dolls.find(d=>d.id===id),n})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
+  const busy=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
+  const spend=items.reduce((a,i)=>a+money(i.price),0);
+  return {y:+y,months:Array.from({length:12},(_,i)=>mc[i+1]||0),wears:ws.length,outs:fp.length,places:places.size,items:items.length,dolls:dolls.length,fav,mvp,busy:busy?+busy[0]:0,spend};
+}
+// 有紀錄的年份（新的在前）
+function recapYears(){return [...new Set([...S.wears.map(w=>(w.date||'').slice(0,4)),...footprints().map(f=>f.date.slice(0,4))].filter(y=>/^\d{4}$/.test(y)))].sort().reverse()}
+function yearSection(){
+  const head=`<h2 class="sec" data-sec="year">娃娃的一年 <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur">
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>2026 年：穿搭 86 次、出門 12 次</b><span>去過 7 個地方・新來 24 件娃衣</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>年度最愛：草莓蕾絲洋裝</b><span>穿了 14 次</span></div></div>
+    </div>
+    <div class="lk-cover"><b>回頭看看這一年</b>
+      <span>一年穿了幾次、去過哪裡、最愛的娃衣和出場最多的娃娃，做成可以分享的年度小卡</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const ys=recapYears();if(!ys.length)return head+'<div class="hint">記錄穿搭或出門之後，這裡會整理出每一年的回顧。</div>';
+  const y=ys.includes(String(UI.recapY))?String(UI.recapY):ys[0],r=yearStats(y);
+  const th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
+  return head+`${ys.length>1?`<div class="chips" style="margin:0 0 10px">${ys.map(k=>`<button class="chip ${k===y?'on':''}" onclick="UI.recapY='${k}';renderInsight()">${k}</button>`).join('')}</div>`:''}
+    <div class="stat">
+      <div><b>${r.wears}</b><span>穿搭次數</span></div><div><b>${r.outs}</b><span>出門次數</span></div>
+      <div><b>${r.places}</b><span>去過的地方</span></div><div><b>${r.items}</b><span>新來的娃衣</span></div></div>
+    ${r.fav.length?`<p class="mh">年度最愛</p><div class="blist">${r.fav.map((x,k)=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}<div class="tx"><b>${k===0?'👑 ':''}${esc(x.it.name)}</b><span>穿了 ${x.n} 次</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
+    ${r.mvp?`<div class="note">${r.y} 出場最多的是 <strong>${esc(r.mvp.d.name)}</strong>（${r.mvp.n} 次）${r.busy?`，最常換裝的是 <strong>${r.busy} 月</strong>`:''}${r.dolls?`；這一年有 ${r.dolls} 隻新娃娃來到家裡`:''}。</div>`:''}
+    <button class="btn wide" style="margin-top:6px" onclick="openShare('year','${y}')">📅 做成 ${y} 年度回顧小卡</button>`;
+}
+async function scYear(x,T,W,H,P,serif,num,sans){
+  const r=SC.year,story=SC.ratio==='story',IW=W-P*2;
+  x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText('MY DOLL YEAR',P,P+30);x.letterSpacing='0px';
+  x.fillStyle=T.ink;x.font=`700 ${story?170:150}px ${num}`;x.fillText(String(r.y),P-6,P+(story?210:190));
+  x.font=`700 ${story?68:60}px ${serif}`;x.fillText('娃娃的一年',P,P+(story?300:268));
+  let y=P+(story?340:300);x.fillStyle=T.ink;x.fillRect(P,y,IW,3);y+=(story?40:30);
+  y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個']])+16;
+  y=drawAnnStats(x,T,P,y,IW,num,sans,[['新來的娃衣',r.items,'件'],['新來的娃娃',r.dolls,'隻'],['最常換裝',r.busy||'—',r.busy?'月':'']])+(story?60:40);
+  const capH=SC.cap?80:0,footY=H-P-100-capH;
+  if(r.fav.length){
+    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('FAVORITES',P,y);x.letterSpacing='0px';
+    const fw=x.measureText('FAVORITES').width+60;x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('年度最愛',P+fw,y+2);y+=28;
+    const gap=24,n=r.fav.length,sz=Math.min((IW-gap*2)/3,story?300:270);
+    const ims=await Promise.all(r.fav.map(f=>loadImg(img(f.it)).catch(()=>null)));
+    ims.forEach((im,i)=>{const bx=P+i*(sz+gap);
+      x.fillStyle=T.card;rrect(x,bx,y,sz,sz,28);x.fill();
+      if(im){const s=Math.min(sz/im.width,sz/im.height)*.8;x.drawImage(im,bx+(sz-im.width*s)/2,y+(sz-im.height*s)/2,im.width*s,im.height*s)}
+      else{x.textAlign='center';x.font=`${sz*.32}px ${sans}`;x.fillText('👗',bx+sz/2,y+sz*.62);x.textAlign='left'}
+      if(i===0){x.font=`40px ${sans}`;x.fillText('👑',bx+14,y+50)}
+      x.textAlign='center';x.fillStyle=T.ink;x.font=`600 26px ${sans}`;
+      x.fillText(SC.hideNames?`${r.fav[i].n} 次`:fitText(x,r.fav[i].it.name,sz),bx+sz/2,y+sz+38);
+      if(!SC.hideNames){x.fillStyle=T.sub;x.font=`500 22px ${sans}`;x.fillText(`${r.fav[i].n} 次`,bx+sz/2,y+sz+70)}
+      x.textAlign='left'});
+    y+=sz+(SC.hideNames?60:92);
+  }
+  // 出場最多的娃娃：放得下才放
+  if(r.mvp&&y+120<=footY){
+    x.fillStyle=T.card;x.globalAlpha=.9;rrect(x,P,y,IW,110,30);x.fill();x.globalAlpha=1;
+    let tx=P+30;const im=r.mvp.d.photo?await loadImg(r.mvp.d.photo).catch(()=>null):null;
+    if(im){x.save();x.beginPath();x.arc(P+70,y+55,40,0,7);x.fillStyle=T.soft;x.fill();x.clip();const s=Math.max(80/im.width,80/im.height);x.drawImage(im,P+70-im.width*s/2,y+15,im.width*s,im.height*s);x.restore();tx=P+130}
+    x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText('年度出場最多',tx,y+44);
+    x.fillStyle=T.ink;x.font=`700 34px ${serif}`;const nm=fitText(x,r.mvp.d.name,IW-(tx-P)-200);x.fillText(nm,tx,y+86);
+    x.textAlign='right';x.fillStyle=T.sub;x.font=`600 24px ${sans}`;x.fillText('次',W-P-30,y+74);const uw=x.measureText('次').width;
+    x.fillStyle=T.accent;x.font=`700 44px ${num}`;x.fillText(`${r.mvp.n}`,W-P-30-uw-12,y+74);x.textAlign='left';
+    y+=140;
+  }
+  // 限動比較長：放每個月的穿搭次數
+  if(footY-y>=300&&r.months.some(Boolean)){
+    x.fillStyle=T.accent;x.font=`600 26px ${num}`;x.letterSpacing='6px';x.fillText('MONTHLY',P,y+10);x.letterSpacing='0px';
+    const mw2=x.measureText('MONTHLY').width+60;x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText('每個月的穿搭',P+mw2,y+12);
+    const top=y+44,bh=Math.min(220,footY-top-70),mx=Math.max(...r.months),bw=IW/12;
+    r.months.forEach((n,i)=>{const h=n?Math.max(10,n/mx*bh):4,bx=P+i*bw+bw*.18;
+      x.fillStyle=n===mx&&n?T.accent:T.line;rrect(x,bx,top+bh-h,bw*.64,h,Math.min(10,h/2));x.fill();
+      if(n){x.fillStyle=T.ink;x.font=`600 22px ${num}`;x.textAlign='center';x.fillText(n,bx+bw*.32,top+bh-h-10)}
+      x.fillStyle=T.sub;x.font=`500 20px ${sans}`;x.textAlign='center';x.fillText(i+1,bx+bw*.32,top+bh+30);x.textAlign='left'});
+    y=top+bh+60;
+  }
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',IW),P,Math.max(y+20,H-P-150))}
+  const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
+}
+// 會員小卡邊框：蕾絲、星星、格紋、緞帶
+const CARD_FRAMES=[['none','無'],['lace','蕾絲'],['stars','星星'],['gingham','格紋'],['ribbon','緞帶']];
+function scFrame(c,T){
+  const f=SC.frame;if(!f||f==='none')return;
+  const x=c.getContext('2d'),W=c.width,H=c.height;x.save();
+  if(f==='lace'){
+    const r=18,step=r*2;x.fillStyle='#FFFFFF';x.globalAlpha=.95;
+    for(let i=0;i<=W/step;i++){x.beginPath();x.arc(i*step+r,0,r,0,Math.PI);x.fill();x.beginPath();x.arc(i*step+r,H,r,Math.PI,0);x.fill()}
+    for(let j=0;j<=H/step;j++){x.beginPath();x.arc(0,j*step+r,r,-Math.PI/2,Math.PI/2);x.fill();x.beginPath();x.arc(W,j*step+r,r,Math.PI/2,Math.PI*1.5);x.fill()}
+    x.globalAlpha=.55;x.strokeStyle=T.accent;x.lineWidth=3;x.setLineDash([2,12]);x.lineCap='round';x.strokeRect(34,34,W-68,H-68);
+  }else if(f==='stars'){
+    const star=(cx,cy,s,col)=>{x.fillStyle=col;x.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4,rr=k%2?s*.32:s;x.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr)}x.closePath();x.fill()};
+    const rnd=seeded('stars'+W+H),cols=['#E3B85A',T.accent,'#F6D98A'];
+    for(let k=0;k<46;k++){const side=k%4,t=rnd();let cx,cy;const m=20+rnd()*46;
+      if(side===0){cx=t*W;cy=m}else if(side===1){cx=t*W;cy=H-m}else if(side===2){cx=m;cy=t*H}else{cx=W-m;cy=t*H}
+      x.globalAlpha=.55+rnd()*.45;star(cx,cy,6+rnd()*14,cols[k%3])}
+  }else if(f==='gingham'){
+    const b=30,sq=15;x.save();x.beginPath();x.rect(0,0,W,H);x.rect(b,b,W-b*2,H-b*2);x.clip('evenodd');
+    x.fillStyle='#FFFFFF';x.fillRect(0,0,W,H);x.fillStyle=T.accent;x.globalAlpha=.28;
+    for(let i=0;i<W/sq;i+=2)x.fillRect(i*sq,0,sq,H);for(let j=0;j<H/sq;j+=2)x.fillRect(0,j*sq,W,sq);x.restore();
+    x.strokeStyle=T.accent;x.globalAlpha=.5;x.lineWidth=2;x.strokeRect(b,b,W-b*2,H-b*2);
+  }else if(f==='ribbon'){
+    x.strokeStyle=T.accent;x.globalAlpha=.85;x.lineWidth=10;x.strokeRect(24,24,W-48,H-48);
+    const cx=W/2,cy=20;x.fillStyle=T.accent;x.globalAlpha=1;
+    x.beginPath();x.moveTo(cx,cy);x.bezierCurveTo(cx-60,cy-50,cx-120,cy+10,cx-90,cy+46);x.bezierCurveTo(cx-60,cy+60,cx-20,cy+20,cx,cy);x.fill();
+    x.beginPath();x.moveTo(cx,cy);x.bezierCurveTo(cx+60,cy-50,cx+120,cy+10,cx+90,cy+46);x.bezierCurveTo(cx+60,cy+60,cx+20,cy+20,cx,cy);x.fill();
+    x.beginPath();x.moveTo(cx-8,cy+6);x.lineTo(cx-40,cy+96);x.lineTo(cx-20,cy+88);x.lineTo(cx-4,cy+100);x.closePath();x.fill();
+    x.beginPath();x.moveTo(cx+8,cy+6);x.lineTo(cx+40,cy+96);x.lineTo(cx+20,cy+88);x.lineTo(cx+4,cy+100);x.closePath();x.fill();
+    x.beginPath();x.arc(cx,cy+4,16,0,7);x.fill();
+  }
+  x.restore();
+}
+function scVip(k,v){
+  if(!isMember()){toast('這是會員專屬樣式，免費試用或加入會員就能用');return}
+  scSet(k,v);
+}
+// 會員：換季提醒（季節剛開始的前兩週）、首頁年度回顧（12/20～1/31）
+function seasonAlert(){
+  if(!isMember())return null;
+  const d=new Date(today()+'T12:00:00'),m=d.getMonth()+1,day=d.getDate();
+  const start={3:'春',6:'夏',9:'秋',12:'冬'}[m];if(!start||day>14)return null;
+  const its=S.items.filter(i=>i.category!=='套裝'&&i.season===start);if(!its.length)return null;
+  const never=its.filter(i=>wearCount(i.id)===0),idle=its.filter(i=>{const l=lastWear(i.id);return l&&days(l)>180});
+  return {key:'season:'+today().slice(0,7),s:start,n:its.length,never:never.length,idle:idle.length};
+}
+function closetFind(q,mode){UI.cat='全部';UI.tag='';UI.mode=mode||'全部';go('closet');setTimeout(()=>{const e=document.getElementById('q');if(e){e.value=q;renderCloset()}},60)}
+function recapAlert(){
+  const t=today(),md=t.slice(5);let y=null;
+  if(md>='12-20')y=+t.slice(0,4);else if(md<='01-31')y=+t.slice(0,4)-1;
+  if(!y||!S.wears.some(w=>(w.date||'').startsWith(String(y))))return null;
+  return {key:'recap:'+y,y};
+}
 async function scDraw(){
   const keep=SC.items;if(SC.hideNames&&SC.photo&&!SC.ann)SC.items=[];
-  try{return await scDraw0()}finally{SC.items=keep}
+  try{const c=await scDraw0();if(isMember())scFrame(c,CARD_THEMES[SC.theme]);return c}finally{SC.items=keep}
 }
 async function scDraw0(){
   const T=CARD_THEMES[SC.theme],W=1080,H=SC.ratio==='story'?1920:1350,P=72;
@@ -6319,6 +6529,7 @@ async function scDraw0(){
   x.textBaseline='alphabetic';
   if(SC.ann){await (SC.lay==='polaroid'?scAnnPolaroid:SC.lay==='mag'?scAnnMag:scAnn)(x,T,W,H,P,serif,num,sans);return c}
   if(SC.foot){await scFoot(x,T,W,H,P,serif,num,sans);return c}
+  if(SC.year){await scYear(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='polaroid'){await scPolaroid(x,T,W,H,P,serif,num,sans);return c}
   if(SC.lay==='mag'){await scMag(x,T,W,H,P,serif,num,sans);return c}
   // 標題列
@@ -6521,7 +6732,7 @@ function renderInsight(){
   }
   const it=UI.insTab||'base';
   const tabs=`<div class="swap dtabs">${[['base','📊 一般分析'],['vip','👑 會員分析']].map(([k,l])=>`<button class="${it===k?'on':''}" onclick="insTab('${k}')">${l}</button>`).join('')}</div>`;
-  el.innerHTML=top+tabs+(it==='vip'?matchSection()+setSection()+dollStyleSection()+useSection(items)+habitSection(items)+spendSection():h);
+  el.innerHTML=top+tabs+(it==='vip'?yearSection()+matchSection()+setSection()+dollStyleSection()+useSection(items)+habitSection(items)+spendSection():h);
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
@@ -7126,7 +7337,7 @@ const HELP=[
     ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','預購、運送中的娃衣記在「購買中」，可以標尺寸；同一團買很多件，用「一次記多筆」一行寫一件。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 資料
   ['📊','洞察：衣櫃分析',[['📦','購買中（全部）'],['📖','所有穿搭紀錄'],['👗','常穿和冷落'],['💰','花費分析']],
-    ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
+    ['洞察頁看的是整個衣櫃，不分娃娃：最上面是全部尺寸的購買中，和所有娃娃的穿搭紀錄。','下面用切換鈕分成「一般分析」和「會員分析」。一般分析有娃娃出場排行、最常穿和冷落的娃衣、衣櫃色彩。','會員分析有年度回顧「娃娃的一年」（可以做成分享小卡）、搭配分析（同一套的零件不互相算）、套裝排行、每隻娃娃的穿搭、季節・節日服穿過幾件和常用配色、穿搭習慣，還有花費分析：每月花多少、每穿一次的成本、賣掉娃衣「回血」多少（只算娃衣）。']],
   ['🔔','提醒與通知',[['⚙️','設定'],['🔔','提醒與通知'],['📱','手機通知']],
     ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；把哇娃衣櫃加到主畫面、開了手機通知，也會跳通知給你。','有新版本時畫面下方會出現「有新版本，點一下更新」。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
@@ -7210,19 +7421,38 @@ function openSettings(page){
   }
   const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${SET_PAGES[page]}</h3>`;
   let body='';
-  if(page==='member')body=`
-    <button class="btn wide" style="margin-bottom:12px" onclick="${isMember()?'openMemberHub()':'openMember()'}">${isMember()?'♛ 我的會員：可以用哪些功能':'看看會員可以做什麼'}</button>
+  if(page==='member'){
+    const paid=!!st.member,tr=trialOn();
+    const plan=p=>`<button class="plancard" onclick="subscribe('${p.id}')">${p.tag?`<em>${p.tag}</em>`:''}<b>${p.name}</b><span><strong>NT$${p.price}</strong> / ${p.per}</span>${p.per==='年'?`<small>平均每月 NT$${Math.round(p.price/12)}</small>`:'<small>&nbsp;</small>'}</button>`;
+    body=`
+    <p class="mlabel" style="margin-top:0">我的方案</p>
     <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">會員功能 ${isMember()?'<b style="color:var(--berry-deep)">已開啟</b>':'未開啟'}</span>
-        <button class="btn sm ${isMember()?'ghost':'quiet'}" onclick="setMember(${!isMember()})">${isMember()?'關閉':'開啟'}</button></div>
-      <p class="hint" style="margin:8px 0 10px">測試期間可以直接開關。本月 AI 使用次數：</p>
-      ${quotaTable()}
-      <button class="btn ghost wide sm" style="margin-top:10px" onclick="closeSheet();go('wallet')">錢包・點數 ${wallet().points} 點</button>
+      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">下次續訂：上架後會顯示日期和金額</div></span></div>
+        <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm ghost grow" onclick="openMemberHub()">我的會員功能</button><button class="btn sm ghost grow" onclick="manageSub()">管理訂閱</button></div>`
+      :tr?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 免費試用中</b><div class="hint">還剩 ${trialLeft()} 天（到 ${trialEndText()}），試用結束前訂閱就不會中斷</div></span></div>
+        <div class="plans">${PLANS.map(plan).join('')}</div>
+        <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMemberHub()">我的會員功能</button>`
+      :`<div class="row"><span class="grow"><b style="font-size:15px">免費版</b><div class="hint">衣櫃、建檔、貼圖、穿搭紀錄都一直免費；會員多了 AI 額度和進階分析</div></span></div>
+        ${st.trial?'':`<button class="btn wide" style="margin-top:12px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`}
+        <div class="plans">${PLANS.map(plan).join('')}</div>
+        <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMember()">📋 免費版和會員的差別</button>`}
     </div>
-    <div class="card">
-      <div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span>
-        <button class="btn sm quiet" onclick="testAPI(this)">測試</button></div>
+    <p class="mlabel">本月 AI 使用次數・每月 1 號重置</p>
+    <div class="card">${quotaTable()}
+      <button class="btn ghost wide sm" style="margin-top:10px" onclick="closeSheet();go('wallet')">💰 錢包・點數 ${wallet().points} 點</button>
+    </div>
+    <div class="setgroup" style="margin-top:12px">
+      <button class="setrow" onclick="restorePurchase()"><i>🔄</i><span><b>恢復購買</b><small>換手機或重裝 App 後，把會員拿回來</small></span><em>›</em></button>
+      <button class="setrow" onclick="openSubInfo()"><i>📄</i><span><b>訂閱說明</b><small>自動續訂、怎麼取消、試用規則</small></span><em>›</em></button>
+      <button class="setrow" onclick="toast('上架前會放上服務條款')"><i>📜</i><span><b>服務條款</b></span><em>›</em></button>
+      <button class="setrow" onclick="toast('上架前會放上隱私權政策')"><i>🔒</i><span><b>隱私權政策</b></span><em>›</em></button>
+    </div>
+    <div class="card" style="margin-top:12px;border-style:dashed">
+      <p class="hint" style="margin:0 0 8px">測試用（上架後拿掉）</p>
+      <div class="row" style="gap:8px"><button class="btn sm ${paid?'ghost':'quiet'} grow" onclick="setMember(${!paid})">${paid?'關閉會員':'直接開啟會員'}</button>
+        ${st.trial?`<button class="btn sm ghost grow" onclick="S.settings.trial=null;save().then(()=>{updateWalletChip();openSettings('member')})">重置試用</button>`:''}</div>
     </div>`;
+  }
   if(page==='notify'){
     const on=st.notify&&canNotify()&&Notification.permission==='granted';
     body=`
@@ -7335,10 +7565,16 @@ function openSettings(page){
       </div>
       <button class="btn quiet wide" style="margin-top:8px" onclick="document.getElementById('imp').click()">從備份檔還原</button>
       <input type="file" id="imp" accept=".json,application/json" hidden onchange="importBackup(event)">
+      <details class="bktip"><summary>☁️ 把備份檔存到雲端硬碟（換手機、手機壞掉都不怕）</summary>
+        <p><b>iPhone：</b>按「完整備份」→ 跳出分享選單時選「儲存到檔案」→ 選「iCloud 雲端硬碟」。</p>
+        <p><b>Android：</b>按「完整備份」→ 檔案會存到「下載」→ 打開 Google 雲端硬碟 App，按「＋」→「上傳」選這個檔案。</p>
+        <p>換新手機時，先從雲端硬碟把檔案存到手機，再按「從備份檔還原」就好。建議每個月備份一次，或建檔很多件之後備份一次。</p>
+      </details>
       <p class="hint" style="margin-top:10px">儲存方式：${DB.mode==='host'?'App 儲存空間':DB.mode==='idb'?'瀏覽器 IndexedDB':'僅此工作階段（無法保存，請務必匯出）'}</p>
     </div>
     <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>`;}
-  if(page==='dev')body=`    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
+  if(page==='dev')body=`    <div class="card"><div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span><button class="btn sm quiet" onclick="testAPI(this)">測試</button></div></div>
+    <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
     <div class="card" style="margin-top:6px">
       <label class="f"><span>後台網址</span>
         <input type="text" id="s_backend" value="${esc(st.backendUrl||'')}" placeholder="${esc(BACKEND||'https://xxx.workers.dev')}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
