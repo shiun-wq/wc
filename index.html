@@ -845,6 +845,8 @@ nav.tabs button.plus.on{color:var(--berry)}
 .wcard .ochk{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:2px solid var(--line-2);background:var(--card);display:grid;place-items:center;font-style:normal;font-size:13px;color:#fff;z-index:2}
 .wcard.osel .ochk{background:var(--berry);border-color:var(--berry)}
 textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--card);color:var(--ink);resize:vertical}
+.nacts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.nacts .btn{white-space:nowrap;padding-left:6px;padding-right:6px;font-size:13px;justify-content:center}
 .bstatwrap{margin-top:18px;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--card)}
 .bstatwrap summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-2)}
 .mhead{display:grid;grid-template-columns:1fr 58px 58px;gap:0;padding:6px 12px !important;font-size:12px;color:var(--muted);text-align:center;margin:-4px 0 0;position:sticky;top:30px;background:var(--paper);z-index:1;padding:6px 0}
@@ -2267,7 +2269,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.09.29-2';
+const APP_VER='2026.09.30-1';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2298,9 +2300,9 @@ function homeCards(){
     if(a.left===0)h.push(`<section class="notice party">${hide}
       <b>🎂 今天是 ${nm} ${what}！</b>
       <span>${a.kind==='year'?`謝謝 ${nm} 陪你 ${a.n} 年。出門走走，或在家幫 ${nm} 換上最喜歡的衣服慶祝都好，拍張照留下紀念吧。`:a.kind==='day'?`${nm} 已經陪你 ${a.n} 天了，今天幫 ${nm} 換套喜歡的衣服吧。`:`祝 ${nm} ${esc(a.label)}快樂！今天幫 ${nm} 穿上最喜歡的那套，在家慶祝或出門走走都好。`}</span>
-      <div class="row">${out?`<button class="btn sm ghost" disabled>今天已經帶出門了 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">今天帶 ${nm} 出門</button>`}
+      <div class="nacts">${out?`<button class="btn sm ghost" disabled>已出門 ✓</button>`:`<button class="btn sm" onclick="dollOutId('${a.d.id}')">🚶 帶出門</button>`}
         <button class="btn sm ghost" onclick="openAnnCard('${key}')">🎉 紀念小卡</button>
-        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">記錄穿搭</button></div>
+        <button class="btn sm ghost" onclick="setMainDoll('${a.d.id}').then(openWear)">👗 記錄穿搭</button></div>
     </section>`);
     else h.push(`<section class="notice">${hide}
       <b>🎈 ${a.left===1?'明天':`再 ${a.left} 天`}就是 ${nm} ${what}</b>
@@ -3361,7 +3363,9 @@ function renderCloset(){
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
 
-  document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${S.items.length} 件`:'';
+  // 件數跟洞察一致：套裝本身不算一件（它拆出來的單品才算）
+  const nPieces=S.items.filter(i=>i.category!=='套裝').length;
+  document.getElementById('topsub').textContent=S.items.length?`${S.sets.length} 套　${nPieces} 件`:'';
   const el=document.getElementById('closetGrid');
   UI.closetList=list.map(i=>i.id);UI.msel=UI.msel||new Set();
   renderMultiBar();
