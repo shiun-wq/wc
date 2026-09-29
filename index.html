@@ -288,6 +288,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--berry);b
 }
 /* 內容會一直變的畫面（例如挑衣服）固定高度，切換類別時視窗才不會跳 */
 .sheet .panel.full{height:92vh;height:92dvh}
+/* 所有打開的畫面都固定高度，內容少也不會縮成一小塊 */
+.sheet .panel{height:92vh;height:92dvh}
 @keyframes up{from{transform:translateY(100%)}}
 .sheet .grab{position:sticky;top:0;background:var(--paper);padding:10px 0 10px;z-index:2}
 .sheet .grab i{display:block;width:40px;height:5px;border-radius:3px;background:var(--line-2);margin:0 auto}
@@ -522,12 +524,12 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
 .resume{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);margin-bottom:12px}
-.resume .rph{flex:0 0 38%;aspect-ratio:3/4;border-radius:14px;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%);display:grid;place-items:center;overflow:hidden}
+.resume .rph{flex:0 0 34%;aspect-ratio:3/4;border-radius:14px;background:radial-gradient(90% 70% at 50% 35%,var(--hi) 0,var(--blush) 70%);display:grid;place-items:center;overflow:hidden}
 .resume .rph img{width:100%;height:100%;object-fit:contain;padding:8px}
-.resume dl{flex:1;margin:0;display:flex;flex-direction:column;gap:7px;min-width:0}
-.resume dl div{display:flex;gap:8px;font-size:13.5px;line-height:1.4}
-.resume dt{flex:0 0 3.2em;color:var(--muted);font-size:12.5px}
-.resume dd{margin:0;flex:1;min-width:0;word-break:break-word}.resume dd small{margin-left:6px;color:var(--berry-deep);font-size:11.5px}
+.resume dl{flex:1;margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-content:start;min-width:0}
+.resume dl div{display:contents;font-size:13.5px;line-height:1.4}
+.resume dt{color:var(--muted);font-size:12px;white-space:nowrap;line-height:1.55}
+.resume dd{margin:0;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.resume dd small{margin-left:6px;color:var(--berry-deep);font-size:11.5px}
 .dlinks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 6px}
 .dlinks button{padding:12px 10px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:left}
 .dlinks b{display:block;font-family:var(--num);font-size:24px;font-weight:600;line-height:1.1}.dlinks span{font-size:11.5px;color:var(--muted)}
@@ -2269,10 +2271,15 @@ function renderHome(){
 
   ${d?`<div class="qa qa2">
     <button onclick="openDollFoot('${d.id}')"><i><b>${outCount(d)}</b></i>📍 出門</button>
+    <button onclick="openWearsOf('${d.id}','在家')"><i><b>${dollWears(d).filter(w=>w.place!=='出門').length}</b></i>🏠 在家</button>
     <button onclick="openWearsOf('${d.id}')"><i><b>${dollWears(d).length}</b></i>👗 穿搭紀錄</button>
     <button onclick="openAlbum('${d.id}',null,null,()=>closeSheet())"><i><b>${wearPhotos(d).length}</b></i>📷 相簿</button>
-    <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><i><b>${items.length}</b></i>👚 ${ms?esc(ms):''}娃衣</button>
   </div>`:''}
+  <div class="hstat hsplit">
+    <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣 ›</span></button>
+    <button onclick="openWearsOf(${d?`'${d.id}'`:"''"})"><b>${mw}</b><span>${d?esc(d.name)+' ':''}本月穿搭 ›</span></button>
+    <button onclick="go('insight')"><b>${used}<small>%</small></b><span>${d?'穿過的比例':'衣櫃使用率'} ›</span></button>
+  </div>
 
   ${todayPickHTML()}
   ${homeMoreHTML()}
@@ -2364,7 +2371,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-10';
+const APP_VER='2026.10.01-11';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2853,7 +2860,7 @@ function drawDollPage(d){
       <dl>
         ${row('姓名',esc(d.name))}
         ${row('尺寸',esc(d.size||''))}
-        ${row('到家',d.home?`${esc(d.home.replace(/-/g,'/'))}${homeDays(d)>=0&&isLive(d)?`<small>第 ${homeDays(d)+1} 天</small>`:''}`:'')}
+        ${row('到家',d.home?esc(d.home.replace(/-/g,'/')):'')}
         ${(d.dates||[]).map(x=>row(esc(x.label),`${+x.md.slice(0,2)}/${+x.md.slice(3)}${x.year?`<small>${x.year}</small>`:''}`)).join('')}
         ${row('來源',esc([d.src,d.from].filter(Boolean).join('・')))}
         ${d.attr==='has'?row('屬性',esc([d.work,d.chara].filter(Boolean).join(' '))):''}
@@ -5418,7 +5425,7 @@ async function commitWear(){
 }
 // 全部穿搭紀錄：可以依娃娃、在家／出門篩選，依月份分組；點一筆看詳細
 // 從首頁進來只看那隻娃娃（本月在最上面，下面是全部）；從洞察進來是所有娃娃
-function openWearsOf(id){UI.wearDoll=id||'';UI.wearLock=!!id;UI.wearPlace='';go('wear')}
+function openWearsOf(id,place){UI.wearDoll=id||'';UI.wearLock=!!id;UI.wearPlace=place||'';go('wear')}
 function renderWears(){
   const el=document.getElementById('wearList');
   const ttl=document.getElementById('wearTitle'),ld=UI.wearLock&&S.dolls.find(d=>d.id===UI.wearDoll);
@@ -6427,7 +6434,7 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
     ['在家換裝也算，不一定要出門。','首頁的資訊都是目前那隻娃娃自己的：點「本月穿搭」或最下面的「全部穿搭紀錄」，看的是他的紀錄。','所有娃娃的穿搭紀錄在「洞察」最上面，可以依娃娃、在家／出門篩選。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
-    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡；小卡可以放上來家裡幾天、換裝幾次、出門幾次（也可以隱藏）。','首頁第二排是目前這隻娃娃的出門、穿搭紀錄、相簿和合身娃衣，點了就進去看。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
+    ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡；小卡可以放上來家裡幾天、換裝幾次、出門幾次（也可以隱藏）。','首頁第二排是目前這隻娃娃的出門、在家、穿搭紀錄和相簿，點了就進去看。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','要賣掉或送人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字，可以直接貼給新主人。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
