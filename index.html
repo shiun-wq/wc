@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=1"></script>
+<script src="i18n/i18n.js?v=2"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -553,7 +553,7 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .candset{margin-top:12px;padding:12px;border-radius:14px;background:var(--berry-soft)}
 .candset>b{display:block;font-size:13.5px}.candset>.hint{display:block;margin:2px 0 6px}
 .candset .rowitem{background:none}
-.hstat.hsplit{padding:6px}
+.hstat.hsplit{padding:6px;align-items:flex-start}
 .hsplit button{flex:1;text-align:left;padding:10px 10px;border-radius:12px}
 .hsplit button:active{background:var(--swatch)}
 .hsplit button b{display:block;font-family:var(--num);font-size:28px;font-weight:600;line-height:1}
@@ -2328,7 +2328,7 @@ function renderHome(){
   </div>`:''}
   <div class="hstat hsplit">
     <button onclick="UI.size=${ms?`'${esc(ms)}'`:"''"};go('closet')"><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣 ›</span></button>
-    <button onclick="openWearsOf(${d?`'${d.id}'`:"''"})"><b>${mw}</b><span>${d?esc(d.name)+' ':''}本月穿搭 ›</span></button>
+    <button onclick="openWearsOf(${d?`'${d.id}'`:"''"})"><b>${mw}</b><span>本月穿搭 ›</span></button>
     <button onclick="${d?`openWorn('${d.id}')`:"go('insight')"}"><b>${used}<small>%</small></b><span>${d?'穿過的比例':'衣櫃使用率'} ›</span></button>
   </div>
 
@@ -2468,7 +2468,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-18';
+const APP_VER='2026.10.01-19';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -6112,6 +6112,13 @@ function renderInsight(){
     h+=`<div class="note">你最常穿的那幾件，共同點是：<strong>${traits.map(esc).join('、')}</strong>。下次挑娃衣時可以拿這個當參考。</div>`;
   }
 
+  // 娃娃出場排行
+  const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  if(dollRank.length){
+    const dm=dollRank[0].n;
+    h+=`<h2 class="sec">娃娃出場排行</h2>`+dollRank.slice(0,6).map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 次</em></div>
+      <div class="track"><i class="worn" style="width:${x.n/dm*100}%"></i></div></div>`).join('');
+  }
   // 最常穿的單品
   const topWorn=items.map(i=>({i,c:wearCount(i.id)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,8);
   if(topWorn.length){
@@ -6119,13 +6126,6 @@ function renderInsight(){
     <div class="hscroll">${topWorn.map((x,k)=>`<button class="piece" onclick="openItem('${x.i.id}')">
       <div class="sw"><img src="${img(x.i)}" alt=""><span class="tag">${k===0?'👑 ':''}${x.c} 次</span></div>
       <div class="nm">${esc(x.i.name)}</div></button>`).join('')}</div>`;
-  }
-  // 娃娃出場排行
-  const dollRank=S.dolls.map(d=>({d,n:dollWears(d).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
-  if(dollRank.length){
-    const dm=dollRank[0].n;
-    h+=`<h2 class="sec">娃娃出場排行</h2>`+dollRank.slice(0,6).map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 次</em></div>
-      <div class="track"><i class="worn" style="width:${x.n/dm*100}%"></i></div></div>`).join('');
   }
   // 衣櫃色彩
   const fam={};
