@@ -521,6 +521,9 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 .fmleg i{width:14px;height:10px;border-radius:3px;display:inline-block}.fmleg span{margin:0 4px}
 .fmleg .h1{background:var(--heat1)}.fmleg .h2{background:var(--heat2)}.fmleg .h3{background:var(--heat3)}.fmleg .h4{background:var(--heat4)}.fmleg .home{background:var(--gold-soft);border:1px solid var(--gold);margin-left:8px}
 .dtabs{margin-bottom:16px}
+.candset{margin-top:12px;padding:12px;border-radius:14px;background:var(--berry-soft)}
+.candset>b{display:block;font-size:13.5px}.candset>.hint{display:block;margin:2px 0 6px}
+.candset .rowitem{background:none}
 .hstat.hsplit{padding:6px}
 .hsplit button{flex:1;text-align:left;padding:10px 10px;border-radius:12px}
 .hsplit button:active{background:var(--swatch)}
@@ -2346,7 +2349,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-7';
+const APP_VER='2026.10.01-8';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -5245,6 +5248,33 @@ function drawWearSheet(){
   `);
   document.querySelector('#sheet .panel').classList.add('full');
 }
+// 辨識出的大部分是同一套：把那套還沒被抓到的單品也列出來（襪子、髮飾這種照片裡看不清楚的）
+function candSet(){
+  const sure=WEAR.cands.filter(c=>c.score>=70).map(c=>S.items.find(i=>i.id===c.id)).filter(i=>i&&i.setId);
+  if(!sure.length)return null;
+  const cnt={};sure.forEach(i=>cnt[i.setId]=(cnt[i.setId]||0)+1);
+  const [sid,n]=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  const conf=WEAR.cands.filter(c=>c.score>=70).length;
+  if(n<2&&!(n===1&&conf===1))return null;
+  if(n<conf/2)return null;
+  const got=new Set(WEAR.cands.map(c=>c.id));
+  const rest=S.items.filter(i=>i.setId===sid&&i.category!=='套裝'&&!got.has(i.id));
+  return rest.length?{sid,name:setName(sid),n,rest}:null;
+}
+function candSetHTML(){
+  const cs=candSet();if(!cs)return '';
+  const allOn=cs.rest.every(i=>WEAR.picked.includes(i.id));
+  return `<div class="candset"><b>👗 大部分是「${esc(cs.name||'同一套')}」</b><span class="hint">這套還有 ${cs.rest.length} 件沒被認出來，照片裡看不到的（襪子、髮飾…）也可以一起加。</span>
+    ${cs.rest.map(it=>`<div class="rowitem"><div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(it.name)}</b><span>${esc(it.category)}・同一套</span></div>
+      <div class="rt"><button class="btn sm ${WEAR.picked.includes(it.id)?'':'ghost'}" onclick="togglePick('${it.id}')">${WEAR.picked.includes(it.id)?'已加入':'加入'}</button></div></div>`).join('')}
+    ${cs.rest.length>1?`<button class="btn sm ${allOn?'ghost':'quiet'} wide" style="margin-top:8px" onclick="candSetAll(${allOn})">${allOn?'全部拿掉':'整套一起加入'}</button>`:''}</div>`;
+}
+function candSetAll(off){
+  const cs=candSet();if(!cs)return;const ids=cs.rest.map(i=>i.id);
+  WEAR.picked=off?WEAR.picked.filter(id=>!ids.includes(id)):[...new Set([...WEAR.picked,...ids])];
+  drawWearSheet();
+}
 function renderCands(){
   return `<div class="card" style="margin-bottom:12px">
     <b style="font-size:13.5px">AI 覺得可能是這幾件</b>
@@ -5259,6 +5289,7 @@ function renderCands(){
         <div class="rt"><button class="btn sm ${WEAR.picked.includes(c.id)?'':'ghost'}" onclick="togglePick('${c.id}')">${WEAR.picked.includes(c.id)?'已採用':'採用'}</button></div>
       </div>`;
     }).join('')}
+    ${candSetHTML()}
     <div class="hint" style="margin-top:8px">照片裡有還沒建檔的娃衣？先到「建檔」新增，再回來勾選。</div>
   </div>`;
 }
@@ -5287,7 +5318,7 @@ ${cat}
     WEAR.cands=(r||[]).filter(c=>S.items.some(i=>i.id===c.id)).sort((a,b)=>b.score-a.score).slice(0,8);
     WEAR.picked=WEAR.cands.filter(c=>c.score>=80).map(c=>c.id);
     drawWearSheet();
-    toast(WEAR.cands.length?'請確認辨識結果':'沒有找到相符的娃衣');
+    toast(WEAR.cands.length?(candSet()?'請確認辨識結果，同一套的其他單品也列出來了':'請確認辨識結果'):'沒有找到相符的娃衣');
   }catch(e){toast('辨識失敗：'+e.message)}
 }
 // 手動勾選：類別、排序、只看這隻娃娃的尺寸、搜尋
@@ -6343,7 +6374,7 @@ const HELP=[
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
     ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。','在娃娃櫃放上娃娃的去背照，就能讓娃娃也上畫布。','不知道穿什麼？按最上面的「幫我搭一套」，可以選在家、睡覺前或節日。']],
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['☑️','勾選衣服'],['🎉','做成小卡']],
-    ['在家換裝也算，不一定要出門。','首頁的資訊都是目前那隻娃娃自己的：點「本月穿搭」或最下面的「全部穿搭紀錄」，看的是他的紀錄。','所有娃娃的穿搭紀錄在「洞察」最上面，可以依娃娃、在家／出門篩選。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件。']],
+    ['在家換裝也算，不一定要出門。','首頁的資訊都是目前那隻娃娃自己的：點「本月穿搭」或最下面的「全部穿搭紀錄」，看的是他的紀錄。','所有娃娃的穿搭紀錄在「洞察」最上面，可以依娃娃、在家／出門篩選。','可以用類別、排序和搜尋快速找到衣服。','有拍娃娃照片的話，可以用 AI 辨識穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
     ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來（標記「紀念收藏」的娃娃不會問）。','首頁的「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
