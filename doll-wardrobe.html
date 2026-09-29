@@ -453,6 +453,7 @@ dl.meta dd{margin:0}
 .ci{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
 .ci>span{font-size:18px}.ci b{font-size:13.5px;display:block}.ci small{display:block;font-size:11.5px;color:var(--muted)}
 .ci.done b{color:var(--muted);text-decoration:line-through}
+.ci .okb{font-style:normal;font-size:11px;font-weight:600;color:var(--sage);margin-left:6px}
 .carewarn{position:absolute;right:8px;bottom:8px;font-size:15px}
 .pick-today .ptrow{display:flex;gap:8px;overflow-x:auto}
 .pick-today .ptrow button{flex:0 0 78px;display:flex;flex-direction:column;align-items:center;gap:4px}
@@ -2204,13 +2205,14 @@ const DOLL_SVG=`<svg viewBox="0 0 120 140" fill="none" stroke="currentColor" str
   <circle cx="47" cy="52" r="2.5" fill="currentColor" stroke="none"/><circle cx="73" cy="52" r="2.5" fill="currentColor" stroke="none"/></svg>`;
 function renderHome(){
   const el=document.getElementById('home'),d=mainDoll();
-  const items=S.items.filter(i=>i.category!=='套裝');
-  const month=today().slice(0,7),mw=S.wears.filter(w=>(w.date||'').startsWith(month)).length;
+  // 首頁跟著主角娃娃：只算這個尺寸的娃衣、這隻娃娃的穿搭（全部的在洞察頁）
+  const ms=d&&d.size,items=S.items.filter(i=>i.category!=='套裝'&&(!ms||(i.sizes||[]).includes(ms)));
+  const month=today().slice(0,7),mw=(d?dollWears(d):S.wears).filter(w=>(w.date||'').startsWith(month)).length;
   const used=items.length?Math.round(items.filter(i=>wearCount(i.id)>0).length/items.length*100):0;
   const wait=S.wish.filter(w=>w.status==='wait'),skip=S.wish.filter(w=>w.status==='skip');
   const saved=skip.reduce((a,w)=>a+(+w.price||0),0);
   // 整套都壓箱底就顯示套裝，不再一件件列出它的單品
-  const setsP=S.items.filter(i=>i.category==='套裝'&&setMates(i).length&&isPressed(i)),pset=new Set(setsP.map(i=>i.setId));
+  const setsP=S.items.filter(i=>i.category==='套裝'&&setMates(i).length&&isPressed(i)&&(!ms||(i.sizes||[]).includes(ms))),pset=new Set(setsP.map(i=>i.setId));
   const cold=[...setsP,...items.filter(i=>!pset.has(i.setId))].filter(i=>isPressed(i)&&img(i))
     .sort((a,b)=>(lastWear(a.id)||'0').localeCompare(lastWear(b.id)||'0')).slice(0,8);
   const recent=S.wears.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
@@ -2240,8 +2242,8 @@ function renderHome(){
   </div>
 
   <button class="hstat" onclick="go('insight')">
-    <div><b>${items.length}</b><span>件娃衣</span></div>
-    <div><b>${mw}</b><span>本月穿搭</span></div>
+    <div><b>${items.length}</b><span>${ms?esc(ms)+' ':''}娃衣</span></div>
+    <div><b>${mw}</b><span>${d?esc(d.name)+' ':''}本月穿搭</span></div>
     <div><b>${used}<small>%</small></b><span>衣櫃使用率</span></div>
     <em>›</em>
   </button>
@@ -2333,7 +2335,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-2';
+const APP_VER='2026.10.01-3';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||!location.protocol.startsWith('http'))return;
@@ -2617,6 +2619,7 @@ async function unarchiveDoll(id){
 // 很久沒出場（預設 90 天）：問要不要收進封存櫃。剛加進 App 或剛拿出來的從那天起算
 const ARCH_DAYS=90;
 function sleepyDolls(){
+  if(S.settings.archAsk===false)return [];
   const ymdOf=t=>ymd(t||Date.now());
   return liveDolls().map(d=>{const last=[lastActive(d),ymdOf(d.createdAt),d.backAt||''].sort().pop();return {d,last,n:dayNum(today())-dayNum(last)}})
     .filter(x=>x.n>=ARCH_DAYS).sort((a,b)=>b.n-a.n);
@@ -2694,7 +2697,8 @@ function openFarewell(id){
     first?[`📍`,`第一次出門是 ${first.replace(/-/g,'/')}${firstSp?`，去了${esc(firstSp)}`:''}`]:null,
     places.length?[`🗺️`,`去過的地方：${places.slice(0,6).map(esc).join('、')}${places.length>6?` 等 ${places.length} 個`:''}`]:null,
     ws.length?[`👗`,`換過 <b>${ws.length}</b> 套衣服`]:null,
-    (d.dates||[]).length?[`🎂`,`一起過了 ${(d.dates||[]).map(x=>esc(x.label)).join('、')}`]:null
+    (d.dates||[]).length?[`🎂`,`一起過了 ${(d.dates||[]).map(x=>esc(x.label)).join('、')}`]:null,
+    (d.care||[]).some(c=>c.status==='完成')?[`🪡`,`一起整理過 <b>${(d.care||[]).filter(c=>c.status==='完成').length}</b> 次：${[...new Set((d.care||[]).filter(c=>c.status==='完成').map(c=>c.type))].map(esc).join('、')}`]:null
   ].filter(Boolean);
   openSheet(`<div class="sethead"><button onclick="drawDoll()">‹ ${esc(d.name)}</button></div>
     <div class="farewell">
@@ -2708,6 +2712,7 @@ function openFarewell(id){
       <div class="swap" id="fw_r" style="margin:0 0 12px">${['賣掉了','送人了','其他'].map(r=>`<button type="button" data-k="${r}" class="${FW.reason===r?'on':''}" onclick="FW.reason='${r}';document.querySelectorAll('#fw_r button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${r}'));document.getElementById('fw_p').hidden='${r}'!=='賣掉了'">${r}</button>`).join('')}</div>
       <label class="f" id="fw_p"><span>賣了多少（選填）</span><input type="number" inputmode="decimal" placeholder="例如 450" oninput="FW.price=this.value"></label>
       <label class="f"><span>想對 ${esc(d.name)} 說的話（選填）</span><textarea maxlength="200" placeholder="謝謝你陪我度過…" oninput="FW.note=this.value"></textarea></label>
+      <button class="btn ghost wide" style="margin-bottom:10px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷給新主人</button>
       <button class="btn wide" onclick="saveFarewell()">謝謝你，再見 👋</button>
       <button class="btn ghost wide" style="margin-top:8px" onclick="archiveDoll('${d.id}')">還捨不得，先收進封存櫃</button>
       <p class="hint" style="margin-top:10px;text-align:center">離開後照片、足跡和穿搭紀錄都會留在封存櫃，隨時可以回來看。</p>
@@ -2815,7 +2820,8 @@ function drawDollPage(d){
     ${d.note?`<p class="dsec">備註</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.note)}</p></div>`:''}
     ${d.gone&&d.gone.note?`<p class="dsec">道別的話</p><div class="care"><p style="margin:0;font-size:13.5px;white-space:pre-wrap">${esc(d.gone.note)}</p></div>`:''}
     ${isLive(d)?`<div class="dbye"><button class="btn ghost grow" onclick="if(confirm('把 ${esc(d.name)} 收進封存櫃？收起來不會刪除，想玩隨時拿出來。'))archiveDoll('${d.id}')">📦 收進封存櫃</button>
-      <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>`
+      <button class="btn ghost grow" onclick="openFarewell('${d.id}')">👋 要讓他離開</button></div>
+      <button class="btn sm ghost wide" style="margin-top:8px" onclick="copyResume('${d.id}')">📋 複製娃娃履歷（到家日、整理紀錄、配件）</button>`
       :`<button class="btn quiet wide" style="margin-top:14px" onclick="unarchiveDoll('${d.id}')">${d.gone?'其實還在身邊（放回娃娃櫃）':'拿出來'}</button>`}
   </div>`);
   fillMaps();
@@ -2896,18 +2902,48 @@ const DCARE_MODS=[['裝骨架','🦴'],['換骨架','🔁'],['裝磁鐵','🧲']
 const dcIcon=t=>([...DCARE_ISSUES,...DCARE_MODS].find(x=>x[0]===t)||[])[1]||'📝';
 const dollOpen=d=>(d.care||[]).filter(c=>c.status!=='完成');
 function setDollField(id,f,v){const d=S.dolls.find(x=>x.id===id);if(d)d[f]=v;if(DD&&DD.id===id)DD[f]=v}
+// 整理紀錄：待處理的在上面；完成的不會消失，留成有日期的紀錄（賣掉時也是重要資訊）
+const md2=x=>x?x.slice(5).replace('-','/'):'';
+const daysBetween=(a,b)=>a&&b?dayNum(b)-dayNum(a):null;
+function careLine(c){
+  const who=c.who==='手作娘'?`手作娘${c.maker?'「'+esc(c.maker)+'」':''}`:'自己';
+  const sent=c.sentDate||c.date,back=c.doneDate,dd=daysBetween(sent,back);
+  const when=c.status==='完成'?(c.who==='手作娘'?`${esc(sent||'')} 送出 → ${esc(back||'')} 回來${dd!=null?`（${dd} 天）`:''}`:`${esc(c.date||'')} 記錄 → ${esc(back||'')} 完成`)
+    :c.status==='處理中'?`${esc(sent||'')} 送出・處理中${c.eta?'・預計 '+esc(c.eta)+' 回來':''}`:`${esc(c.date||'')} 記錄・還沒處理`;
+  return {who,when};
+}
 function dollCareBlock(d){
-  const list=(d.care||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const open=dollOpen(d);
+  const all=(d.care||[]).slice().sort((a,b)=>(b.doneDate||b.date||'').localeCompare(a.doneDate||a.date||''));
+  const open=dollOpen(d),done=all.filter(c=>c.status==='完成');
+  const row=c=>{const {who,when}=careLine(c);return `<div class="ci ${c.status==='完成'?'fin':''}"><span>${dcIcon(c.type)}</span>
+      <div class="grow"><b>${esc(c.type)}${c.status==='完成'?'<em class="okb">✓ 完成</em>':''}</b><small>${who}${c.note?'・'+esc(c.note):''}</small><small>${when}</small></div>
+      ${c.status!=='完成'?`<button class="btn sm ghost" onclick="dollCareNext('${d.id}','${c.id}')">${c.who==='手作娘'&&c.status==='待處理'?'送出了':'完成'}</button>`:''}
+      <button class="btn sm ghost" style="color:var(--muted);padding:4px 8px" onclick="dollCareDel('${d.id}','${c.id}')" aria-label="刪除">×</button></div>`};
+  const lim=UI.careAll===d.id?done.length:4;
   return `<div class="care">
     <div class="row" style="margin-bottom:6px"><b class="grow">狀況與整理</b><button class="btn sm quiet" onclick="openDollCare('${d.id}')">＋ 記錄</button></div>
     <div class="carebadges">${open.length?open.map(c=>`<span class="cb warn">${dcIcon(c.type)} ${esc(c.type)}${c.who==='手作娘'?(c.status==='處理中'?'・在手作娘那裡':'・要交給手作娘'):'・待處理'}</span>`).join(''):'<span class="cb ok">✓ 目前沒有要處理的</span>'}</div>
-    ${list.length?`<div class="carelist">${list.slice(0,6).map(c=>`<div class="ci ${c.status==='完成'?'done':''}"><span>${dcIcon(c.type)}</span>
-      <div class="grow"><b>${esc(c.type)}</b><small>${c.who==='手作娘'?`交給手作娘${c.maker?'「'+esc(c.maker)+'」':''}`:'自己處理'}${c.note?'・'+esc(c.note):''}</small>
-        <small>${esc(c.date||'')}・${c.status==='完成'?`${esc(c.doneDate||'')} 完成`:c.status==='處理中'?`處理中${c.eta?'・預計 '+esc(c.eta)+' 回來':''}`:'還沒處理'}</small></div>
-      ${c.status!=='完成'?`<button class="btn sm ghost" onclick="dollCareNext('${d.id}','${c.id}')">${c.who==='手作娘'&&c.status==='待處理'?'送出了':'完成'}</button>`:''}
-      <button class="btn sm ghost" style="color:var(--muted);padding:4px 8px" onclick="dollCareDel('${d.id}','${c.id}')" aria-label="刪除">×</button></div>`).join('')}</div>`:''}
+    ${open.length?`<div class="carelist">${open.map(row).join('')}</div>`:''}
+    ${done.length?`<p class="mh" style="margin:14px 0 4px">整理紀錄・${done.length} 次</p><div class="carelist">${done.slice(0,lim).map(row).join('')}</div>
+      ${done.length>4?`<button class="btn sm ghost wide" style="margin-top:8px" onclick="UI.careAll=UI.careAll==='${d.id}'?'':'${d.id}';drawDoll()">${UI.careAll===d.id?'收起來':`看全部 ${done.length} 筆`}</button>`:''}`:''}
   </div>`;
+}
+// 娃娃履歷：到家日、整理紀錄、配件，出售或交接時可以直接貼
+function dollResume(d){
+  const L=[`【${d.name}】${d.size||''}`];
+  if(d.src||d.from)L.push(`來源：${[d.src,d.from].filter(Boolean).join('・')}`);
+  if(d.attr==='has'&&(d.work||d.chara))L.push(`屬性：${[d.work,d.chara].filter(Boolean).join(' ')}`);
+  if(d.home)L.push(`到家：${d.home.replace(/-/g,'/')}`);
+  const done=(d.care||[]).filter(c=>c.status==='完成').sort((a,b)=>(a.doneDate||a.date||'').localeCompare(b.doneDate||b.date||''));
+  const open=dollOpen(d);
+  if(done.length){L.push('','整理紀錄：');done.forEach(c=>L.push(`・${(c.doneDate||c.date||'').replace(/-/g,'/')} ${c.type}（${c.who==='手作娘'?'手作娘'+(c.maker?' '+c.maker:''):'自己'}）${c.note?'：'+c.note:''}`))}
+  if(open.length){L.push('','目前狀況：');open.forEach(c=>L.push(`・${c.type}${c.note?'：'+c.note:''}`))}
+  const acc=d.acc||[];if(acc.length)L.push('',`附的配件：${acc.map(a=>`${a.name}${a.state==='在身上'||a.state==='收起來'?'':'（'+a.state+'）'}`).join('、')}`);
+  return L.join('\n');
+}
+async function copyResume(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;const t=dollResume(d);
+  try{await navigator.clipboard.writeText(t);toast('已複製娃娃履歷，可以貼到出售貼文')}catch(e){prompt('複製這段文字',t)}
 }
 let DC={};
 function openDollCare(id){
@@ -3649,7 +3685,8 @@ function renderCloset(){
       : `<div class="empty"><strong>衣櫃還是空的</strong>到「建檔」上傳第一批照片</div>`;
     return;
   }
-  const top=`<div class="row" style="margin:0 0 10px"><span class="hint grow">${list.length} 件</span>
+  const nSet=list.filter(i=>i.category==='套裝').length,nOne=list.length-nSet;
+  const top=`<div class="row" style="margin:0 0 10px"><span class="hint grow">${[nOne?`${nOne} 件`:'',nSet?`${nSet} 套`:''].filter(Boolean).join('・')||'0 件'}</span>
     <button class="btn sm ${UI.multi?'':'ghost'}" onclick="toggleMulti()">${UI.multi?'完成選取':'☑ 多選'}</button></div>`;
   el.style.paddingBottom=UI.multi?'70px':'';
   const holBar=UI.mode==='節日服'?`<div class="chips wchips" style="margin:0 0 10px">${['',...HOL_NAMES.filter(n=>S.items.some(i=>i.holiday===n))].map(n=>`<button class="chip ${(UI.hol||'')===n?'on':''}" onclick="UI.hol='${n}';renderCloset()">${n?holIcon(n)+' '+n:'全部節日'}</button>`).join('')}</div>
@@ -4914,6 +4951,28 @@ function geoGuess(lat,lon){
   const a=near(GEO_ABROAD);return a&&a[1]<500?{c:a[0],r:''}:null;
 }
 // 讀 JPEG 的 EXIF GPS（很多手機選照片時會拿掉定位，讀不到就算了）
+// 照片的拍攝地點和日期（EXIF）；都讀不到就是 null
+async function photoMeta(file){return {gps:await photoGPS(file),date:await photoDate(file)}}
+async function photoDate(file){
+  try{
+    const v=new DataView(await file.slice(0,262144).arrayBuffer());if(v.getUint16(0)!==0xFFD8)return null;
+    let o=2;
+    while(o<v.byteLength-4){
+      const mk=v.getUint16(o),len=v.getUint16(o+2);
+      if(mk===0xFFE1&&v.getUint32(o+4)===0x45786966){
+        const t=o+10,le=v.getUint16(t)===0x4949,u16=p=>v.getUint16(t+p,le),u32=p=>v.getUint32(t+p,le);
+        const ifd=(p,want)=>{const n=u16(p),r={};for(let k=0;k<n;k++){const e=p+2+k*12,tag=u16(e);if(want.includes(tag))r[tag]={cnt:u32(e+4),val:e+8}}return r};
+        const str=x=>{let q=u32(x.val),s='';for(let k=0;k<19;k++)s+=String.fromCharCode(v.getUint8(t+q+k));return s};
+        const i0=ifd(u32(4),[0x8769,0x0132]);let raw='';
+        if(i0[0x8769]){const e=ifd(u32(i0[0x8769].val),[0x9003,0x9004]);const x=e[0x9003]||e[0x9004];if(x)raw=str(x)}
+        if(!raw&&i0[0x0132])raw=str(i0[0x0132]);
+        const m=raw.match(/^(\d{4}):(\d\d):(\d\d)/);return m?`${m[1]}-${m[2]}-${m[3]}`:null;
+      }
+      if((mk&0xFF00)!==0xFF00)break;o+=2+len;
+    }
+  }catch(e){}
+  return null;
+}
 async function photoGPS(file){
   try{
     const v=new DataView(await file.slice(0,262144).arrayBuffer());
@@ -4985,12 +5044,29 @@ function pickSpot(o,c,r){
 const spSave=sp=>sp&&sp.c?{c:sp.c,r:sp.r||'',n:(sp.n||'').trim()}:null;
 // 帶出門／補記一次出門
 let TRIP={};
+// 補記以前的出門：從照片讀拍攝日期和地點，照片也放進相簿
+async function tripPhoto(ev){
+  const f=ev.target.files[0];ev.target.value='';if(!f)return;
+  const [ph,meta]=await Promise.all([compress(f),photoMeta(f)]);
+  TRIP.photo=ph;const found=[];
+  if(meta.date&&meta.date<=today()){TRIP.date=meta.date;found.push('日期 '+meta.date.replace(/-/g,'/'))}
+  if(meta.gps){const g=geoGuess(meta.gps.lat,meta.gps.lon);if(g){TRIP.sp={...TRIP.sp,c:g.c,r:g.r||''};found.push('地點 '+spotText(g))}}
+  TRIP.found=found.length?`從照片帶入了${found.join('、')}。`:'這張照片沒有日期和地點資訊，請自己選。';
+  redrawTrip();toast(found.length?'已從照片帶入':'照片沒有日期和地點資訊');
+}
 function openTrip(dollId,date,from){
   const d=S.dolls.find(x=>x.id===dollId);if(!d)return;
   const old=date&&(d.outPlaces||{})[date];
   TRIP={dollId,date:date||today(),orig:date&&(d.outs||[]).includes(date)?date:null,sp:spNorm(old)?{...spNorm(old)}:{c:'',r:'',n:''},from:from||'doll'};
+  redrawTrip();
+}
+function redrawTrip(){
+  const dollId=TRIP.dollId,from=TRIP.from,d=S.dolls.find(x=>x.id===dollId);if(!d)return;
   openSheet(`${from==='doll'?`<div class="sethead"><button onclick="openDoll('${dollId}')">‹ ${esc(d.name)}</button></div>`:''}
     <h3>${TRIP.orig?'這次出門':`帶 ${esc(d.name)} 出門`}</h3>
+    ${TRIP.orig?'':`<button class="btn quiet wide" style="margin-bottom:12px" onclick="document.getElementById('tr_ph').click()">📷 用照片帶入日期和地點</button>
+      <input type="file" id="tr_ph" accept="image/*" hidden onchange="tripPhoto(event)">
+      ${TRIP.photo?`<div class="row" style="gap:10px;margin:-4px 0 12px"><img src="${TRIP.photo}" alt="" style="width:56px;height:56px;border-radius:10px;object-fit:cover"><span class="hint grow">${esc(TRIP.found||'')}照片會一起放進 ${esc(d.name)} 的相簿。</span></div>`:''}`}
     <label class="f"><span>日期</span><input type="date" value="${TRIP.date}" max="${today()}" onchange="TRIP.date=this.value"></label>
     <div class="f"><span>去了哪裡（選填）</span><div id="pp_TRIP">${placePickerHTML('TRIP')}</div></div>
     <div class="row" style="margin-top:12px">${TRIP.orig?`<button class="btn ghost" onclick="delTrip()">刪除這次</button>`:''}<button class="btn grow" onclick="saveTrip()">儲存</button></div>`);
@@ -5002,6 +5078,7 @@ async function saveTrip(){
   if(!d.outs.includes(TRIP.date))d.outs.push(TRIP.date);
   const sp=spSave(TRIP.sp);
   if(sp)d.outPlaces[TRIP.date]=sp;else delete d.outPlaces[TRIP.date];
+  if(TRIP.photo)S.wears.push({id:uid('w'),date:TRIP.date,dollId:d.id,dollName:d.name,itemIds:[],photo:TRIP.photo,place:'出門',spot:sp||null,createdAt:Date.now()});
   await save();tripDone(d,sp?`${d.name} 去了 ${spotText(sp)}！`:`${d.name} 出門了！`);
 }
 async function delTrip(){
@@ -5125,6 +5202,7 @@ function drawWearSheet(){
     <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門']].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';document.querySelectorAll('#w_place button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'));document.getElementById('w_where').style.display='${k}'==='出門'?'':'none'">${l}</button>`).join('')}</div></label>
     <div class="f" id="w_where" style="${WEAR.place==='出門'?'':'display:none'}"><span>去了哪裡（選填）</span><div id="pp_WEAR">${placePickerHTML('WEAR')}</div></div>
     ${WEAR.place!=='出門'&&WEAR.gps?`<p class="hint" style="margin:-6px 0 10px">📍 這張照片是在 ${esc(spotText(WEAR.gps))} 拍的，出門的話按「出門」就能選。</p>`:''}
+    ${WEAR.photoDate&&WEAR.photoDate!==WEAR.date?`<div class="notice" style="margin:0 0 12px"><b>📅 這張照片是 ${WEAR.photoDate.replace(/-/g,'/')} 拍的</b><div class="row" style="margin-top:8px"><button class="btn sm" onclick="WEAR.date=WEAR.photoDate;drawWearSheet()">改成那天</button><button class="btn sm ghost" onclick="WEAR.photoDate=null;drawWearSheet()">不用</button></div></div>`:''}
     ${WEAR.photo?`<div class="hero" style="aspect-ratio:4/5"><img src="${WEAR.photo}" alt=""></div>`:''}
     <div class="row" style="margin-bottom:10px">
       <button class="btn ghost grow" onclick="document.getElementById('wphoto').click()">${WEAR.photo?'換一張照片':'拍／選娃娃照片'}</button>
@@ -5157,8 +5235,8 @@ function renderCands(){
 async function onWearPhoto(ev){
   const f=ev.target.files[0];ev.target.value='';
   if(!f)return;
-  const [ph,gps]=await Promise.all([compress(f),photoGPS(f)]);
-  WEAR.photo=ph;WEAR.gps=gps?geoGuess(gps.lat,gps.lon):null;drawWearSheet();
+  const [ph,meta]=await Promise.all([compress(f),photoMeta(f)]),gps=meta.gps;
+  WEAR.photo=ph;WEAR.gps=gps?geoGuess(gps.lat,gps.lon):null;WEAR.photoDate=meta.date&&meta.date<=today()?meta.date:null;drawWearSheet();
   if(WEAR.gps)toast(`照片的拍攝地是 ${spotText(WEAR.gps)}`);
 }
 async function identify(){
@@ -5617,7 +5695,9 @@ function renderInsight(){
   ranked.forEach(({i})=>{[...(i.colors||[]),...(i.motifs||[]),...(i.styles||[]).map(s=>s.name)].forEach(t=>tally[t]=(tally[t]||0)+1)});
   const traits=Object.entries(tally).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([t])=>t);
 
-  let h=`
+  const po=pendingOrders(),poN=po.filter(o=>o.kind!=='doll').length,poD=po.length-poN;
+  const poBtn=po.length?`<button class="hstat memlink" style="margin:0 0 14px" onclick="UI.wishTab='order';go('wish')"><span>📦 購買中</span><b>${poN}</b><small>件娃衣（全部尺寸）${poD?`・${poD} 隻娃娃等待到家`:''}${(()=>{const z={};po.filter(o=>o.kind!=='doll').forEach(o=>{const k=o.size||'未填尺寸';z[k]=(z[k]||0)+1});return Object.keys(z).length>1?'・'+Object.entries(z).map(([k,n])=>`${esc(k)} ${n}`).join('、'):''})()}</small><em>›</em></button>`:'';
+  let h=`${poBtn}
   <div class="stat">
     <div><b>${S.sets.length}</b><span>套裝</span></div>
     <div><b>${items.length}</b><span>單品</span></div>
@@ -6209,7 +6289,7 @@ const HELP=[
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📌','釘選到首頁'],['🎂','紀念日慶祝']],
     ['到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','首頁下方最多釘選 5 隻娃娃。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','暫時不玩的娃娃可以「收進封存櫃」，不會出現在首頁和提醒；90 天沒出場也會問你要不要收起來。','要賣掉或送人前，按「要讓他離開」，會整理出你們一起的回憶，離開後回憶都留在封存櫃。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
-    ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。']],
+    ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃資料的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','娃娃附的尾巴、耳朵、頭飾可以記在「附的配件」，不見了也有紀錄。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','要賣掉或送人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字，可以直接貼給新主人。']],
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
     ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的。','以前賣掉、送走的娃衣裡有很像的也會提醒你，避免買了又賣。','預購、運送中的娃衣記在「購買中」，買新的時也會一起比對。','同一團買很多件，用「一次記多筆」一行寫一件；「多選」可以一次改進度、預計到貨，到貨的一起拿去建檔。','到貨那天會記下來，建檔後壓箱底從到貨日開始算，不會因為預購等很久就一進來就壓箱底。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你，在建檔頁可以一次全部建檔。','購買中的娃衣可以標尺寸，首頁只會列出主角娃娃那個尺寸的。']],
   ['📦','壓箱底・狀況・出售',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
@@ -6217,7 +6297,7 @@ const HELP=[
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃右上角「多選」可以一次改標籤、節日、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','作品、系列、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
   ['📍','足跡：娃娃陪你去過哪裡',[['🚶','記穿搭選「出門」'],['🗺️','選縣市或國家'],['🧸','娃娃櫃 → 足跡']],
-    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位的話，會建議拍攝地，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
+    ['記穿搭時選「出門」，可以選去了哪個縣市或國家，也可以寫地點名稱（例如 九份、迪士尼）。','照片裡有定位和拍攝日期的話，會建議拍攝地和日期，點一下就能用。','以前的出門可以到娃娃頁的「足跡」補記；按「用照片帶入」，會從照片讀出拍攝日期和地點，照片也會放進相簿。','點進娃娃是回憶頁（第幾天、紀念日、足跡、整理），要改名字、生日按右上「編輯」。','不是住在台灣的話，到 設定 → 我住在 選你的國家，會改成列出那個國家的地區。','幾年前的今天出國，或第一次去某個縣市，首頁會跳出旅行回憶。','娃娃櫃上方切到「足跡」，台灣地圖和世界地圖會標出去過的地方，去越多次顏色越深；點一下地圖上的地方可以看去過幾次。']],
   ['📷','相簿：娃娃的照片',[['📝','記穿搭放照片'],['🧸','娃娃頁 → 相簿'],['🗺️','地圖點地方看照片'],['⬇️','存到手機']],
     ['記錄穿搭時放上的照片，會自動收進那隻娃娃的相簿，依月份排好。','在足跡地圖上點去過的縣市或國家，可以看在那裡拍的照片。','點開照片可以「存到手機」，或做成小卡分享；相簿裡也可以「全部存到手機」。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
@@ -6328,6 +6408,10 @@ function openSettings(page){
       <b style="font-size:14px">🌿 好久沒幫娃娃換裝</b>
       <div class="hint" style="margin:2px 0 10px">超過這麼多天沒記錄穿搭就提醒（在家換裝也算，不一定要出門）</div>
       <div class="swap" style="margin:0">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="S.settings.outRemind=${v};save().then(()=>openSettings('notify'))">${l}</button>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:14px">🌙 很久沒出場的娃娃</b><div class="hint">${ARCH_DAYS} 天沒出門、沒記錄穿搭，首頁會問要不要先收進封存櫃</div></span>
+        <button class="btn sm ${S.settings.archAsk!==false?'ghost':''}" onclick="S.settings.archAsk=${S.settings.archAsk===false};save().then(()=>openSettings('notify'))">${S.settings.archAsk!==false?'關閉':'開啟'}</button></div>
     </div>
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">📦 到貨提醒</b><div class="hint">購買中的娃衣 7 天內要到、或到貨了還沒建檔，首頁和建檔頁會提醒你</div></span>
