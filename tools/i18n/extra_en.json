@@ -646,5 +646,11 @@
 "換照片": "Change photo",
 "照片換好了，再按「做成貼圖」": "Photo changed — now tap “Make sticker”",
 "購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。": "When ordered clothes arrive, the top of the add page reminds you; “Add all” brings them in together with the arrival date filled in. Order product images are hard to cut out — tap the thumbnail or “📷 Change photo” to take a photo of the real item; name, colors and price are kept.",
-"穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。": "When a set is worn, check all of its pieces and the set itself also counts as worn once (if only some pieces are checked, only those pieces count)."
+"穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。": "When a set is worn, check all of its pieces and the set itself also counts as worn once (if only some pieces are checked, only those pieces count).",
+"寫一句話（選填，太長會自動換行，最多 3 行）": "Add a line (optional — long text wraps, up to 3 lines)",
+"小記事": "Note",
+"寫幾句（選填）": "Write a few lines (optional)",
+"今天發生了什麼？寫幾句就好（選填）": "What happened today? Just a few lines (optional)",
+"收起": "Close",
+"想寫幾句的話，按最下面「存入」左邊的 ✏️（選填，不寫也沒關係）；寫過的小記事會出現在紀錄和娃娃月曆裡，做小卡時也會自動帶進「一句話」。": "Want to write a few lines? Tap ✏️ left of “Save” at the bottom (optional). Notes show in your records and the doll calendar, and are filled into the card’s line automatically."
 }
