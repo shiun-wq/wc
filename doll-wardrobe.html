@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=25"></script>
+<script src="i18n/i18n.js?v=26"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2437,7 +2437,19 @@ function openOtCheer(wid){
     <h3>${esc(workExtra(r))}辛苦了</h3>
     <p style="margin:6px 0 4px;font-size:15px;line-height:1.8">${esc(otCheer(nm,r))}</p>
     ${n>1?`<p class="hint">這是 ${esc(nm)} 第 ${n} 次陪你${esc(workExtra(r))}</p>`:''}
-    <button class="btn wide" style="margin-top:14px" onclick="closeSheet()">謝謝 ${esc(nm)} 🤍</button>
+    <button class="btn wide" style="margin-top:14px" onclick="${d&&isLive(d)?`otThanks('${wid}')`:'closeSheet()'}">謝謝 ${esc(nm)} 🤍</button>
+  </div>`);
+}
+// 按了謝謝：問要不要把感謝寫成星星紙條，放進娃娃的星星罐
+function otThanks(wid){
+  const w=S.wears.find(x=>x.id===wid),d=w&&S.dolls.find(x=>x.id===w.dollId);if(!d){closeSheet();return}
+  const nm=esc(d.name),x=esc(workExtra(rOf(w)));
+  openSheet(`<div class="welcome otcheer">
+    <div class="otmoon">⭐</div>
+    <h3>要留一張星星紙條給 ${nm} 嗎？</h3>
+    <p class="hint" style="margin:6px 0 0;line-height:1.8">把今天的謝謝放進 ${nm} 的星星罐，約好的日子再一起打開。</p>
+    <div class="row" style="margin-top:16px;gap:8px"><button class="btn ghost grow" onclick="closeSheet()">下次再說</button>
+      <button class="btn grow" onclick="openJar('${d.id}',{text:'謝謝你今天陪我${x} 🌙'});setTimeout(()=>{const t=document.getElementById('jar_t');if(t){t.focus();t.scrollIntoView({block:'center'})}},300)">⭐ 寫一張</button></div>
   </div>`);
 }
 const workWears=(d,r)=>(d?dollWears(d):S.wears).filter(w=>isWork(w)&&(!r||rOf(w).id===r.id));
@@ -2727,7 +2739,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-45';
+const APP_VER='2026.10.01-46';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3505,7 +3517,7 @@ function drawDollPage(d){
   const nd=dollNextDates(d),row=(k,v)=>v?`<div><dt>${k}</dt><dd>${v}</dd></div>`:'';
   const acc=d.acc||[];
   openSheet(`<div class="dprof">
-    <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><div class="row" style="gap:6px;flex:0 0 auto"><button class="btn sm ghost" onclick="openJar('${d.id}')">⭐${starsOf(d).length?' '+starsOf(d).length:''}</button><button class="btn sm ghost" onclick="dollEdit()">✏️ 編輯</button></div></div>
+    <div class="dhead"><h3>${esc(d.name)}${d.keepsake?`<small class="kbadge">💝 紀念收藏</small>`:''}</h3><div class="row" style="gap:6px;flex:0 0 auto"><button class="btn sm ghost" onclick="openJar('${d.id}')">⭐${starsOf(d).length?' '+starsOf(d).length:''}</button><button class="btn sm ghost" onclick="dollEdit()" aria-label="編輯" title="編輯">✏️</button></div></div>
     ${isAway(d)&&isLive(d)?`<div class="awaybox">${AWAY_SVG}<div><b>${awayIcon(d.away.reason)} 暫時離家・${esc(d.away.reason)}</b>
       <span>${esc(d.away.since.replace(/-/g,'/'))} 出發${d.away.back?`・預計 ${esc(d.away.back.replace(/-/g,'/'))} 回家${awayLeft(d)>0?`（再 ${awayLeft(d)} 天）`:''}`:''}${d.away.note?`・${esc(d.away.note)}`:''}</span>
       <div class="row" style="margin-top:8px"><button class="btn sm" onclick="dollBack('${d.id}')">🏠 回家了</button><button class="btn sm ghost" onclick="openAway('${d.id}')">修改</button></div></div></div>`:''}
