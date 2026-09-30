@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=39"></script>
+<script src="i18n/i18n.js?v=40"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1465,6 +1465,8 @@ async function load(){
   if(S.settings.stickerMode==='ml')S.settings.stickerMode='ai';
   // 改版：預設改成每次詢問
   if(!S.settings.cutAskV){S.settings.cutAskV=1;if(S.settings.stickerMode==='ai')S.settings.stickerMode='ask'}
+  // 改版：AI 出圖去背拿掉了，改成 AI 自動去背（剪原照片，不重畫）
+  if(S.settings.stickerMode==='ai')S.settings.stickerMode='auto';
   // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
   if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
   S.dolls=S.dolls||[];migrateLetters();guessCountry();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
@@ -1685,29 +1687,6 @@ function makeSticker(dataURL,w){
   });
 }
 function prog(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._)}
-const STICKER_PROMPT='把圖中的娃娃衣服或配件單獨抽出來，去掉背景、手、娃娃本體和所有雜物，只留下這件單品本身。輸出一張圖片：單品置中且完整不裁切，背景填滿純白色 #FFFFFF，四周留白，不要陰影、不要文字、不要邊框、不要浮水印，顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。';
-// 從各種格式的回應裡把圖片挖出來
-function extractImage(j){
-  const s=JSON.stringify(j);
-  let m=s.match(/data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+/);
-  if(m)return m[0].replace(/\\/g,'');
-  m=s.match(/"(?:b64_json|inlineData|inline_data|image_base64|b64)"\s*:\s*(?:{[^{}]*"data"\s*:\s*)?"([A-Za-z0-9+/=]{500,})"/);
-  if(m)return 'data:image/png;base64,'+m[1];
-  m=s.match(/"data"\s*:\s*"([A-Za-z0-9+/=]{500,})"/);
-  if(m)return 'data:image/png;base64,'+m[1];
-  return null;
-}
-const PIECE_PROMPT=name=>`只把圖中的「${name}」這一件單獨抽出來，其他衣服配件都不要。去掉背景、手、娃娃本體和雜物。輸出一張圖片：單品置中且完整不裁切，四周留白，背景填滿純白色 #FFFFFF，不要陰影、不要文字、不要邊框、不要浮水印，顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。`;
-const WHOLESET_PROMPT='把圖中這一整套娃娃衣服的所有單品都保留下來，整齊地一起擺在畫面中間，可以稍微重疊但每件都要看得到。去掉背景、手、娃娃本體和雜物。背景填滿純白色 #FFFFFF，四周留白，不要陰影、文字、邊框、浮水印。顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。';
-const DOLL_PROMPT='把圖中的娃娃完整抽出來（包含身上穿的衣服和頭髮），去掉背景、手和雜物。輸出一張圖片：娃娃置中且完整不裁切，四周留白，背景填滿純白色 #FFFFFF，不要陰影、文字、邊框、浮水印，樣子要跟原圖一模一樣。直接輸出圖片。';
-async function aiSticker(dataURL,prompt){
-  const img=extractImage(await aiChat('img',[
-    {type:'image_url',image_url:{url:dataURL}},
-    {type:'text',text:prompt||STICKER_PROMPT}
-  ]));
-  if(!img)throw new Error('這個模型沒有回傳圖片，請改用會出圖的模型');
-  return img;
-}
 /* ---- 點選去背（免費）----
    Google MediaPipe 的 Magic Touch 模型（Apache 2.0，可商用），在手機上跑、不用 API。
    第一次使用下載約 6MB，之後瀏覽器會快取。使用者點一下衣服，模型就把那件圈出來。 */
@@ -1957,13 +1936,72 @@ async function tapDone(){
   }catch(e){if(t.opened)closeSheet();t.rej(e)}
 }
 
+/* ---- AI 自動去背（免費）----
+   用點選去背同一個模型，在手機上自動「點」幾下：每個框裡平均點 9 點（先點中間），
+   圈出來的範圍太大、跑出框外、碰到照片邊緣，或顏色跟照片邊緣（背景）很像的（點到背景了）就不要，其他的合起來。
+   剪的是原照片，衣服細節不會被改；框是 AI 分析給的（0～1000，[ymin,xmin,ymax,xmax]），沒有框就看整張 */
+function mpSegment(canvas,x,y){
+  return new Promise((ok,no)=>{
+    try{MPSEG.segment(canvas,{keypoint:{x,y}},r=>{
+      const m=r.confidenceMasks&&r.confidenceMasks[0];
+      ok(m?{f:m.getAsFloat32Array().slice(),w:m.width,h:m.height}:null);
+    })}catch(e){no(e)}
+  });
+}
+async function autoCut(dataURL,boxes){
+  try{await loadTapModel()}catch(e){throw new Error('自動去背的模型載入失敗，請檢查網路後再試一次')}
+  const im=await loadImg(dataURL),c=drawScaled(im,1000),W=c.width,H=c.height;
+  const a=new Uint8ClampedArray(W*H),edge=Math.max(2,W/200|0),px=c.getContext('2d').getImageData(0,0,W,H).data;
+  // 背景的樣子：沿著照片四邊取 96 個顏色
+  const bgc=[];for(let k=0;k<96;k++){const t=k/96*2*(W+H);let x,y;
+    if(t<W){x=t;y=1}else if(t<W+H){x=W-2;y=t-W}else if(t<2*W+H){x=2*W+H-t;y=H-2}else{x=1;y=2*(W+H)-t}
+    const i=((y|0)*W+(x|0))*4;bgc.push([px[i],px[i+1],px[i+2]])}
+  // 圈到的範圍裡，有多少比例的顏色跟背景很像
+  const bgLike=m=>{let n=0,hit=0;for(let i=0;i<W*H;i+=7){if(m[i]<=.5)continue;n++;const r=px[i*4],g=px[i*4+1],b=px[i*4+2];
+    for(const q of bgc)if(Math.abs(r-q[0])+Math.abs(g-q[1])+Math.abs(b-q[2])<48){hit++;break}}return n?hit/n:1};
+  const bs=(boxes&&boxes.length?boxes:[[0,0,1000,1000]]).map(b=>b.map(v=>Math.max(0,Math.min(1000,+v||0))/1000));
+  for(const [y0,x0,y1,x1] of bs){
+    if(x1<=x0||y1<=y0)continue;
+    // 框稍微放寬一點算「框裡」，AI 的框常常切到一點點
+    const pw=(x1-x0)*.08,ph=(y1-y0)*.08,X0=(x0-pw)*W,X1=(x1+pw)*W,Y0=(y0-ph)*H,Y1=(y1+ph)*H,area=(X1-X0)*(Y1-Y0);
+    const seeds=[[.5,.5],[.25,.25],[.5,.25],[.75,.25],[.25,.5],[.75,.5],[.25,.75],[.5,.75],[.75,.75]].map(([u,v])=>[x0+(x1-x0)*u,y0+(y1-y0)*v]);
+    const got=[];
+    for(let k=0;k<seeds.length;k++){
+      const r=await mpSegment(c,seeds[k][0],seeds[k][1]);if(!r)continue;
+      const m=new Float32Array(W*H);let n=0,inBox=0,bord=0,bn=0;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+        const v=r.f[Math.min(r.h-1,y*r.h/H|0)*r.w+Math.min(r.w-1,x*r.w/W|0)],i=y*W+x;m[i]=v;
+        const onEdge=x<edge||y<edge||x>=W-edge||y>=H-edge;if(onEdge)bn++;
+        if(v>.5){n++;if(x>=X0&&x<=X1&&y>=Y0&&y<=Y1)inBox++;if(onEdge)bord++}
+      }
+      if(!n)continue;
+      const bl=bgLike(m);
+      const fit=n>=area*.03&&n<=area*.92&&inBox/n>=.85&&bord/bn<.2&&bl<.35;
+      got.push({m,n,bl,fit,ok2:n>=area*.02&&inBox/n>=.6&&bord/bn<.35});
+      // 第一點（中間）就圈得又乾淨又夠大，通常就是整件了，省下其他幾點的時間
+      if(k===0&&fit&&bl<.1&&n>=area*.3)break;
+    }
+    // 圈到一半衣服一半背景的也不要：只收跟最乾淨的那一個差不多乾淨的
+    const best=Math.min(...got.filter(g=>g.fit).map(g=>g.bl),1);
+    let use=got.filter(g=>g.fit&&g.bl<=best+.15);
+    // 一個都不像：挑最不像背景的那一個先用，之後可以再修
+    if(!use.length){const g=got.filter(g=>g.ok2).sort((p,q)=>p.bl-q.bl)[0];if(g)use=[g]}
+    use.forEach(g=>{for(let i=0;i<W*H;i++){const v=g.m[i]*255;if(v>a[i])a[i]=v}});
+  }
+  let fg=0;for(let i=0;i<W*H;i++)if(a[i]>127)fg++;
+  if(fg<W*H*.01)throw new Error('自動去背沒找到衣服，改用「點選去背」點一下試試');
+  const src=c.getContext('2d').getImageData(0,0,W,H);
+  cleanMask(a,W,H);
+  return {sticker:await composeSticker(src,a,W,H),src:encSrc(src),mask:encMask(a,W,H)};
+}
 // 回傳 {sticker, src, mask}：sticker 是成品，src / mask 留給修補筆刷用
-async function cutout(dataURL,mode,prompt){
+// boxes：自動去背用的位置框（選填）
+async function cutout(dataURL,mode,boxes){
   let m=mode||S.settings.stickerMode||'ask';
   if(m==='ask')m='tap';
+  if(m==='ai')m='auto';
   if(m==='tap')return tapCutout(dataURL);
-  if(m==='ai'&&!aiReady())m='local';
-  if(m==='ai'&&!canPay('img')){m='local';toast('AI 出圖的額度和點數都不夠，這張先用簡易去背')}
+  if(m==='auto')return autoCut(dataURL,boxes);
   let W,H,src,a;
   if(m==='api'){
     const [out,orig]=await Promise.all([loadImg(await remoteCutout(dataURL)),loadImg(dataURL)]);
@@ -1974,19 +2012,16 @@ async function cutout(dataURL,mode,prompt){
     src=ox.getImageData(0,0,W,H);a=new Uint8ClampedArray(W*H);
     for(let i=0;i<W*H;i++){a[i]=od[i*4+3];if(a[i]){src.data[i*4]=od[i*4];src.data[i*4+1]=od[i*4+1];src.data[i*4+2]=od[i*4+2]}}
   }else{
-    const im=await loadImg(m==='ai'?await aiSticker(dataURL,prompt):dataURL);
+    const im=await loadImg(dataURL);
     const c=drawScaled(im,1000);W=c.width;H=c.height;
-    let tol=m==='ai'?14:(S.settings.bgTol||42),r,fg=0;
+    let tol=S.settings.bgTol||42,r,fg=0;
     // 衣服跟背景顏色太像時，整件會被當成背景刪掉；自動降低強度再試
     for(let k=0;k<3;k++){
-      r=bgMask(c.getContext('2d'),W,H,tol,m==='ai'?[255,255,255]:null);
+      r=bgMask(c.getContext('2d'),W,H,tol,null);
       fg=0;for(let i=0;i<r.a.length;i++)if(r.a[i]>127)fg++;
       if(fg/r.a.length>=.04)break;
       tol*=.55;c.getContext('2d').drawImage(im,0,0,W,H);
     }
-    // AI 有回圖但幾乎是空的：不扣次數，讓使用者重試
-    if(m==='ai'&&fg/r.a.length<.02)throw new Error('AI 這次沒有畫出完整的衣服，這次不扣次數，再試一次');
-    if(m==='ai')spendQuota('img');
     src=r.data;a=r.a;
   }
   cleanMask(a,W,H);
@@ -2002,7 +2037,6 @@ function setCut(o,r,key){o[key||'cutout']=r.sticker;o.cutSrc=r.src;o.cutMask=r.m
 const QUOTA={
   tag:{name:'AI 建檔分析',free:10,member:150,trial:20},
   buy:{name:'買前檢查',free:0,member:30,trial:5,memberOnly:true},
-  img:{name:'AI 出圖去背',free:0,member:30,trial:5},
   wearid:{name:'穿搭照辨識',free:3,member:50,trial:10},
   idea:{name:'AI 搭配建議',free:3,member:50,trial:10}
 };
@@ -2034,7 +2068,6 @@ function quotaBlocked(k){
   const q=QUOTA[k];
   openSheet(`<h3>本月的「${q.name}」用完了</h3>
     <div class="note">${q.free?`免費版每月可以用 ${q.free} 次，下個月 1 號會重置。`:`${q.name}沒有免費額度。`}可以用點數（每次 ${POINT_COST[k]} 點，你有 ${wallet().points} 點），或加入會員每月 ${q.member} 次。</div>
-    ${k==='img'?`<p class="hint" style="margin-top:10px">不用 AI 也可以：改用免費的簡易去背，再用「修補貼圖」擦乾淨。</p>`:''}
     <div class="row" style="margin-top:14px">
       <button class="btn ghost grow" onclick="closeSheet();go('wallet')">儲值點數</button>
       <button class="btn grow" onclick="openMember()">了解會員</button>
@@ -2047,7 +2080,7 @@ function quotaTable(){
 
 /* ---- 點數（非會員也能用 AI）----
    先用每月免費／會員額度，用完才扣點數。點數要花在哪、多少錢一包都在這裡調。 */
-const POINT_COST={tag:1,wearid:1,buy:3,img:5,idea:1};
+const POINT_COST={tag:1,wearid:1,buy:3,idea:1};
 const PACKS=[{pts:30,price:30,usd:.99},{pts:100,price:90,usd:2.99,tag:'熱門'},{pts:220,price:180,usd:5.99,tag:'最划算'}];
 // 價格：台灣用台幣，其他國家一律用美金
 const twPrice=()=>homeCountry()==='台灣';
@@ -2131,30 +2164,22 @@ function redeem(){
 
 /* ---- 去背方式：每次讓使用者自己選（或記住選擇）---- */
 let PICK=null;
-function pickCut(count,isSet){
+function pickCut(count){
   count=count||1;
   return new Promise(res=>{
     const m=S.settings.stickerMode||'ask';
-    const setOpt=isSet&&count>1&&aiReady();
-    if(m!=='ask'&&!(m==='ai'&&!aiReady())&&!(setOpt&&m==='ai'))return res(m);
-    const ok1=quotaLeft('img')>=1||wallet().points>=POINT_COST.img;
-    const left=quotaLeft('img'),pts=wallet().points,need=POINT_COST.img*Math.max(0,count-left);
-    const ok=aiReady()&&(left>=count||pts>=need);
+    if(m!=='ask')return res(m==='ai'?'auto':m);
     PICK={res,opened:!NAV.open};
     openSheet(`<h3>要怎麼去背？</h3>
-      <button class="cutopt" onclick="pickDone('tap')"><div><b>點選去背</b><span>點一下衣服就圈出來，什麼背景都可以</span></div><em>免費・推薦</em></button>
+      <button class="cutopt" onclick="pickDone('auto')"><div><b>AI 自動去背</b><span>AI 自動找出衣服剪下來，剪的是原照片，細節不會變。不準的可以再修</span></div><em>免費・推薦</em></button>
+      <button class="cutopt" onclick="pickDone('tap')"><div><b>點選去背</b><span>點一下衣服就圈出來，什麼背景都可以</span></div><em>免費</em></button>
       <button class="cutopt" onclick="pickDone('local')"><div><b>簡易去背</b><span>全自動，但背景要是素色</span></div><em>免費</em></button>
-      <button class="cutopt" onclick="pickDone('ai')" ${ok?'':'disabled'}><div><b>AI 出圖去背</b><span>什麼背景都可以，手和雜物也會一起清掉</span></div>
-        <em>${!aiReady()?(devMode()?'需要設定 API':'暫停服務'):left>=count?`額度剩 ${left}`:`${need} 點`}</em></button>
-      ${setOpt?`<button class="cutopt" onclick="pickDone('aiset')" ${ok1?'':'disabled'}><div><b>AI 整套一張</b><span>${count} 件一起出一張圖再自動切開，只算 1 次。切不準的再點小方框修</span></div>
-        <em>${left>=1?'只扣 1 次':POINT_COST.img+' 點'}</em></button>`:''}
-      ${ok||!aiReady()?'':`<p class="hint">點數不夠（需要 ${need} 點，你有 ${pts} 點）。<a href="javascript:void 0" onclick="closeSheet();go('wallet')">去儲值</a></p>`}
       ${count>1?`<p class="hint">這次共 ${count} 張。</p>`:''}
       <label class="remember"><input type="checkbox" id="pk_rem"> 記住我的選擇（之後可以在設定改）</label>`);
   });
 }
 function pickDone(m){
-  if(document.getElementById('pk_rem').checked){S.settings.stickerMode=m==='aiset'?'ai':m;save()}
+  if(document.getElementById('pk_rem').checked){S.settings.stickerMode=m;save()}
   const p=PICK;PICK=null;if(!p)return;
   if(p.opened)closeSheet();
   p.res(m);
@@ -2182,47 +2207,20 @@ async function aiChat(task,content){
   if(viaBackend()){
     try{
       const h={'content-type':'application/json','x-device':deviceId()};
-      if(task==='img')h['x-async']='1';
       r=await fetch(backendURL()+'/ai',{method:'POST',headers:h,body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
-    if(r.ok&&(r.headers.get('content-type')||'').includes('json')){
-      const j=await r.clone().json().catch(()=>null);
-      if(j&&j.job)r=await waitJob(j.job);
-    }
     if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
-    // 任務式出圖時後台直接回圖片本身，這裡轉成和對話格式一樣的樣子
-    const blob=await r.blob(),head=new Uint8Array(await blob.slice(0,4).arrayBuffer());
-    const isImg=(r.headers.get('content-type')||'').startsWith('image/')||(head[0]===0x89&&head[1]===0x50)||(head[0]===0xFF&&head[1]===0xD8)||(head[0]===0x52&&head[1]===0x49);
-    if(isImg){
-      const url=await new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(isImg&&!blob.type.startsWith('image/')?new Blob([blob],{type:head[0]===0xFF?'image/jpeg':head[0]===0x52?'image/webp':'image/png'}):blob)});
-      return {choices:[{message:{content:url}}]};
-    }
-    try{return JSON.parse(await blob.text())}catch(e){throw new Error('AI 服務回傳的內容看不懂，請再試一次')}
+    try{return JSON.parse(await r.text())}catch(e){throw new Error('AI 服務回傳的內容看不懂，請再試一次')}
   }
   const c=cfg();
   if(!c.endpoint)throw new Error(aiMissing());
-  const model=task==='img'?((S.settings.stickerModel||'').trim()||c.model):c.model;
   r=await fetch(apiURL(c.endpoint,'/chat/completions'),{
     method:'POST',headers:authHead(c.key),
-    body:JSON.stringify({model,max_tokens:task==='test'?16:8192,messages:[{role:'user',content}]})
+    // 測試也給多一點字數：會思考的模型（例如 Gemini 3）先想一下才回答，太少會回空的
+    body:JSON.stringify({model:c.model,max_tokens:task==='test'?1024:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
   return r.json();
-}
-// 出圖任務在後台跑；網頁每 3 秒問一次。切到別的 App 時手機會暫停網頁，回來後會接著問，不會重做也不會重複扣次數
-async function waitJob(id){
-  // 用「問了幾次」算逾時，不用時間：手機在背景時計時器會停，回來後至少還會再問
-  let fails=0;
-  for(let k=0;k<200;k++){
-    await new Promise(ok=>setTimeout(ok,3000));
-    let r;
-    try{r=await fetch(backendURL()+'/job/'+encodeURIComponent(id))}catch(e){if(++fails>40)break;continue}
-    fails=0;
-    if(!r.ok)return r;
-    if((r.headers.get('content-type')||'').includes('json')){const j=await r.clone().json().catch(()=>({}));if(j.pending)continue}
-    return r;
-  }
-  throw new Error('出圖太久了，稍後再試');
 }
 const aiText=j=>{const m=j.choices?.[0]?.message;return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||''};
 // 填 base（.../v1）就好，路徑自動補
@@ -2299,13 +2297,13 @@ function parseJSON(txt){
   catch(e){throw new Error('AI 回傳的內容不完整，請再試一次')}
 }
 const tagPrompt=()=>`你是娃衣（棉花娃／OB11／黏土娃衣服）建檔助手。看這張照片，只回傳 JSON，不要任何說明文字或 markdown：
-{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","holiday":"節日主題，看得出來才填，沒有就空字串：聖誕節、新年、過年、萬聖節、情人節、中秋節、生日、復活節","material":"材質推測"}
+{"name":"20字內的中文名稱","isSet":true或false,"category":"單品類型，從這個清單挑一個：${allCats().join('、')}","box":[ymin,xmin,ymax,xmax],"parts":[{"name":"單品類型","box":[ymin,xmin,ymax,xmax]}],"colors":["主要顏色，中文，最多3個"],"styles":[{"name":"風格","score":0到100}],"motifs":["圖案或元素，例如 草莓、小熊、蕾絲、格紋"],"season":"春/夏/秋/冬/四季","holiday":"節日主題，看得出來才填，沒有就空字串：聖誕節、新年、過年、萬聖節、情人節、中秋節、生日、復活節","material":"材質推測"}
 
 parts 規則很重要：
 如果照片裡有多件可以分開穿的單品（例如整套娃衣攤開拍），isSet 設 true，並在 parts 裡逐一列出每一件。
 box 是那件單品在照片中的位置框，格式 [ymin,xmin,ymax,xmax]，數值是 0 到 1000 的相對座標，左上角為 0,0。
 框要剛好包住那一件，寧可稍微寬鬆也不要切到。每件單品各自一個框，不要把好幾件框在一起。
-如果照片裡只有一件單品，isSet 設 false，parts 給空陣列。
+如果照片裡只有一件單品，isSet 設 false，parts 給空陣列，box 填這件單品的位置框（格式同上）。套裝時 box 給空陣列。
 
 風格請從：甜系、Lolita、學院風、復古、哥德、日常、休閒、森系、動物系、睡衣風、萌系、華麗、中式、韓系、日系 之中挑1到3個。`
 
@@ -2768,7 +2766,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-63';
+const APP_VER='2026.10.01-64';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3700,7 +3698,7 @@ async function onDollPhoto(ev){
 async function cutDoll(btn){
   btn.disabled=true;btn.innerHTML='<span class="spin dark"></span> 去背中';
   const m=await pickCut();drawDoll();prog('娃娃去背中…');
-  try{const src=DD.raw||DD.photo;const r=await cutout(src,m,DOLL_PROMPT);DD.raw=src;DD.photo=r.sticker;drawDoll();toast('去背完成')}
+  try{const src=DD.raw||DD.photo;const r=await cutout(src,m);DD.raw=src;DD.photo=r.sticker;drawDoll();toast('去背完成')}
   catch(e){toast(e.message);drawDoll()}
 }
 function addDollDate(){
@@ -5216,9 +5214,9 @@ function rephoto(id){
 }
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
-  toast('製作貼圖中，AI 出圖要等幾秒…');
   const m=await pickCut();
-  try{ setCut(i,await cutout(i.photo,m,i.category==='套裝'?WHOLESET_PROMPT:null)); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
+  toast('製作貼圖中…');
+  try{ setCut(i,await cutout(i.photo,m)); await save(); openItem(id); renderCloset(); toast('貼圖完成'); }
   catch(e){ toast(e.message) }
 }
 // 欄位標題後面的小驚嘆號：點一下跳出小框框說明，點別的地方就關掉
@@ -5393,7 +5391,7 @@ function renderQueue(){
     </div>`:'';
 }
 // 目前實際用的是免費的簡易去背（沒設定 API 或選了簡易去背）
-function freeCut(){const m=S.settings.stickerMode||'ask';return m==='local'||(m==='ai'&&(!aiReady()||!canPay('img')))}
+function freeCut(){return S.settings.stickerMode==='local'}
 function hideTip(){S.settings.tipHidden=true;save();renderQueue();toast('之後可以在設定的「貼圖」重新打開')}
 function cutTip(){
   return `<details class="tip" ${S.settings.tipSeen?'':'open'}>
@@ -5459,8 +5457,7 @@ function togglePart(n,p){
 async function makePartStickers(n){
   const q=UI.queue[n];
   if(!q.parts.length){toast('這張還沒有可拆的單品');return}
-  const mode=await pickCut(q.parts.length,true);
-  if(mode==='aiset')return aiSetCut(n);
+  const mode=await pickCut(q.parts.length);
   q.working=true;renderQueue();
   // 一件失敗不要整批停下來：已經做好的留著，失敗的最後一起告訴使用者
   const bad=[];
@@ -5470,77 +5467,13 @@ async function makePartStickers(n){
     prog(`拆件貼圖 ${k+1}/${q.parts.length}　${pt.name}`);
     try{
       pt.crop=pt.box?await cropBox(q.photo,pt.box):q.photo;
-      // 沒有框的單品（自己選的）用簡易去背會整張一起留下，改成點選
-      setCut(pt,await cutout(pt.crop,!pt.box&&mode==='local'?'tap':mode,PIECE_PROMPT(pt.name)),'img');
+      // 沒有框的單品（自己選的）用簡易／自動去背會整張一起留下，改成點選
+      setCut(pt,await cutout(pt.crop,!pt.box&&(mode==='local'||mode==='auto'||mode==='ai')?'tap':mode),'img');
     }catch(e){ if(e.message==='已取消')break; bad.push(pt.name+'：'+e.message) }
     renderQueue();
   }
   await setCover(q);q.working=false;renderQueue();
   toast(bad.length?`${bad.length} 件沒做成（${bad[0]}）。點那件的小方框可以單獨重做`:`${q.parts.length} 件單品各自的貼圖完成`);
-}
-// AI 整套一張：請 AI 把套裝每件分開平鋪成一排，只出 1 張圖，再在手機上依位置切開、照順序對應到每一件
-const SET_PROMPT=names=>`把照片裡這套娃娃衣服的每一件單品分開，平鋪在純白色 #FFFFFF 背景上，由左到右排成一排，順序是：${names.map((n,i)=>(i+1)+'.'+n).join('　')}。每件之間留明顯的空白，不可以重疊或相碰，每件都完整不裁切。去掉背景、手、娃娃本體和雜物。不要陰影、文字、邊框、浮水印。顏色圖案材質都要跟原圖一模一樣，不要重新設計。直接輸出圖片。`;
-async function aiSetCut(n){
-  const q=UI.queue[n];if(!q||!needQuota('img'))return;
-  q.working=true;renderQueue();
-  prog(`AI 整套出圖中（${q.parts.length} 件），大約 10～60 秒，可以先去做別的事`);
-  try{
-    const out=extractImage(await aiChat('img',[{type:'image_url',image_url:{url:q.photo}},{type:'text',text:SET_PROMPT(q.parts.map(p=>p.name))}]));
-    if(!out)throw new Error('這次沒有拿到圖片，再試一次，不扣次數');
-    const im=await loadImg(out),c=drawScaled(im,1400),W=c.width,H=c.height;
-    const {a,data}=bgMask(c.getContext('2d'),W,H,14,[255,255,255]);
-    const groups=splitGroups(a,W,H,q.parts.length);
-    if(!groups.length)throw new Error('AI 這次沒有畫出衣服，不扣次數，再試一次');
-    // 整套的貼圖也順便有了（所有單品一起）
-    if(!q.cutout||q.cutKind!=='set'){const all=Uint8ClampedArray.from(a);cleanMask(all,W,H);try{setCut(q,{sticker:await composeSticker(data,all,W,H),src:encSrc(data),mask:encMask(all,W,H)});q.cutKind='set'}catch(e){}}
-    groups.forEach((g,k)=>{
-      const pt=q.parts[k];if(!pt)return;
-      const pad=6,x0=Math.max(0,g.x0-pad),y0=Math.max(0,g.y0-pad),x1=Math.min(W-1,g.x1+pad),y1=Math.min(H-1,g.y1+pad);
-      const w=x1-x0+1,h=y1-y0+1,src=new ImageData(w,h),m=new Uint8ClampedArray(w*h);
-      for(let j=0;j<h;j++)for(let i=0;i<w;i++){
-        const id=(j+y0)*W+i+x0,o=j*w+i;
-        src.data.set(data.data.subarray(id*4,id*4+4),o*4);
-        m[o]=g.lab[id]?a[id]:0;
-      }
-      g.cut={src,m,w,h};
-    });
-    for(let k=0;k<groups.length&&k<q.parts.length;k++){
-      const {src,m,w,h}=groups[k].cut;cleanMask(m,w,h);
-      setCut(q.parts[k],{sticker:await composeSticker(src,m,w,h),src:encSrc(src),mask:encMask(m,w,h)},'img');
-    }
-    const miss=q.parts.length-Math.min(groups.length,q.parts.length);
-    // 只有每一件都切出來才扣次數；少了就算我們的，不讓使用者白花
-    if(!miss)spendQuota('img');
-    toast(miss?`切出 ${groups.length} 件，還有 ${miss} 件沒分出來（這次不扣次數），點小方框手動補`:`${q.parts.length} 件都切好了，不準的點小方框修`);
-  }catch(e){toast('失敗：'+e.message)}
-  q.working=false;renderQueue();
-}
-// 把遮罩切成 n 塊：最大的 n 塊當主體，其他小碎片併到最近的主體；由左到右排序
-function splitGroups(a,W,H,n){
-  const N=W*H,lab=new Int32Array(N),q=new Int32Array(N),comps=[];
-  for(let s=0;s<N;s++){
-    if(a[s]<128||lab[s])continue;
-    const L=comps.length+1;let h=0,t=0,x0=W,y0=H,x1=0,y1=0,sx=0,sy=0;q[t++]=s;lab[s]=L;
-    while(h<t){const id=q[h++],i=id%W,j=(id/W)|0;sx+=i;sy+=j;
-      if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j;
-      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
-        const x=i+dx,y=j+dy;if(x<0||y<0||x>=W||y>=H)continue;
-        const m=y*W+x;if(!lab[m]&&a[m]>=128){lab[m]=L;q[t++]=m}}}
-    comps.push({L,size:t,x0,y0,x1,y1,cx:sx/t,cy:sy/t});
-  }
-  const real=comps.filter(c=>c.size>=N*.0008).sort((p,r)=>r.size-p.size);
-  const seeds=real.slice(0,n),rest=real.slice(n);
-  const groups=seeds.map(c=>({ls:new Set([c.L]),x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1,cx:c.cx,cy:c.cy}));
-  const gap=(c,g)=>Math.hypot(Math.max(0,g.x0-c.x1,c.x0-g.x1),Math.max(0,g.y0-c.y1,c.y0-g.y1));
-  rest.forEach(c=>{
-    if(!groups.length)return;
-    const g=groups.reduce((b,x)=>gap(c,x)<gap(c,b)?x:b);
-    g.ls.add(c.L);g.x0=Math.min(g.x0,c.x0);g.y0=Math.min(g.y0,c.y0);g.x1=Math.max(g.x1,c.x1);g.y1=Math.max(g.y1,c.y1);
-  });
-  groups.forEach(g=>{const m=new Uint8Array(N);for(let i=0;i<N;i++)if(lab[i]&&g.ls.has(lab[i]))m[i]=1;g.lab=m});
-  // 排成一排時用 x 排；AI 排成兩排時，先依列再依 x
-  const hs=groups.map(g=>g.y1-g.y0).sort((p,r)=>p-r),mh=hs[hs.length>>1]||1;
-  return groups.sort((p,r)=>Math.abs(p.cy-r.cy)>mh*.8?p.cy-r.cy:p.cx-r.cx);
 }
 // 單件手動去背／修補：有貼圖就從遮罩接著改，沒有就從框出來的那一塊開始選
 async function editPart(n,k){
@@ -5557,9 +5490,10 @@ async function cutQ(n,mode){
   // 還沒分析過就先問是不是套裝：套裝要逐件做，不然整套只會剩一件
   if(!mode&&!q.isSet&&!q.kindOk&&!(q.styles||[]).length)return askKind(n);
   mode=mode||await pickCut();
-  toast(mode==='ai'?'製作貼圖中，AI 出圖要等幾秒…':'製作貼圖中…');
-  const paid=()=>[usage().img||0,wallet().points].join(),before=paid();
-  try{setCut(q,await cutout(q.photo,mode,q.isSet?WHOLESET_PROMPT:null));q.cutKind=q.isSet?'set':'one';q.cutPaid=paid()!==before;renderQueue();toast('完成')}catch(e){toast(e.message)}
+  toast('製作貼圖中…');
+  // 自動去背照 AI 分析的框找：套裝用每一件的框，單件用整件的框
+  const boxes=q.isSet?q.parts.map(p=>p.box).filter(Boolean):q.box?[q.box]:null;
+  try{setCut(q,await cutout(q.photo,mode,boxes));q.cutKind=q.isSet?'set':'one';renderQueue();toast('完成')}catch(e){toast(e.message)}
 }
 function askKind(n){
   const q=UI.queue[n];
@@ -5611,6 +5545,7 @@ async function analyze(n){
     q.name=q.name||r.name||'';
     q.category=r.isSet?'套裝':(r.category||q.category);
     q.isSet=!!r.isSet;
+    q.box=!r.isSet&&Array.isArray(r.box)&&r.box.length===4?r.box:null;
     q.parts=(r.parts||[]).map(x=>typeof x==='string'?{name:x,box:null}:{name:x.name,box:x.box||null})
       .filter(x=>x.name).map(x=>({name:x.name,box:x.box,img:null,crop:null}));
     q.colors=r.colors||[];q.styles=r.styles||[];q.motifs=r.motifs||[];
@@ -5625,21 +5560,15 @@ function qPhoto(n){
   const q=UI.queue[n];if(!q)return;
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
   inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
-    q.photo=await compress(f);q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.cutPaid=false;q.fromOrder=false;
+    q.photo=await compress(f);q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.box=null;q.fromOrder=false;
     if(q.parts)q.parts=q.parts.map(x=>({name:x.name,box:null}));
     renderQueue();toast('照片換好了，再按「做成貼圖」');};
   inp.click();
 }
 function dropOneCut(q){
   if(!q.cutout||q.cutKind!=='one')return;
-  const paid=q.cutPaid;if(paid)refundImg();
-  q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.cutPaid=false;
-  setTimeout(()=>toast(`是套裝！剛剛的貼圖是當單件做的，已拿掉${paid?'（AI 次數退回了）':''}，按「逐件做貼圖」每件各自做`),400);
-}
-function refundImg(){
-  const u=usage();
-  if(u.img>0)u.img--;else addPoints(POINT_COST.img,'退回：套裝改逐件做貼圖');
-  save();updateWalletChip();
+  q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';
+  setTimeout(()=>toast('是套裝！剛剛的貼圖是當單件做的，已拿掉，按「逐件做貼圖」每件各自做'),400);
 }
 async function analyzeAll(){for(let i=0;i<UI.queue.length;i++){if(!UI.queue[i].styles.length&&await analyze(i)===false)break}}
 
@@ -5995,7 +5924,6 @@ function comboToCanvas(a,b){
 // 會員說明：每個功能寫清楚「做什麼」，免費／會員各能用多少
 const AI_DESC={
   tag:['📸','拍照後自動填好名稱、類型、顏色、風格；套裝會自動拆成單品'],
-  img:['🤖','AI 重畫一張乾淨的貼圖，手、娃娃和雜物都會清掉，什麼背景都可以'],
   wearid:['🔍','記錄穿搭時上傳娃娃的照片，AI 依衣櫃裡的名稱、類型、顏色，猜照片裡穿的是哪幾件，再由你確認勾選'],
   idea:['✨','選地點或主題（咖啡廳、聖誕節、在家…），AI 從你的衣櫃搭一套'],
   buy:['🛍️','想買之前比對：衣櫃裡有沒有幾乎一樣、同款不同色、以前賣掉過的，還有在路上的訂單']
@@ -6014,7 +5942,7 @@ const MEMBER_ONLY=[
   ['🎯','適合給哪隻娃娃','買前檢查時，依每隻娃娃平常穿的風格推薦買給誰'],
   ['💰','花費分析','每月花多少、每穿一次的成本、最划算和買了還沒穿的、賣掉回血多少']
 ];
-const FREE_ALL=[['👗','衣櫃與建檔','不限件數，分類、標籤、尺寸、批次修改'],['✂️','點選去背・筆刷修補','在手機上做，不用 AI、不花次數'],
+const FREE_ALL=[['👗','衣櫃與建檔','不限件數，分類、標籤、尺寸、批次修改'],['✂️','AI 自動去背・點選去背・筆刷修補','在手機上做，剪的是原照片，不花次數'],
   ['🪄','搭配畫布・隨機搭一套','把衣服拖到娃娃身上試穿，存成 Look'],['📝','穿搭紀錄・足跡','記每天穿什麼、去了哪裡，做成回憶小卡'],
   ['🧸','娃娃櫃','紀念日提醒、整理紀錄、配件、等待到家'],['📦','考慮中・購買中・壓箱底・出售貼文・回憶箱',''],['💾','完整備份','']];
 function openMember(){
@@ -6025,7 +5953,7 @@ function openMember(){
     <div class="mhead"><span></span><span>免費</span><span class="on">會員</span></div>
     <p class="mlabel">AI 功能（每月次數，1 號重置）</p>
     <div class="mbox">${Object.keys(QUOTA).map(row).join('')}</div>
-    <p class="hint" style="margin:6px 2px 0">次數用完也可以用點數：建檔分析、穿搭辨識、搭配建議 1 點，AI 出圖 5 點，買前檢查 3 點（會員限定）。</p>
+    <p class="hint" style="margin:6px 2px 0">次數用完也可以用點數：建檔分析、穿搭辨識、搭配建議 1 點，買前檢查 3 點（會員限定）。</p>
     <p class="mlabel">只有會員看得到的分析</p>
     <div class="mbox">${MEMBER_ONLY.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b><small>${d}</small></div><div class="mq"><span>—</span><span class="on">✓</span></div></div>`).join('')}</div>
     <p class="mlabel">一直免費</p>
@@ -6040,7 +5968,6 @@ function openMember(){
    本月 AI 還剩多少、每個會員功能在哪裡，點一下直接過去 */
 const MEMBER_GO={
   tag:["closeSheet();go('intake')",'建檔時拍照，按「AI 分析」'],
-  img:["closeSheet();go('intake')",'建檔做貼圖時選「AI 出圖」'],
   wearid:["closeSheet();openWear()",'記穿搭時放照片，按「AI 辨識」'],
   idea:["closeSheet();openIdea()",'首頁「幫我搭一套」→ AI 建議'],
   buy:["closeSheet();openBuyCheck()",'想買之前丟照片或商品截圖']
@@ -8149,9 +8076,9 @@ function mcap(el){
 const HELP=[
   // ── 衣櫃
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
-  ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
-    ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。','想重拍？到單品頁按「📷 換照片」，拍好會接著做新貼圖；名稱、價格、穿搭紀錄都會留著。']],
+    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
+  ['✂️','貼圖怎麼做',[['🤖','AI 自動去背'],['👆','點選去背'],['🖌️','筆刷修補']],
+    ['「AI 自動去背」免費：自動找出衣服剪下來，剪的是原照片，蕾絲、花紋都不會被改掉。先按「AI 分析」再做，套裝每一件會找得更準。','「點選去背」也免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','想重拍？到單品頁按「📷 換照片」，拍好會接著做新貼圖；名稱、價格、穿搭紀錄都會留著。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期，或名稱是自動取的娃衣，有空再補就好。','套裝頁會列出這套有哪幾件，點一下就打開那件；單品頁的「所屬套裝」可以點回套裝。','類別篩選的「配件」包含圍巾、領結、眼鏡、包包、道具和其他。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
@@ -8196,7 +8123,7 @@ const HELP=[
   ['🔔','提醒與通知',[['⚙️','設定'],['🔔','提醒與通知'],['📱','手機通知']],
     ['到 設定 → 提醒與通知，可以分別開關：紀念日、節日、好久沒換裝（15 天／30 天）、旅行回憶、到貨提醒、很久沒出場的娃娃。','提醒會出現在首頁；開了手機通知，也會跳通知給你。用 App 的話，提醒會在當天早上 9 點準時跳出來，沒打開 App 也收得到；用網頁版要先把哇娃衣櫃加到主畫面，打開時才會跳。','有新版本時畫面下方會出現「有新版本，點一下更新」。','會員另外有換季提醒：3、6、9、12 月的前兩週，提醒這一季的娃衣有幾件還沒穿過。星星罐約好打開的那天，也會提醒你。']],
   ['⚙️','設定：語言、外觀、幣別、類別',[['⚙️','右上角設定'],['🌐','語言'],['🌙','外觀'],['🌏','我住在・幣別'],['🗂️','類別・尺寸']],
-    ['語言可以選繁體中文、簡體中文或英文，預設跟著手機。只會換畫面上的字，衣櫃裡的資料不會變。','外觀可以選淺色、深色，或跟著手機自動切換；娃娃月曆一週從星期日或星期一開始，也在這裡改。','「我住在」選你住的國家，足跡和旅行回憶會照這個算；下面可以選記帳幣別，花費、購買中的金額和截圖匯入換算都用它。','「衣櫃類別」可以新增自己的類別（例如 和服、泳裝），不常用的也可以隱藏；「娃衣尺寸」可以加 OB11、BJD 等尺寸。','「貼圖製作」可以選每次詢問，或固定用點選去背、簡易去背、AI 出圖。','有問題或想要的功能，到「意見回饋」寫信告訴我；「給你的一封信」可以再看一次第一次打開時的信。']],
+    ['語言可以選繁體中文、簡體中文或英文，預設跟著手機。只會換畫面上的字，衣櫃裡的資料不會變。','外觀可以選淺色、深色，或跟著手機自動切換；娃娃月曆一週從星期日或星期一開始，也在這裡改。','「我住在」選你住的國家，足跡和旅行回憶會照這個算；下面可以選記帳幣別，花費、購買中的金額和截圖匯入換算都用它。','「衣櫃類別」可以新增自己的類別（例如 和服、泳裝），不常用的也可以隱藏；「娃衣尺寸」可以加 OB11、BJD 等尺寸。','「貼圖製作」可以選每次詢問，或固定用 AI 自動去背、點選去背、簡易去背。','有問題或想要的功能，到「意見回饋」寫信告訴我；「給你的一封信」可以再看一次第一次打開時的信。']],
   ['💾','備份很重要',[['⚙️','設定'],['💾','備份與資料'],['📁','完整備份']],
     ['資料和照片都只存在這支手機上，沒有上傳到任何地方，換手機或清掉資料就會不見。','建議每一兩週做一次「完整備份」，存到雲端硬碟；照片也可以在相簿「存到手機」多留一份。','想存到雲端：iPhone 按「完整備份」後選「儲存到檔案」→「iCloud 雲端硬碟」；Android 把下載的檔案上傳到 Google 雲端硬碟。備份頁裡有步驟說明。']],
 ];
@@ -8254,7 +8181,7 @@ function openSettings(page){
   if(!page){
     const row=(k,ico,t,sub)=>`<button class="setrow" onclick="readForm();${k==='work'?"UI.rid='';UI.shiftM='';":''}openSettings('${k}')"><i>${ico}</i><span><b>${t}</b>${sub?`<small>${sub}</small>`:''}</span><em>›</em></button>`;
     const ago=st.lastBackup?Math.floor((Date.now()-st.lastBackup)/864e5):null;
-    const smode={ask:'每次詢問',tap:'點選去背',local:'簡易去背',ai:'AI 出圖',api:'去背服務'}[st.stickerMode||'ask'];
+    const smode={ask:'每次詢問',auto:'AI 自動去背',tap:'點選去背',local:'簡易去背',api:'去背服務'}[st.stickerMode||'ask'];
     openSheet(`
     <h3 onclick="devTap()">設定</h3>
     <button class="setmember" onclick="readForm();openSettings('member')">
@@ -8427,17 +8354,11 @@ function openSettings(page){
       <label class="f"><span>製作方式</span>
         <select id="s_smode" onchange="toggleSticker(this.value)">
           <option value="ask" ${(st.stickerMode||'ask')==='ask'?'selected':''}>每次詢問　做貼圖時自己選</option>
+          <option value="auto" ${st.stickerMode==='auto'?'selected':''}>一律 AI 自動去背　免費，自動找出衣服</option>
           <option value="tap" ${st.stickerMode==='tap'?'selected':''}>一律點選去背　免費，點一下衣服</option>
           <option value="local" ${st.stickerMode==='local'?'selected':''}>一律簡易去背　免費，背景要是素色</option>
-          <option value="ai" ${st.stickerMode==='ai'?'selected':''}>一律 AI 出圖　用額度或點數</option>
           ${devMode()||st.stickerMode==='api'?`<option value="api" ${st.stickerMode==='api'?'selected':''}>去背服務　另外申請的付費服務</option>`:''}
         </select></label>
-
-      <div id="sk_ai" style="display:${devMode()&&['ask','ai'].includes(st.stickerMode||'ask')?'block':'none'}">
-        <label class="f"><span>出圖模型</span>
-          <input type="text" id="s_smodel" value="${esc(st.stickerModel||'')}" placeholder="留空 = 用上面那個模型" autocapitalize="off" spellcheck="false"></label>
-        <p class="hint" style="margin:-4px 0 12px">要填**會出圖**的模型，例如 gemini-3-pro-image-preview 這類名字裡有 image 的。純文字模型只會回你一段文字，做不出貼圖。可以在上面按「抓清單」看有哪些可用。只在「直接連 API」時有用，走後台時用後台設定的出圖模型。</p>
-      </div>
 
       <div id="sk_api" style="display:${st.stickerMode==='api'?'block':'none'}">
         <label class="f"><span>服務網址</span><input type="text" id="s_bgurl" value="${esc(st.bgUrl||'')}" autocapitalize="off"></label>
@@ -8575,7 +8496,6 @@ async function showUsage(){
     if(el&&e.usage)el.innerHTML=`・已使用 ${(e.usage/1048576).toFixed(1)} MB`}catch(e){}
 }
 function toggleSticker(v){
-  document.getElementById('sk_ai').style.display=devMode()&&(v==='ai'||v==='ask')?'block':'none';
   document.getElementById('sk_api').style.display=v==='api'?'block':'none';
 }
 function pickModel(btn,m){
@@ -8595,7 +8515,6 @@ function readForm(){
   }
   const has=k=>!!document.getElementById(k);
   if(has('s_smode'))S.settings.stickerMode=v('s_smode');
-  if(has('s_smodel'))S.settings.stickerModel=v('s_smodel');
   if(has('s_bgtol'))S.settings.bgTol=+v('s_bgtol')||42;
   if(has('s_edge'))S.settings.stickerEdge=+v('s_edge');
   if(has('s_bgurl')){S.settings.bgUrl=v('s_bgurl')||S.settings.bgUrl;S.settings.bgKey=v('s_bgkey')||S.settings.bgKey}
