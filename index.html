@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=46"></script>
+<script src="i18n/i18n.js?v=47"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2833,7 +2833,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-71';
+const APP_VER='2026.10.01-72';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3922,7 +3922,7 @@ function renderWish(){
       <div><b>${skip.length}</b><span>忍住沒買${saved?`<br>省 $${saved.toLocaleString()}`:''}</span></div>
     </div>
     <div class="row" style="margin-bottom:14px"><button class="btn quiet grow" onclick="openBuyCheck()">🔍 買前檢查<span class="pro">PRO</span></button><button class="btn ghost grow" onclick="openOrder()">＋ 記錄購買中</button></div>
-    <div class="chips">${tabs.map(([k,l])=>`<button class="chip ${UI.wishTab===k?'on':''}" onclick="UI.wishTab='${k}';renderWish()">${l} ${cnt(k)}</button>`).join('')}</div>
+    <div class="chips">${tabs.map(([k,l])=>`<button class="chip ${UI.wishTab===k?'on':''}" onclick="UI.wishTab='${k}';UI.omulti=false;UI.osel=new Set();renderWish()">${l} ${cnt(k)}</button>`).join('')}</div>
     ${UI.wishTab==='order'?ordersHTML():UI.wishTab==='file'?fileHTML():(UI.wishTab==='wait'?wishBar():'')+(list.length?list.map(w=>{
       const age=Math.max(0,Math.floor((Date.now()-w.createdAt)/864e5)),o=w.orderId&&S.orders.find(x=>x.id===w.orderId);
       return `<div class="wcard">
@@ -3996,19 +3996,22 @@ const orderQ=()=>(UI.oq||'').trim().toLowerCase();
 function fileHTML(){
   const list=arrivedOrders().sort((a,b)=>(b.arrived||'').localeCompare(a.arrived||'')||(b.createdAt||0)-(a.createdAt||0));
   if(!list.length)return `<div class="empty"><strong>沒有待建檔的娃衣</strong>購買中改成「已到貨」、或考慮中按「買了 → 已經拿到了」的，會先放在這裡，有空再拍照建檔</div>`;
-  const pics=list.filter(o=>o.photo).length;
-  return `<div class="row obar">${pics?`<button class="btn sm" onclick="fileQuick(${JSON.stringify(list.filter(o=>o.photo).map(o=>o.id)).replace(/"/g,"'")})">全部先建檔（${pics} 件）</button>`:''}<span class="grow"></span></div>
-    <p class="hint" style="margin:0 0 12px">有空就「📷 拍照建檔」；沒空的話「先建檔」，會先用商品圖放進衣櫃，可以穿搭、算花費，之後再補拍。</p>
-    ${list.map(o=>`<div class="wcard">
+  const pics=list.filter(o=>o.photo).length;UI.osel=UI.osel||new Set();
+  setTimeout(renderOrderBar,0);
+  return `<div class="row obar">${pics&&!UI.omulti?`<button class="btn sm" onclick="fileQuick(${JSON.stringify(list.filter(o=>o.photo).map(o=>o.id)).replace(/"/g,"'")})">全部先建檔（${pics} 件）</button>`:''}<span class="grow"></span>
+      <button class="btn sm ${UI.omulti?'':'ghost'}" onclick="UI.omulti=!UI.omulti;UI.osel=new Set();renderWish()">${UI.omulti?'完成':'☑ 多選'}</button></div>
+    <p class="hint" style="margin:0 0 12px">${UI.omulti?'點選要一起改的，下面按「批次修改」可以改購買日期、到貨日期、購買管道、產地…':'有空就「📷 拍照建檔」；沒空的話「先建檔」，會先用商品圖放進衣櫃，可以穿搭、算花費，之後再補拍。'}</p>
+    ${list.map(o=>{const on=UI.omulti&&UI.osel.has(o.id);return `<div class="wcard ${on?'osel':''}" ${UI.omulti?`onclick="toggleOsel('${o.id}')" style="cursor:pointer"`:''}>
+      ${UI.omulti?`<i class="ochk">${on?'✓':''}</i>`:''}
       <div class="th">${o.photo?`<img src="${o.photo}" alt="">`:`<span class="oph">${esc((o.category||'?').slice(0,2))}</span>`}</div>
       <div class="bd"><b>${esc(o.name||'未命名')}</b>
         <span>${[[o.size,o.category].filter(Boolean).join('・'),o.price?'$'+money(o.price).toLocaleString():'',o.brand&&o.brand===o.shop?'':o.shop].filter(Boolean).map(esc).join('・')}</span>
-        <span class="wl">${o.arrived?esc(o.arrived)+' 到貨':'已到貨'}</span>
-        <div class="row" style="margin-top:8px;flex-wrap:nowrap;gap:6px">
+        <span class="wl">${[o.orderDate?esc(o.orderDate)+' 購買':'',o.arrived?esc(o.arrived)+' 到貨':'已到貨'].filter(Boolean).join('・')}</span>
+        ${UI.omulti?'':`<div class="row" style="margin-top:8px;flex-wrap:nowrap;gap:6px">
           <button class="btn sm" style="white-space:nowrap" onclick="fileShoot('${o.id}')">📷 拍照建檔</button>
           ${o.photo?`<button class="btn sm ghost" style="white-space:nowrap" onclick="fileQuick(['${o.id}'])">先建檔</button>`:''}
           <button class="btn sm ghost" style="padding:6px 10px" onclick="openOrder('${o.id}')" aria-label="編輯">✏️</button>
-        </div></div></div>`).join('')}`;
+        </div>`}</div></div>`}).join('')}`;
 }
 // 拍照建檔：先拍實物照，再帶著所有資料進建檔清單
 function fileShoot(id){
@@ -4041,6 +4044,7 @@ async function fileQuickDo(ids,size){
       needPhoto:true,createdAt:Date.now()});
     o.filed=true;n++;
   });
+  UI.omulti=false;UI.osel=new Set();
   await save();closeSheet();renderWish();renderCloset();
   toast(`${n} 件放進衣櫃了。衣櫃「可以補充」會列出還沒拍實物照的`);
 }
@@ -4076,11 +4080,12 @@ function orderCards(list){
 function toggleOsel(id){UI.osel.has(id)?UI.osel.delete(id):UI.osel.add(id);renderWish()}
 function renderOrderBar(){
   let bar=document.getElementById('orderBar');
-  if(!UI.omulti||UI.tab!=='wish'||UI.wishTab!=='order'){if(bar)bar.remove();return}
+  if(!UI.omulti||UI.tab!=='wish'||!['order','file'].includes(UI.wishTab)){if(bar)bar.remove();return}
+  const src=()=>UI.wishTab==='file'?arrivedOrders():orderList().filter(o=>orderHit(o,orderQ()));
   if(!bar){bar=document.createElement('div');bar.id='orderBar';bar.className='multibar';document.body.appendChild(bar)}
-  const ids=orderList().filter(o=>orderHit(o,orderQ())).map(o=>o.id),n=UI.osel.size,all=ids.length&&ids.every(i=>UI.osel.has(i));
+  const ids=src().map(o=>o.id),n=UI.osel.size,all=ids.length&&ids.every(i=>UI.osel.has(i));
   bar.innerHTML=`<span><b>${n}</b> 筆已選</span>
-    <button class="btn sm ghost" onclick="UI.osel=${all?'new Set()':'new Set(orderList().filter(o=>orderHit(o,orderQ())).map(o=>o.id))'};renderWish()">${all?'全不選':'全選'}</button>
+    <button class="btn sm ghost" onclick="UI.osel=${all?'new Set()':'new Set('+JSON.stringify(ids).replace(/"/g,"'")+')'};renderWish()">${all?'全不選':'全選'}</button>
     <button class="btn sm" ${n?'':'disabled'} onclick="openOrderBatch()">批次修改</button>`;
 }
 // 一次記多筆：每行一件，最後面的數字當金額；購買管道、進度、預計到貨一起套用
@@ -4293,13 +4298,18 @@ async function shotSave(){
 let OBT={};
 function openOrderBatch(){
   const ids=[...UI.osel].filter(id=>S.orders.some(o=>o.id===id));if(!ids.length)return;
-  OBT={ids,stage:'',eta:'',series:'',brand:'',shop:'',origin:'',category:'',size:''};
+  OBT={ids,stage:'',eta:'',series:'',brand:'',shop:'',origin:'',category:'',size:'',orderDate:'',arrived:''};
   const arrived=ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o.kind!=='doll'&&o.stage==='已到貨');
+  const file=UI.wishTab==='file';
   openSheet(`<h3>批次修改 ${ids.length} 筆</h3>
     <p class="hint" style="margin:-6px 0 12px">只會改你有動到的欄位，沒填的保持原樣。</p>
-    <label class="f"><span>進度</span><div class="swap" id="obt_st" style="margin:0;flex-wrap:wrap">${ORDER_STAGES.map(st=>`<button type="button" data-k="${st}" onclick="OBT.stage=OBT.stage==='${st}'?'':'${st}';document.querySelectorAll('#obt_st button').forEach(b=>b.classList.toggle('on',b.dataset.k===OBT.stage))">${st}</button>`).join('')}</div></label>
+    <div class="split">
+      <label class="f"><span>購買日期</span><input type="date" max="${today()}" onchange="OBT.orderDate=this.value"></label>
+      ${file?`<label class="f"><span>到貨日期</span><input type="date" max="${today()}" onchange="OBT.arrived=this.value"></label>`:'<span></span>'}
+    </div>
+    ${file?'':`<label class="f"><span>進度</span><div class="swap" id="obt_st" style="margin:0;flex-wrap:wrap">${ORDER_STAGES.map(st=>`<button type="button" data-k="${st}" onclick="OBT.stage=OBT.stage==='${st}'?'':'${st}';document.querySelectorAll('#obt_st button').forEach(b=>b.classList.toggle('on',b.dataset.k===OBT.stage))">${st}</button>`).join('')}</div></label>
     <label class="f"><span>預計到貨</span><div class="parts" style="margin:0 0 6px">${[1,2,3,4,6].map(m=>`<button type="button" onclick="OBT.eta=addMonths(${m});document.getElementById('obt_eta').value=OBT.eta">${m} 個月</button>`).join('')}</div>
-      <input type="date" id="obt_eta" onchange="OBT.eta=this.value"></label>
+      <input type="date" id="obt_eta" onchange="OBT.eta=this.value"></label>`}
     <div class="split">
       <label class="f"><span>系列（選填）</span><input type="text" list="seriesDL4" maxlength="30" oninput="OBT.series=this.value">${seriesDL('seriesDL4')}</label>
       <label class="f"><span>品牌</span><input type="text" list="brandDL4" oninput="OBT.brand=this.value">${brandDL('brandDL4')}</label>
@@ -4311,14 +4321,16 @@ function openOrderBatch(){
     <label class="f"><span>尺寸</span><div class="parts" id="obt_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${OBT.size===z?'on':''}" onclick="OBT.size=OBT.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#obt_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OBT.size))">${esc(z)}</button>`).join('')}</div></label>
     <label class="f"><span>類型</span><select onchange="OBT.category=this.value"><option value="">不改</option>${allCats().map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>
     <button class="btn wide" onclick="applyOrderBatch()">套用到 ${ids.length} 筆</button>
-    ${arrived.length?`<button class="btn quiet wide" style="margin-top:8px" onclick="batchOrderIntake()">已到貨的 ${arrived.length} 筆拿去建檔</button>`:''}
+    ${file?(arrived.some(o=>o.photo)?`<button class="btn quiet wide" style="margin-top:8px" onclick="closeSheet();fileQuick(OBT.ids)">先建檔這 ${arrived.filter(o=>o.photo).length} 件（用商品圖）</button>`:'')
+      :arrived.length?`<button class="btn quiet wide" style="margin-top:8px" onclick="batchOrderIntake()">已到貨的 ${arrived.length} 筆拿去建檔</button>`:''}
     <button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="batchOrderDel()">刪除這 ${ids.length} 筆</button>`);
 }
 async function applyOrderBatch(){
   const {ids}=OBT;let n=0;
   ids.forEach(id=>{const o=S.orders.find(x=>x.id===id);if(!o)return;
     if(OBT.stage)setStage(o,OBT.stage);if(OBT.eta)o.eta=OBT.eta;if(OBT.shop.trim())o.shop=OBT.shop.trim();if(OBT.series.trim()&&o.kind!=='doll')o.series=OBT.series.trim();if(OBT.brand.trim()&&o.kind!=='doll')o.brand=OBT.brand.trim();if(OBT.origin.trim())o.origin=OBT.origin.trim();
-    if(OBT.category&&o.kind!=='doll')o.category=OBT.category;if(OBT.size)o.size=OBT.size;n++});
+    if(OBT.category&&o.kind!=='doll')o.category=OBT.category;if(OBT.size)o.size=OBT.size;
+    if(OBT.orderDate)o.orderDate=OBT.orderDate;if(OBT.arrived&&o.stage==='已到貨')o.arrived=OBT.arrived;n++});
   UI.osel=new Set();await save();closeSheet();renderWish();toast(`已更新 ${n} 筆`);
 }
 async function batchOrderDel(){
@@ -8457,7 +8469,7 @@ const HELP=[
     ['想到什麼就寫給娃娃：今天一起去了哪裡、想對他說的話，都可以放進他的星星罐。','打開的日子可以選到家紀念日、你幫他加的任何一個紀念日（生日、角色生日、第一次見面…），或指定日期；也可以不用等，現在就放著看。','到了那天，首頁和通知會提醒你「星星罐有星星可以打開了」，點一下星星就會打開。','還沒到日子的可以偷看，寫過的都可以修改、刪除。','娃娃櫃上方的「⭐ 星星罐」可以看所有娃娃的罐子；收進封存櫃或說再見時，罐子裡的話會再出現一次。']],
   // ── 購物
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','開始前先選「要買給哪個尺寸」（會記住上次選的），只跟同尺寸的娃衣比；別的尺寸有很像的會另外列出來，適合的娃娃也只推薦這個尺寸的。','「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。','決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的放進「待建檔」；名稱、價格、店家、商品圖都會帶過去。','到貨的娃衣（購買中改成「已到貨」、截圖匯入時就是已到貨的）會移到「待建檔」：有空就「📷 拍照建檔」；沒空先按「先建檔」，會用商品圖直接放進衣櫃，可以穿搭、算花費，衣櫃「可以補充」會列出還沒拍實物照的，之後在單品頁按「📷 拍實物照」補拍。','預購、運送中的娃衣記在「購買中」，可以標尺寸、系列和品牌；同一團買很多件，用「一次記多筆」一行寫一件。','購買中會把快到家的排在最上面：已到貨、運送中、製作中、已付款、開團中，同一個進度再照預計到貨日排。東西多的時候，用上面的搜尋框找名稱、系列、品牌或購買管道。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、系列、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','開始前先選「要買給哪個尺寸」（會記住上次選的），只跟同尺寸的娃衣比；別的尺寸有很像的會另外列出來，適合的娃娃也只推薦這個尺寸的。','「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。','決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的放進「待建檔」；名稱、價格、店家、商品圖都會帶過去。','到貨的娃衣（購買中改成「已到貨」、截圖匯入時就是已到貨的）會移到「待建檔」：有空就「📷 拍照建檔」；沒空先按「先建檔」，會用商品圖直接放進衣櫃，可以穿搭、算花費，衣櫃「可以補充」會列出還沒拍實物照的，之後在單品頁按「📷 拍實物照」補拍。右上「☑ 多選」可以一次改購買日期、到貨日期、購買管道、產地、品牌、尺寸、類型，或一起先建檔。','預購、運送中的娃衣記在「購買中」，可以標尺寸、系列和品牌；同一團買很多件，用「一次記多筆」一行寫一件。','購買中會把快到家的排在最上面：已到貨、運送中、製作中、已付款、開團中，同一個進度再照預計到貨日排。東西多的時候，用上面的搜尋框找名稱、系列、品牌或購買管道。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、系列、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 會員
   ['👑','會員與免費試用',[['⚙️','設定 → 會員與 AI'],['🎁','免費試用 3 天'],['👑','右上「會員」'],['🔄','恢復購買']],
     ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「👑 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。','AI 功能每個月 1 號會給一次額度，免費版也有；用完可以用點數。右上角的 ✦ 點數（會員在「我的會員」最下面）可以看這個月還剩幾次、儲值點數、輸入兌換碼。']],
