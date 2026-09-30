@@ -2768,7 +2768,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-60';
+const APP_VER='2026.10.01-61';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4190,7 +4190,7 @@ async function batchOrderIntake(){
   const os=OBT.ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&o.kind!=='doll'&&o.stage==='已到貨');
   const ok=os.filter(o=>o.photo),no=os.length-ok.length;
   ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken})});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken,fromShop:true})});
   UI.osel=new Set();UI.omulti=false;await save();closeSheet();
   if(ok.length){go('intake');toast(`${ok.length} 筆加入建檔${no?`，另外 ${no} 筆沒有照片，要拍照後再建檔`:''}`)}
   else{renderWish();toast('這幾筆都還沒有照片，按「拿去建檔」會請你拍一張')}
@@ -4319,7 +4319,7 @@ function orderToIntake(id){
   }
   o.filed=true;save();
   UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken,fromShop:true});
   go('intake');toast('已加入建檔，選好尺寸、做成貼圖就完成了');
 }
 async function setWish(id,st){const w=S.wish.find(x=>x.id===id);w.status=st;w.decidedAt=st==='wait'?null:Date.now();await save();renderWish()}
@@ -4858,7 +4858,7 @@ function missingInfo(i){
 // 沒填名稱：用「主色＋類型」自動取名，重複的加編號
 function autoName(colors,cat){
   const c=(colors||[]).find(x=>x!=='花色'),base=((c?(famLabel[colorFam(c)]||c):'')+(cat||'娃衣'))||'娃衣';
-  let nm=base,k=2;const used=new Set([...S.items,...S.memory].map(x=>x.name));
+  let nm=base,k=2;const used=new Set([...S.items,...S.memory,...UI.queue].map(x=>x.name));
   while(used.has(nm))nm=base+' '+(k++);
   return nm;
 }
@@ -5657,7 +5657,8 @@ async function commitQueue(){
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   for(const q of UI.queue)await setCover(q);
   // 沒填名稱的：用「主色＋類型」自動取名，標記起來，衣櫃「待補資料」找得到
-  for(const q of UI.queue)if(!String(q.name||'').trim()){q.name=autoName(q.colors,q.isSet?'套裝':q.category);q.autoName=true}
+  // 購買中帶過來的名稱就是使用者取的，不算「可以補充」的名稱
+  for(const q of UI.queue)if(!String(q.name||'').trim()){q.name=autoName(q.colors,q.isSet?'套裝':q.category);if(!q.fromShop)q.autoName=true}
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
