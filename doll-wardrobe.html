@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=43"></script>
+<script src="i18n/i18n.js?v=44"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -352,7 +352,11 @@ dl.meta dd{margin:0}
 .partrow{display:flex;gap:8px;overflow-x:auto;margin-top:8px;padding-bottom:2px;scrollbar-width:none}
 .partrow::-webkit-scrollbar{display:none}
 .pt{flex:0 0 auto;text-align:center;width:54px}
-.pt{cursor:pointer}
+.pt{cursor:pointer;position:relative}
+.pt .ptx{position:absolute;top:-4px;right:-4px;width:20px;height:20px;border-radius:50%;border:none;background:var(--ink-2);color:var(--bg);font-size:10px;line-height:20px;padding:0;z-index:1}
+.pt.ptadd{border:none;background:none;padding:0;font:inherit}
+.pt.ptadd .ptimg{font-size:22px;color:var(--berry-deep)}
+.partrow{padding-top:5px}
 .pt .ptimg{width:54px;height:54px;border-radius:12px;background:var(--swatch);display:grid;place-items:center;font-size:11px;color:var(--muted);overflow:hidden;border:1.5px dashed var(--line-2)}
 .pt.ok .ptimg{border-style:solid;border-color:var(--sage)}
 .pt .ptimg img{width:100%;height:100%;object-fit:contain;padding:3px}
@@ -2784,7 +2788,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-67';
+const APP_VER='2026.10.01-68';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5284,12 +5288,87 @@ async function saveCare(){
 async function careDone(id,cid){const i=S.items.find(x=>x.id===id),c=(i.care||[]).find(x=>x.id===cid);if(!c)return;c.done=true;c.doneDate=today();await save();openItem(id);renderCloset();toast('處理好了 ✓')}
 async function careDel(id,cid){const i=S.items.find(x=>x.id===id);i.care=(i.care||[]).filter(x=>x.id!==cid);await save();openItem(id);renderCloset()}
 // 套裝頁：列出這套綁了哪幾件；單品頁：列出同一套的其他件。點了打開那一件
+/* ---- 套裝的單品：建檔後也能調整 ----
+   移出：留在衣櫃變單件；刪除：AI 多拆出來的；加進：衣櫃裡的單件加進這套。
+   價格：套裝總價記在套裝那筆（單品複製一樣的數字給畫面看，統計只認套裝那筆）。
+   單件原本有自己的價格，加進來時加到總價、記在 ownPrice；移出時再扣回來。 */
+const setParent=sid=>S.items.find(x=>x.setId===sid&&x.category==='套裝');
+const setPieces=sid=>S.items.filter(x=>x.setId===sid&&x.category!=='套裝');
+function setPriceAll(sid,v){S.items.filter(x=>x.setId===sid).forEach(x=>x.price=v>0?String(v):'')}
+function openSetEdit(pid){
+  const par=S.items.find(x=>x.id===pid);if(!par||!par.setId)return;
+  const list=setPieces(par.setId);
+  openSheet(`<div class="sethead"><button onclick="openItem('${pid}')">‹ ${esc(nameOf(par))}</button></div><h3>編輯這套的單品</h3>
+    <p class="hint" style="margin:-6px 0 12px">「移出」：那件留在衣櫃變成單件。「刪除」：AI 多拆出來、其實沒有的。</p>
+    ${list.length?`<div class="blist">${list.map(x=>`<div class="rowitem"><div class="th">${img(x)?`<img src="${img(x)}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(nameOf(x))}</b><span>${esc(x.category)}</span></div>
+      <button class="btn sm ghost" onclick="setOut('${x.id}','${pid}')">移出</button><button class="btn sm ghost" style="color:var(--muted)" onclick="setDel('${x.id}','${pid}')">刪除</button></div>`).join('')}</div>`
+      :`<p class="hint">這套還沒有單品。</p>`}
+    <button class="btn wide" style="margin-top:14px" onclick="setAddOpen('${pid}')">＋ 從衣櫃加進這套</button>`);
+}
+async function setOut(id,back){
+  const i=S.items.find(x=>x.id===id);if(!i||!i.setId)return;
+  const sid=i.setId,own=money(i.ownPrice);
+  i.setId=null;i.price=own?String(own):'';delete i.ownPrice;
+  if(own){const par=setParent(sid);setPriceAll(sid,Math.max(0,money(par&&par.price)-own))}
+  await save();renderCloset();
+  toast(`「${nameOf(i)}」移出了，變成單件${own?'':'（錢算在套裝裡，這件的價格清空）'}`);
+  back?openSetEdit(back):openItem(id);
+}
+async function setDel(id,back){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  if(!confirm(`刪除「${nameOf(i)}」？穿著紀錄中的關聯也會移除。`))return;
+  const sid=i.setId,own=money(i.ownPrice);
+  if(own&&sid){const par=setParent(sid);setPriceAll(sid,Math.max(0,money(par&&par.price)-own))}
+  S.items=S.items.filter(x=>x.id!==id);
+  S.wears.forEach(w=>w.itemIds=w.itemIds.filter(x=>x!==id));
+  S.looks.forEach(l=>{l.itemIds=l.itemIds.filter(x=>x!==id);l.layout=(l.layout||[]).filter(p=>p.itemId!==id)});
+  await save();renderCloset();toast('已刪除');openSetEdit(back);
+}
+// 衣櫃裡的單件（沒在任何套裝裡的），同尺寸的排前面
+function setAddOpen(pid){
+  const par=S.items.find(x=>x.id===pid);if(!par)return;
+  const z=par.sizes||[],same=x=>(x.sizes||[]).some(s=>z.includes(s))?1:0;
+  const cand=S.items.filter(x=>!x.setId&&x.category!=='套裝').sort((a,b)=>same(b)-same(a)||(b.createdAt||0)-(a.createdAt||0));
+  UI.setAdd=new Set();
+  openSheet(`<div class="sethead"><button onclick="openSetEdit('${pid}')">‹ 編輯這套</button></div><h3>加進「${esc(nameOf(par))}」</h3>
+    <p class="hint" style="margin:-6px 0 12px">挑衣櫃裡屬於這套的娃衣，例如後來另外買的同系列配件。有自己價格的，會加進這套的總價。</p>
+    ${cand.length?`<input type="text" placeholder="搜尋名稱、類型" oninput="setAddFilter(this.value)" autocomplete="off" style="margin-bottom:6px">
+      <div class="blist" id="setAddList">${cand.map(x=>`<label class="rowitem" data-n="${esc((nameOf(x)+' '+x.category).toLowerCase())}" style="cursor:pointer">
+        <input type="checkbox" onchange="this.checked?UI.setAdd.add('${x.id}'):UI.setAdd.delete('${x.id}');setAddLabel()">
+        <div class="th">${img(x)?`<img src="${img(x)}" alt="">`:''}</div>
+        <div class="tx"><b>${esc(nameOf(x))}</b><span>${esc([x.category,(x.sizes||[]).join('、'),money(x.price)?'$'+money(x.price):''].filter(Boolean).join('・'))}</span></div></label>`).join('')}</div>
+      <button class="btn wide" id="setAddBtn" style="margin-top:12px" disabled onclick="setJoin([...UI.setAdd],'${pid}')">加進這套</button>`
+      :`<div class="empty"><strong>衣櫃裡沒有可以加的單件</strong>已經在別的套裝裡的不會列出來</div>`}`);
+}
+function setAddFilter(v){v=v.trim().toLowerCase();document.querySelectorAll('#setAddList .rowitem').forEach(r=>r.style.display=!v||r.dataset.n.includes(v)?'':'none')}
+function setAddLabel(){const b=document.getElementById('setAddBtn');if(b){b.disabled=!UI.setAdd.size;b.textContent=UI.setAdd.size?`加進這套（${UI.setAdd.size} 件）`:'加進這套'}}
+async function setJoin(ids,pid,back){
+  const par=S.items.find(x=>x.id===pid);if(!par||!ids.length)return;
+  const sid=par.setId;let add=0;
+  ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i||i.setId)return;
+    const own=money(i.price);if(own){i.ownPrice=String(own);add+=own}i.setId=sid});
+  const total=money(par.price)+add;
+  if(total>0)setPriceAll(sid,total);
+  await save();renderCloset();
+  toast(`加進這套了（${ids.length} 件）${add?`，總價加上 $${add.toLocaleString()}`:''}`);
+  back?openItem(back):openSetEdit(pid);
+}
+// 單品頁：挑一個套裝加進去
+function pickSetFor(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  const sets=S.items.filter(x=>x.category==='套裝'&&x.setId).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  openSheet(`<div class="sethead"><button onclick="openItem('${id}')">‹ ${esc(nameOf(i))}</button></div><h3>加進哪一套？</h3>
+    ${money(i.price)?`<p class="hint" style="margin:-6px 0 12px">這件的價格 $${money(i.price).toLocaleString()} 會加進那套的總價。</p>`:''}
+    <div class="blist">${sets.map(p=>`<div class="rowitem" onclick="setJoin(['${id}'],'${p.id}','${id}')"><div class="th">${img(p)?`<img src="${img(p)}" alt="">`:''}</div>
+      <div class="tx"><b>${esc(nameOf(p))}</b><span>${setPieces(p.setId).length} 件${(p.sizes||[]).length?'・'+esc(p.sizes.join('、')):''}</span></div><div class="rt">›</div></div>`).join('')}</div>`);
+}
 function setPiecesBlock(i){
   if(!i.setId)return '';
   const isSet=i.category==='套裝',nm=setName(i.setId)||i.name;
   const list=S.items.filter(x=>x.setId===i.setId&&x.category!=='套裝'&&x.id!==i.id);
-  if(!list.length)return isSet?`<p class="hint" style="margin:0 0 12px">這套還沒有拆出單品。</p>`:'';
-  return `<p class="mh">${isSet?`這套有 ${list.length} 件`:`同一套還有 ${list.length} 件`}</p>
+  if(!list.length)return isSet?`<div class="row" style="align-items:center;margin:0 0 12px"><p class="hint grow" style="margin:0">這套還沒有拆出單品。</p><button class="btn sm ghost" onclick="openSetEdit('${i.id}')">＋ 加進這套</button></div>`:'';
+  return `<p class="mh" style="display:flex;align-items:center">${isSet?`這套有 ${list.length} 件`:`同一套還有 ${list.length} 件`}${isSet?`<button class="btn sm ghost" style="margin-left:auto;padding:4px 10px" onclick="openSetEdit('${i.id}')">✏️ 編輯</button>`:''}</p>
     <div class="hscroll setps">${list.map(x=>{const c=wearCount(x.id);return `<button class="piece" onclick="openItem('${x.id}')"><div class="sw">${img(x)?`<img src="${img(x)}" alt="">`:''}<span class="tag">${c?`穿過 ${c} 次`:'未穿過'}</span>${isPressed(x)?'<span class="keep press">📦</span>':''}</div><div class="nm">${esc(pieceShort(x,nm))}</div></button>`}).join('')}</div>`;
 }
 function openItem(id){
@@ -5319,7 +5398,8 @@ function openItem(id){
     ${careBlock(i)}
     <dl class="meta">
       <dt>類型</dt><dd>${esc(i.category)}</dd>
-      ${i.setId&&i.category!=='套裝'?`<dt>所屬套裝</dt><dd>${(()=>{const par=S.items.find(x=>x.setId===i.setId&&x.category==='套裝');return par?`<a href="javascript:void 0" onclick="openItem('${par.id}')">${esc(setName(i.setId)||par.name)} ›</a>`:esc(setName(i.setId))})()}</dd>`:''}
+      ${i.setId&&i.category!=='套裝'?`<dt>所屬套裝</dt><dd>${(()=>{const par=S.items.find(x=>x.setId===i.setId&&x.category==='套裝');return par?`<a href="javascript:void 0" onclick="openItem('${par.id}')">${esc(setName(i.setId)||par.name)} ›</a>`:esc(setName(i.setId))})()}<button class="btn sm ghost" style="margin-left:6px;padding:4px 10px" onclick="setOut('${id}')">移出這套</button></dd>`
+        :i.category!=='套裝'&&S.items.some(x=>x.category==='套裝'&&x.setId)?`<dt>所屬套裝</dt><dd>—<button class="btn sm ghost" style="margin-left:6px;padding:4px 10px" onclick="pickSetFor('${id}')">加進套裝…</button></dd>`:''}
       <dt>穿著次數</dt><dd>${c} 次</dd>
       <dt>最近穿著</dt><dd>${l?`${l}（${days(l)} 天前）`:'還沒穿過'}</dd>
       ${top.length?`<dt>最常搭配</dt><dd>${top.map(([k])=>esc(nameOf(S.items.find(x=>x.id===k))||'')).join('、')}</dd>`:''}
@@ -5517,15 +5597,16 @@ function renderQueue(){
         ${(q.sizes||[]).length?'':`<div class="hint needtip">請選一個尺寸，沒選不能建檔</div>`}
         <button type="button" class="btn sm ghost qcolbtn" style="margin-top:6px" onclick="qColorOpen(${n})">${(q.colors||[]).length?q.colors.map(c=>`<i style="background:${(SWATCHES.find(x=>swFam(x[0])===swFam(c))||[])[1]||'#ccc'}"></i>`).join('')+' '+esc(q.colors.map(c=>c==='花色'?c:famLabel[colorFam(c)]||c).join('、')):'🎨 顏色'}</button>
         ${q.isSet?`
-          <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
-          ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
+          <div class="partrow"><button type="button" class="pt ptadd" onclick="addPartOpen(${n})"><div class="ptimg">＋</div><span>加一件</span></button>${q.parts.map((pt,k)=>`
             <div class="pt ${pt.img?'ok':''}" onclick="editPart(${n},${k})" role="button" title="點一下手動修">
+              <button type="button" class="ptx" onclick="event.stopPropagation();dropPart(${n},${k})" aria-label="拿掉">✕</button>
               <div class="ptimg">${pt.img?`<img src="${pt.img}" alt="">`:(pt.box?'框':'？')}</div>
-              <span>${esc(pt.name)}</span>
+              <span onclick="event.stopPropagation();renamePart(${n},${k})" title="改名稱">${esc(pt.name)}<i style="font-style:normal"> ✎</i></span>
             </div>`).join('')}</div>
+          ${q.parts.length?`
           <button class="btn sm quiet" style="margin-top:7px" onclick="makePartStickers(${n})" ${q.working?'disabled':''}>
             ${q.working?'<span class="spin"></span>處理中':'逐件做貼圖'}</button>`:''}
-          ${q.parts.length?`<div class="hint" style="margin-top:5px">點上面任一件可以手動去背或修補</div>`:`<div class="hint" style="margin-top:5px">點上面選這套有哪幾件（不用 AI 也可以），再一件一件點選去背</div>`}
+          ${q.parts.length?`<div class="hint" style="margin-top:5px">點一件可以手動去背或修補；✕ 拿掉，點名字可以改名</div>`:`<div class="hint" style="margin-top:5px">按「＋ 加一件」選這套有哪幾件（不用 AI 也可以），再一件一件點選去背</div>`}
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
@@ -5604,11 +5685,20 @@ function toggleQSize(n,z){
   q.sizes=q.sizes.includes(z)?[]:[z];
   UI.lastSizes=q.sizes.slice();renderQueue();
 }
-function togglePart(n,p){
-  const q=UI.queue[n];
-  q.parts=q.parts.some(x=>x.name===p)?q.parts.filter(x=>x.name!==p):[...q.parts,{name:p,box:null,img:null,crop:null}];
-  renderQueue();
+// 套裝的單品：name 是顯示的名字（可以改），cat 是類型（建檔時當類別用）
+const partCat=pt=>pt.cat||(allCats().includes(pt.name)?pt.name:'其他');
+function dropPart(n,k){const q=UI.queue[n];if(!q||q.working)return;const pt=q.parts[k];q.parts.splice(k,1);renderQueue();toast(`拿掉「${pt.name}」了`)}
+function renamePart(n,k){
+  const q=UI.queue[n],pt=q&&q.parts[k];if(!pt)return;
+  const v=prompt('這件叫什麼？（例如 蝴蝶結髮夾）',pt.name);if(v==null||!v.trim())return;
+  if(!pt.cat)pt.cat=partCat(pt);pt.name=v.trim().slice(0,20);renderQueue();
 }
+function addPartOpen(n){
+  const cats=[...new Set([...COMMON_PARTS,...allCats().filter(c=>c!=='套裝')])];
+  openSheet(`<h3>加一件</h3><p class="hint" style="margin:-6px 0 12px">這套還有哪一件？同一種可以加好幾件（例如兩個髮飾）。</p>
+    <div class="parts">${cats.map(c=>`<button type="button" data-k="${esc(c)}" onclick="addPart(${n},this.dataset.k)">${esc(c)}</button>`).join('')}</div>`);
+}
+function addPart(n,c){const q=UI.queue[n];if(!q)return;q.parts.push({name:c,cat:c,box:null,img:null,crop:null});closeSheet();renderQueue();toast(`加了「${c}」，點它可以去背`)}
 // 逐件裁切 + 各自去背，每件單品拿到自己的貼圖
 async function makePartStickers(n){
   const q=UI.queue[n];
@@ -5663,7 +5753,7 @@ async function kindPick(n,k){
   const q=UI.queue[n];if(!q)return;
   closeSheet();q.kindOk=true;
   if(k==='one')return cutQ(n);
-  if(k==='hand'){q.category='套裝';q.isSet=true;renderQueue();toast('點「帽子、上衣…」選出這套有哪幾件');return}
+  if(k==='hand'){q.category='套裝';q.isSet=true;renderQueue();toast('按「＋ 加一件」選出這套有哪幾件');return}
   if(await analyze(n)===false)return;
   toast(q.isSet?'是套裝，按「逐件做貼圖」每件各自做':'AI 看起來是單件，可以直接做成貼圖');
 }
@@ -5717,7 +5807,7 @@ function qPhoto(n){
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
   inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
     q.photo=await compress(f);q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.box=null;q.fromOrder=false;
-    if(q.parts)q.parts=q.parts.map(x=>({name:x.name,box:null}));
+    if(q.parts)q.parts=q.parts.map(x=>({name:x.name,cat:x.cat,box:null}));
     renderQueue();toast('照片換好了，再按「做成貼圖」');};
   inp.click();
 }
@@ -5758,7 +5848,7 @@ async function commitQueue(){
         seen[pt.name]=(seen[pt.name]||0)+1;
         const sfx=seen[pt.name]>1?' '+String.fromCharCode(64+seen[pt.name]):'';
         S.items.push(Object.assign({},base,{
-          id:uid('i'),setId:sid,name:`${nm}－${pt.name}${sfx}`,category:pt.name,
+          id:uid('i'),setId:sid,name:`${nm}－${pt.name}${sfx}`,category:partCat(pt),
           photo:pt.crop||q.photo, cutout:pt.img||null, cutSrc:pt.cutSrc||null, cutMask:pt.cutMask||null
         }));n++;
       }
@@ -8244,11 +8334,11 @@ function mcap(el){
 const HELP=[
   // ── 衣櫃
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
+    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。建檔清單裡每一件都可以按 ✕ 拿掉、點名字改名，「＋ 加一件」可以加任何類型，同一種也能加好幾件。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['🤖','AI 自動去背'],['👆','點選去背'],['🖌️','筆刷修補']],
     ['「AI 自動去背」免費：自動找出衣服剪下來，剪的是原照片，蕾絲、花紋都不會被改掉。先按「AI 分析」再做，套裝每一件會找得更準。','「點選去背」也免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','想重拍？到單品頁按「📷 換照片」，拍好會接著做新貼圖；名稱、價格、穿搭紀錄都會留著。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
-    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期，或名稱是自動取的娃衣，有空再補就好。','套裝頁會列出這套有哪幾件，點一下就打開那件；單品頁的「所屬套裝」可以點回套裝。','類別篩選的「配件」包含圍巾、領結、眼鏡、包包、道具和其他。']],
+    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期，或名稱是自動取的娃衣，有空再補就好。','套裝頁會列出這套有哪幾件，點一下就打開那件；單品頁的「所屬套裝」可以點回套裝。','套裝頁「這套有 N 件」旁邊按「✏️ 編輯」：AI 多拆的可以「刪除」，不屬於這套的可以「移出」變單件，後來另外買的同系列可以「＋ 從衣櫃加進這套」（有價格的會加進總價）。單品頁也有「加進套裝…」「移出這套」。','類別篩選的「配件」包含圍巾、領結、眼鏡、包包、道具和其他。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['到貨 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放；標記「紀念品」的不會進去。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','出售貼文可以選要不要寫品牌、系列、作品、購買管道、產地，還有無菸、無寵物環境。','賣掉後移到回憶箱，會記下賣了多少錢，洞察頁會算「賣出回血」。回血只算娃衣，娃娃離開不算在裡面。']],
   // ── 穿搭
