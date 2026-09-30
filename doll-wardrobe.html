@@ -2424,7 +2424,7 @@ function workCard(){
   if(st.annHide&&st.annHide[k])return '';
   const todo=routines().filter(r=>r.ask!==false&&isWorkDay(today(),r)&&!dollWears(d).some(w=>w.date===today()&&isWork(w)&&rOf(w).id===r.id));
   if(!todo.length)return '';
-  if(dollWears(d).some(w=>w.date===today()&&!isWork(w)))return '';
+  // 在家、出門的穿搭跟陪伴日常是分開的：今天記過在家也照樣問
   const nm=esc(d.name),one=todo.length===1?todo[0]:null;
   return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="今天沒有">×</button>
     <b>${one?`${workIcon(one)} 今天 ${nm} 也一起${esc(workLbl(one))}嗎？`:`💼 今天 ${nm} 也一起去嗎？`}</b>
@@ -2701,7 +2701,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-43';
+const APP_VER='2026.10.01-44';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
