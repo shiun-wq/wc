@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=35"></script>
+<script src="i18n/i18n.js?v=36"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2767,7 +2767,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-57';
+const APP_VER='2026.10.01-58';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5128,6 +5128,15 @@ async function saveCare(){
 }
 async function careDone(id,cid){const i=S.items.find(x=>x.id===id),c=(i.care||[]).find(x=>x.id===cid);if(!c)return;c.done=true;c.doneDate=today();await save();openItem(id);renderCloset();toast('處理好了 ✓')}
 async function careDel(id,cid){const i=S.items.find(x=>x.id===id);i.care=(i.care||[]).filter(x=>x.id!==cid);await save();openItem(id);renderCloset()}
+// 套裝頁：列出這套綁了哪幾件；單品頁：列出同一套的其他件。點了打開那一件
+function setPiecesBlock(i){
+  if(!i.setId)return '';
+  const isSet=i.category==='套裝',nm=setName(i.setId)||i.name;
+  const list=S.items.filter(x=>x.setId===i.setId&&x.category!=='套裝'&&x.id!==i.id);
+  if(!list.length)return isSet?`<p class="hint" style="margin:0 0 12px">這套還沒有拆出單品。</p>`:'';
+  return `<p class="mh">${isSet?`這套有 ${list.length} 件`:`同一套還有 ${list.length} 件`}</p>
+    <div class="hscroll setps">${list.map(x=>{const c=wearCount(x.id);return `<button class="piece" onclick="openItem('${x.id}')"><div class="sw">${img(x)?`<img src="${img(x)}" alt="">`:''}<span class="tag">${c?`穿過 ${c} 次`:'未穿過'}</span>${isPressed(x)?'<span class="keep press">📦</span>':''}</div><div class="nm">${esc(pieceShort(x,nm))}</div></button>`}).join('')}</div>`;
+}
 function openItem(id){
   const i=S.items.find(x=>x.id===id);if(!i)return;
   const c=wearCount(id),l=lastWear(id);
@@ -5150,13 +5159,14 @@ function openItem(id){
       ${(i.colors||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
       ${(i.motifs||[]).map(m=>`<span class="tg">${esc(m)}</span>`).join('')}
     </div>
+    ${setPiecesBlock(i)}
     ${careBlock(i)}
     <dl class="meta">
       <dt>類型</dt><dd>${esc(i.category)}</dd>
-      ${i.setId?`<dt>所屬套裝</dt><dd>${esc(setName(i.setId))}</dd>`:''}
+      ${i.setId&&i.category!=='套裝'?`<dt>所屬套裝</dt><dd>${(()=>{const par=S.items.find(x=>x.setId===i.setId&&x.category==='套裝');return par?`<a href="javascript:void 0" onclick="openItem('${par.id}')">${esc(setName(i.setId)||par.name)} ›</a>`:esc(setName(i.setId))})()}</dd>`:''}
       <dt>穿著次數</dt><dd>${c} 次</dd>
       <dt>最近穿著</dt><dd>${l?`${l}（${days(l)} 天前）`:'還沒穿過'}</dd>
-      ${top.length?`<dt>最常搭配</dt><dd>${top.map(([k])=>esc((S.items.find(x=>x.id===k)||{}).name||'')).join('、')}</dd>`:''}
+      ${top.length?`<dt>最常搭配</dt><dd>${top.map(([k])=>esc(nameOf(S.items.find(x=>x.id===k))||'')).join('、')}</dd>`:''}
       ${i.series?`<dt>系列</dt><dd>${esc(i.series)}</dd>`:''}
       ${i.brand?`<dt>品牌</dt><dd>${esc(i.brand)}</dd>`:''}
       ${i.shop?`<dt>購買管道</dt><dd>${esc(i.shop)}</dd>`:''}
