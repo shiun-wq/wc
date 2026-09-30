@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=42"></script>
+<script src="i18n/i18n.js?v=43"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1398,7 +1398,7 @@ const visibleFilters=()=>['全部',...filterNames().filter(f=>!(S.settings.hidde
 const fmap=()=>Object.assign(Object.fromEntries(FGROUPS),Object.fromEntries(customCats().map(c=>[c,[c]])));
 const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','圍巾'];
 // 娃衣尺寸：預設四種，使用者可以在設定裡增減
-const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
+const DEFAULT_SIZES=['10cm','20cm']; // 最多人玩的兩種，其他尺寸使用者自己在設定新增
 const sizes=()=>S.settings.sizes;
 
 let S={items:[],sets:[],looks:[],wears:[],dolls:[],wish:[],memory:[],orders:[],settings:{}};
@@ -2784,7 +2784,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-66';
+const APP_VER='2026.10.01-67';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4406,12 +4406,21 @@ function queueFromTags(photo,t,price){
     colors:t.colors,styles:t.styles,motifs:t.motifs,season:t.season,holiday:t.holiday||'',material:t.material,price:price||'',analyzing:false});
 }
 // 再檢查：自己加的、截圖匯入的還沒讓 AI 看過照片，先分析一次再比對
-async function recheckWish(id){
+async function recheckWish(id,go){
   const w=S.wish.find(x=>x.id===id);if(!w||!w.photo)return;
   if(!aiReady()){toast(aiMissing());return}
+  // 這筆還沒填尺寸、又有好幾種尺寸：先讓使用者選，再開始比
+  if(!go&&!w.size&&sizes().length>1){
+    openBuyCheck();BUY.wishId=id;
+    const bi=document.getElementById('buyIn');
+    if(bi)bi.innerHTML=`${buySizeRow()}<div class="buyhead"><div class="th"><img src="${w.photo}" alt=""></div><div class="grow"><b>${esc(w.t.name||'這件娃衣')}</b></div></div>
+      <button class="btn wide" style="margin-top:14px" onclick="recheckWish('${id}',1)">開始檢查</button>`;
+    return;
+  }
   if(!needQuota('buy'))return;
+  const z=w.size||(go?BUY.size:'')||buyDefSize();
   openBuyCheck();
-  BUY.photo=w.photo;BUY.wishId=id;
+  BUY.photo=w.photo;BUY.wishId=id;BUY.size=z;if(!w.size)w.size=z;
   BUY.busy=true;
   try{
     if(!w.summary||!w.t||!(w.t.styles||[]).length){
@@ -7808,19 +7817,31 @@ const colorFam=c=>{c=String(c||'');for(const [k,f] of COLOR_FAM)if(c.includes(k)
 const famLabel={'粉':'粉色','紅':'紅色','橘':'橘色','黃':'黃色','綠':'綠色','藍':'藍色','紫':'紫色','米':'米色','棕':'棕色','白':'白色','黑':'黑色','灰':'灰色'};
 const idle=i=>{const l=lastWear(i.id);return !l||days(l)>180};
 
+// 買前檢查只跟同尺寸的比：預設上次選的，沒有就用主角娃娃的尺寸
+function buyDefSize(){
+  const z=sizes();if(z.includes(S.settings.buySize))return S.settings.buySize;
+  const d=mainDoll();return d&&z.includes(d.size)?d.size:(z[0]||'');
+}
+function buySizeRow(){
+  if(sizes().length<2)return '';
+  return `<label class="f" style="margin:0 0 12px"><span>要買給哪個尺寸？</span><div class="parts" id="buySz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${BUY.size===z?'on':''}" onclick="buyPickSize(this.dataset.k)">${esc(z)}</button>`).join('')}</div></label>`;
+}
+function buyPickSize(z){BUY.size=z;S.settings.buySize=z;save();document.querySelectorAll('#buySz button').forEach(b=>b.classList.toggle('on',b.dataset.k===z))}
 function openBuyCheck(){
   if(!isMember())return memberOnly('buy');
   if(!aiReady()){toast(aiMissing());return}
-  BUY.photo=null;BUY.wishId=null;
+  BUY.photo=null;BUY.wishId=null;BUY.size=buyDefSize();
   openSheet(`<h3>買前檢查</h3>
     <p class="hint" style="margin:-6px 0 14px">貼上想買的娃衣照片或商品截圖，看看衣櫃裡有沒有類似的。本月還可以檢查 <b>${quotaLeft('buy')}</b> 次。</p>
-    <div id="buyIn"><div class="drop" onclick="document.getElementById('buyFile').click()">
+    <div id="buyIn">${buySizeRow()}<div class="drop" onclick="document.getElementById('buyFile').click()">
       <strong>選擇照片</strong><span class="hint">電腦上也可以直接按 Ctrl／⌘ + V 貼上</span>
     </div>
     <input type="file" id="buyFile" accept="image/*" hidden onchange="onBuyFile(event)">
     ${navigator.clipboard&&navigator.clipboard.read?`<button class="btn ghost wide" style="margin-top:10px" onclick="pasteBuy()">從剪貼簿貼上</button>`:''}</div>
     <div id="buyOut"></div>`);
 }
+// 同尺寸：娃衣沒填尺寸的也算（不知道就不排除）
+const sizeOK=(list,z)=>!z||!(list||[]).length||list.includes(z);
 document.addEventListener('paste',e=>{
   if(!document.getElementById('buyOut')||BUY.busy)return;
   const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));
@@ -7925,13 +7946,15 @@ function buySoldHTML(){
           ${i.memo?`<span>「${esc(i.memo)}」</span>`:''}</div></div>`}).join('')}</div>`;
 }
 async function buyCompare(){
-  const t=BUY.t;
-  const pool=S.items.filter(i=>i.category!=='套裝'||t.isSet);
+  const t=BUY.t,z=BUY.size;
+  const pool=S.items.filter(i=>(i.category!=='套裝'||t.isSet)&&sizeOK(i.sizes,z));
+  // 別的尺寸有很像的：不送 AI 看圖，只用名稱和標籤找，另外列出來
+  BUY.other=z?S.items.filter(i=>(i.category!=='套裝'||t.isSet)&&!sizeOK(i.sizes,z)).map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=10&&img(x.i)).sort((a,b)=>b.s-a.s).slice(0,3):[];
   // 選到整套時，它拆出來的單品就不用再比一次（省下位置給其他候選）
   const ranked=pool.map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=3&&img(x.i)).sort((a,b)=>b.s-a.s),cands=[],usedSet=new Set();
   for(const x of ranked){if(cands.length>=10)break;if(x.i.setId&&usedSet.has(x.i.setId))continue;if(x.i.category==='套裝'&&x.i.setId)usedSet.add(x.i.setId);cands.push(x)}
   // 以前賣掉／送走的也拿來比：很像的話提醒，避免買了又賣
-  const sold=S.memory.filter(i=>GONE_REASONS.includes(i.reason)&&(i.category!=='套裝'||t.isSet))
+  const sold=S.memory.filter(i=>GONE_REASONS.includes(i.reason)&&(i.category!=='套裝'||t.isSet)&&sizeOK(i.sizes,z))
     .map(i=>({i,s:buyScore(t,i)})).filter(x=>x.s>=3&&img(x.i)).sort((a,b)=>b.s-a.s).slice(0,3);
   let verdict=[];
   const all=[...cands,...sold];
@@ -8019,7 +8042,7 @@ function renderBuy(){
       <div class="th"><img src="${BUY.photo}" alt=""></div>
       <div class="grow"><b>${esc(t.name||'這件娃衣')}</b>
         <div class="tagline" style="margin:6px 0 0">
-          <span class="tg st">${esc(t.category)}</span>
+          ${BUY.size?`<span class="tg st">${esc(BUY.size)}</span>`:''}<span class="tg st">${esc(t.category)}</span>
           ${t.colors.map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
           ${t.styles.map(s=>`<span class="tg">${esc(s.name)}</span>`).join('')}
           ${t.motifs.map(m=>`<span class="tg">${esc(m)}</span>`).join('')}
@@ -8031,6 +8054,9 @@ function renderBuy(){
     ${group('幾乎一樣','',same)}
     ${group('同款不同色','',recolor)}
     ${group(BUY.verdict.length?'風格很像':'可能類似','',similar)}
+    ${(BUY.other||[]).length?`<h2 class="sec">其他尺寸有很像的</h2><div class="note">不是 ${esc(BUY.size)} 的，所以沒有算進上面。只用名稱和標籤找，還沒看圖確認。</div>
+      <div class="blist">${BUY.other.map(x=>`<div class="rowitem" onclick="openItem('${x.i.id}')"><div class="th"><img src="${img(x.i)}" alt=""></div>
+        <div class="tx"><b>${esc(nameOf(x.i))}</b><span>${esc((x.i.sizes||[]).join('、'))}・穿過 ${wearCount(x.i.id)} 次</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
     ${buySoldHTML()}
     ${buyOrdersHTML(t)}
     ${buyDollFit(t)}
@@ -8045,7 +8071,7 @@ function renderBuy(){
 // 還在等的娃衣（預購、運送中）也拿來比：同類型、名稱裡有同樣的顏色
 function buyOrdersHTML(t){
   const fams=new Set(t.colors.map(colorFam));
-  const hits=pendingOrders().filter(o=>o.kind!=='doll').map(o=>{
+  const hits=pendingOrders().filter(o=>o.kind!=='doll'&&(!BUY.size||!o.size||o.size===BUY.size)).map(o=>{
     let sc=0;const why=[];
     if(o.category&&o.category===t.category){sc+=2;why.push('同類型')}
     else if(o.category&&slotOf(o.category)&&slotOf(o.category)===slotOf(t.category)){sc+=1;why.push('同部位')}
@@ -8063,12 +8089,13 @@ function buyOrdersHTML(t){
 }
 // 這件適合給哪隻娃娃：跟每隻娃娃平常穿的類型、風格、顏色比對（在手機上算，不用 AI）
 function buyDollFit(t){
-  if(!liveDolls().length||t.category==='套裝'&&!t.styles.length)return '';
+  const fitDolls=liveDolls().filter(d=>!BUY.size||!d.size||d.size===BUY.size);
+  if(!fitDolls.length||t.category==='套裝'&&!t.styles.length)return '';
   const head=`<h2 class="sec">適合給哪隻娃娃 <span class="vip">會員</span></h2>`;
   if(!isMember())return head+`<div class="locked"><div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最適合：小白</b><span>常穿甜系、粉色系</span></div></div></div>
     <div class="lk-cover"><b>這件買給誰最適合？</b><span>依每隻娃娃平常穿的風格和顏色推薦</span><button class="btn" onclick="openMember()">了解會員</button></div></div>`;
   const tf=new Set(t.colors.map(colorFam)),ts=new Set(t.styles.map(x=>x.name));
-  const rows=liveDolls().map(dollProfile).map(p=>{
+  const rows=fitDolls.map(dollProfile).map(p=>{
     if(p.wears<2)return {p,score:-1,why:['穿搭紀錄還不夠，先多記幾次']};
     let score=0;const why=[];
     const sHit=p.styles.filter(([k])=>ts.has(k));
@@ -8099,7 +8126,7 @@ function buyWishForm(){
 }
 async function saveWish(){
   const v=BUY.verdict||[],n=l=>v.filter(x=>x.level===l).length;
-  const w={id:uid('x'),photo:BUY.photo,t:BUY.t,price:document.getElementById('wp').value,note:document.getElementById('wn').value.trim(),
+  const w={id:uid('x'),photo:BUY.photo,t:BUY.t,size:BUY.size||'',price:document.getElementById('wp').value,note:document.getElementById('wn').value.trim(),
     status:'wait',createdAt:Date.now(),decidedAt:null,summary:{same:n('same'),recolor:n('recolor'),similar:n('similar')}};
   S.wish.push(w);BUY.wishId=w.id;await save();
   renderBuy();toast('已放進考慮中，冷靜幾天再決定');
@@ -8110,7 +8137,7 @@ async function buyToIntake(){
   const t=BUY.t;if(!t)return;
   let w=BUY.wishId&&S.wish.find(x=>x.id===BUY.wishId);
   if(!w){const v=BUY.verdict||[],n=l=>v.filter(x=>x.level===l).length;
-    w={id:uid('x'),photo:BUY.photo,t,price:'',note:'',status:'wait',createdAt:Date.now(),decidedAt:null,summary:{same:n('same'),recolor:n('recolor'),similar:n('similar')}};
+    w={id:uid('x'),photo:BUY.photo,t,size:BUY.size||'',price:'',note:'',status:'wait',createdAt:Date.now(),decidedAt:null,summary:{same:n('same'),recolor:n('recolor'),similar:n('similar')}};
     S.wish.push(w);BUY.wishId=w.id;await save()}
   boughtWish(w.id);
 }
@@ -8250,7 +8277,7 @@ const HELP=[
     ['想到什麼就寫給娃娃：今天一起去了哪裡、想對他說的話，都可以放進他的星星罐。','打開的日子可以選到家紀念日、你幫他加的任何一個紀念日（生日、角色生日、第一次見面…），或指定日期；也可以不用等，現在就放著看。','到了那天，首頁和通知會提醒你「星星罐有星星可以打開了」，點一下星星就會打開。','還沒到日子的可以偷看，寫過的都可以修改、刪除。','娃娃櫃上方的「⭐ 星星罐」可以看所有娃娃的罐子；收進封存櫃或說再見時，罐子裡的話會再出現一次。']],
   // ── 購物
   ['🛍️','買前檢查・考慮中・購買中',[['📷','貼上想買的圖'],['🔍','比對衣櫃'],['🤔','放進考慮中'],['📦','買了就記在購買中']],
-    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。','決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的直接去建檔；名稱、價格、店家、商品圖都會帶過去。','預購、運送中的娃衣記在「購買中」，可以標尺寸、系列和品牌；同一團買很多件，用「一次記多筆」一行寫一件。','購買中會把快到家的排在最上面：已到貨、運送中、製作中、已付款、開團中，同一個進度再照預計到貨日排。東西多的時候，用上面的搜尋框找名稱、系列、品牌或購買管道。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、系列、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
+    ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','開始前先選「要買給哪個尺寸」（會記住上次選的），只跟同尺寸的娃衣比；別的尺寸有很像的會另外列出來，適合的娃娃也只推薦這個尺寸的。','「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。','決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的直接去建檔；名稱、價格、店家、商品圖都會帶過去。','預購、運送中的娃衣記在「購買中」，可以標尺寸、系列和品牌；同一團買很多件，用「一次記多筆」一行寫一件。','購買中會把快到家的排在最上面：已到貨、運送中、製作中、已付款、開團中，同一個進度再照預計到貨日排。東西多的時候，用上面的搜尋框找名稱、系列、品牌或購買管道。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、系列、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 會員
   ['👑','會員與免費試用',[['⚙️','設定 → 會員與 AI'],['🎁','免費試用 3 天'],['👑','右上「會員」'],['🔄','恢復購買']],
     ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「👑 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。','AI 功能每個月 1 號會給一次額度，免費版也有；用完可以用點數。右上角的 ✦ 點數（會員在「我的會員」最下面）可以看這個月還剩幾次、儲值點數、輸入兌換碼。']],
