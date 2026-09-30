@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=23"></script>
+<script src="i18n/i18n.js?v=24"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2389,60 +2389,93 @@ const AWAY_SVG=`<svg class="awaycar" viewBox="0 0 220 130" aria-hidden="true"><g
   <circle cx="196" cy="76" r="5" fill="#FFE8A8"/></g><path class="road" d="M4 118 H216" stroke="var(--line-2)" stroke-width="3" stroke-dasharray="12 10"/></svg>`;
 const liveDolls=()=>S.dolls.filter(isLive);
 function mainDoll(){const L=liveDolls();return L.find(d=>d.id===S.settings.mainDoll)||L[0]||null}
+/* ---- 陪伴日常：帶娃娃去上班、上學、讀書…最多 3 個，各自有名字、上班日、首頁詢問 ----
+   穿搭紀錄的 place 一律存「上班」，rid 記是哪一個日常（舊紀錄沒有 rid 算第一個） */
+// 常用的名字：[名字, 圖示, 分析裡怎麼稱呼陪你的娃娃]；自己打的名字用 💼 和「夥伴」
+const WORK_KINDS=[['上班','🏢','同事'],['上學','🏫','同學'],['上課','📚','同學'],['讀書','📖','讀書夥伴'],['補習','✏️','同學'],['打工','🧋','同事'],['實習','💼','同事'],['去工作室','🎨','助手'],['通勤','🚃','通勤夥伴']];
+const ROUTINE_MAX=3;
+function routines(){
+  const st=S.settings;
+  if(!Array.isArray(st.routines)||!st.routines.length)st.routines=[{id:'r1',label:st.workLabel||'上班',mode:st.workMode||'week',days:st.workDays||[1,2,3,4,5],shift:st.workShiftDays||[],ask:st.workAsk!==false}];
+  return st.routines;
+}
+const R0=()=>routines()[0];
+const rById=id=>routines().find(r=>r.id===id)||null;
+const workLbl=(r=R0())=>(r.label||'上班').trim()||'上班';
+const workKind=(r=R0())=>WORK_KINDS.find(k=>k[0]===workLbl(r))||[workLbl(r),'💼','夥伴'];
+const workIcon=(r=R0())=>workKind(r)[1],workMate=(r=R0())=>workKind(r)[2];
+const workDays=(r=R0())=>r.days||[1,2,3,4,5];
+// 固定星期，或排班（一天一天點）
+const workShift=(r=R0())=>r.mode==='shift';
+const isWorkDay=(t,r=R0())=>workShift(r)?(r.shift||[]).includes(t):workDays(r).includes(new Date(t+'T12:00:00').getDay());
+const isWork=w=>w.place==='上班';
+const isHomeW=w=>w.place!=='出門'&&w.place!=='上班';
+const rOf=w=>rById(w.rid)||R0();
+// 有記過的日常（分析、年度回顧只列這些）
+const usedRoutines=()=>routines().filter(r=>S.wears.some(w=>isWork(w)&&rOf(w).id===r.id));
+const placeTag=w=>w.place==='出門'?'🚶 '+(w.spot&&(w.spot.c||w.spot.r)?esc(spotText(w.spot))+'・':''):isWork(w)?`${workIcon(rOf(w))} 陪${esc(workLbl(rOf(w)))}${(w.itemIds||[]).length?'・':''}`:'🏠 ';
+const workWears=(d,r)=>(d?dollWears(d):S.wears).filter(w=>isWork(w)&&(!r||rOf(w).id===r.id));
+const workCount=(d,r)=>new Set(workWears(d,r).map(w=>w.date)).size;
+// 首頁：今天有排到、這隻娃娃還沒記的日常，一鍵記錄（早上上班、晚上讀書可以各記一次）
 function workCard(){
   const st=S.settings,d=mainDoll();
-  if(st.workAsk===false||!d||!isLive(d)||isAway(d)||!S.wears.some(isWork))return '';
+  if(!d||!isLive(d)||isAway(d)||!S.wears.some(isWork))return '';
   const k='work:'+today();
   if(st.annHide&&st.annHide[k])return '';
-  if(!isWorkDay(today()))return '';
-  if(dollWears(d).some(w=>w.date===today()))return '';
-  const nm=esc(d.name),l=esc(workLbl());
+  const todo=routines().filter(r=>r.ask!==false&&isWorkDay(today(),r)&&!dollWears(d).some(w=>w.date===today()&&isWork(w)&&rOf(w).id===r.id));
+  if(!todo.length)return '';
+  if(dollWears(d).some(w=>w.date===today()&&!isWork(w)))return '';
+  const nm=esc(d.name),one=todo.length===1?todo[0]:null;
   return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="今天沒有">×</button>
-    <b>💼 今天 ${nm} 也一起${l}嗎？</b>
+    <b>${one?`${workIcon(one)} 今天 ${nm} 也一起${esc(workLbl(one))}嗎？`:`💼 今天 ${nm} 也一起去嗎？`}</b>
     <span>點一下就記好；想記穿了什麼，也可以選衣服。</span>
-    <div class="row"><button class="btn sm" onclick="workToday('${d.id}')">一起${l} ${workIcon()}</button><button class="btn sm ghost" onclick="openWear();WEAR.place='上班';drawWearSheet()">選衣服</button></div></section>`;
+    <div class="row" style="flex-wrap:wrap">${todo.map(r=>`<button class="btn sm" onclick="workToday('${d.id}','${r.id}')">${one?'一起'+esc(workLbl(r))+' '+workIcon(r):workIcon(r)+' '+esc(workLbl(r))}</button>`).join('')}<button class="btn sm ghost" onclick="openWear();WEAR.place='上班';WEAR.rid='${todo[0].id}';drawWearSheet()">選衣服</button></div></section>`;
 }
 // 排班：這個月還沒排，或月底了下個月還沒排，首頁提醒一下
 function shiftCard(){
-  const st=S.settings;if(!workShift()||st.workAsk===false||!S.wears.some(isWork))return '';
-  const t=today(),cur=t.slice(0,7),nx=ymd(new Date(+t.slice(0,4),+t.slice(5,7),1).getTime()).slice(0,7),has=m=>(st.workShiftDays||[]).some(x=>x.startsWith(m));
-  const m=!has(cur)?cur:+t.slice(8)>=25&&!has(nx)?nx:'';if(!m)return '';
-  const k='shift:'+m;if(st.annHide&&st.annHide[k])return '';
-  return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
-    <b>🗓️ ${+m.slice(5)} 月的班排好了嗎？</b><span>點一下日期就好，${esc(workLbl())}那天早上首頁會問要不要一起去。</span>
-    <div class="row"><button class="btn sm" onclick="UI.shiftM='${m}';openSettings('work')">排 ${+m.slice(5)} 月</button></div></section>`;
+  const st=S.settings;if(!S.wears.some(isWork))return '';
+  const t=today(),cur=t.slice(0,7),nx=ymd(new Date(+t.slice(0,4),+t.slice(5,7),1).getTime()).slice(0,7);
+  for(const r of routines()){
+    if(!workShift(r)||r.ask===false)continue;
+    const has=m=>(r.shift||[]).some(x=>x.startsWith(m));
+    const m=!has(cur)?cur:+t.slice(8)>=25&&!has(nx)?nx:'';if(!m)continue;
+    const k='shift:'+r.id+':'+m;if(st.annHide&&st.annHide[k])continue;
+    return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="隱藏">×</button>
+      <b>🗓️ ${+m.slice(5)} 月的${esc(workLbl(r))}排好了嗎？</b><span>點一下日期就好，${esc(workLbl(r))}那天早上首頁會問要不要一起去。</span>
+      <div class="row"><button class="btn sm" onclick="UI.rid='${r.id}';UI.shiftM='${m}';openSettings('work')">排 ${+m.slice(5)} 月</button></div></section>`;
+  }
+  return '';
 }
-async function toggleShift(t){const a=(S.settings.workShiftDays||[]).slice(),i=a.indexOf(t);if(i<0)a.push(t);else a.splice(i,1);S.settings.workShiftDays=a.sort();await save();openSettings('work')}
-function shiftCal(){
+const curR=()=>rById(UI.rid)||R0();
+async function toggleShift(t){const r=curR(),a=(r.shift||[]).slice(),i=a.indexOf(t);if(i<0)a.push(t);else a.splice(i,1);r.shift=a.sort();await save();openSettings('work')}
+function shiftCal(r){
   const m=UI.shiftM||today().slice(0,7),y=+m.slice(0,4),mo=+m.slice(5,7),first=new Date(y,mo-1,1).getDay(),n=new Date(y,mo,0).getDate();
-  const on=new Set(S.settings.workShiftDays||[]),cnt=[...on].filter(x=>x.startsWith(m)).length;
+  const on=new Set(r.shift||[]),cnt=[...on].filter(x=>x.startsWith(m)).length;
   const mv=k=>ymd(new Date(y,mo-1+k,1).getTime()).slice(0,7);
   let cells='';for(let i=0;i<first;i++)cells+='<i></i>';
   for(let d=1;d<=n;d++){const t=m+'-'+String(d).padStart(2,'0');cells+=`<button type="button" class="${on.has(t)?'on':''} ${t===today()?'td':''}" onclick="toggleShift('${t}')">${d}</button>`}
   return `<div class="shcal"><div class="shhead"><button type="button" onclick="UI.shiftM='${mv(-1)}';openSettings('work')" aria-label="上個月">‹</button><b>${y} 年 ${mo} 月・${cnt} 天</b><button type="button" onclick="UI.shiftM='${mv(1)}';openSettings('work')" aria-label="下個月">›</button></div>
     <div class="calgrid">${'日一二三四五六'.split('').map(x=>`<small>${x}</small>`).join('')}${cells}</div></div>`;
 }
-async function toggleWorkDay(n){const a=workDays().slice(),i=a.indexOf(n);if(i<0)a.push(n);else a.splice(i,1);S.settings.workDays=a;await save();openSettings('work')}
-async function workToday(id){
-  const d=S.dolls.find(x=>x.id===id);if(!d)return;
-  S.wears.push({id:uid('w'),date:today(),dollName:d.name,dollId:d.id,itemIds:[],lookId:null,photo:null,note:'',place:'上班',spot:null});
-  await save();renderHome();toast(`已記錄：${d.name} 今天陪你${workLbl()} 💼`);
+async function toggleWorkDay(n){const r=curR(),a=workDays(r).slice(),i=a.indexOf(n);if(i<0)a.push(n);else a.splice(i,1);r.days=a;await save();openSettings('work')}
+async function setRoutine(k,v){curR()[k]=v;await save();openSettings('work')}
+async function addRoutine(){
+  const rs=routines();if(rs.length>=ROUTINE_MAX)return;
+  const used=new Set(rs.map(r=>workLbl(r))),lbl=['讀書','上學','上課','打工','上班'].find(x=>!used.has(x))||'日常';
+  const r={id:uid('r'),label:lbl,mode:'week',days:[1,2,3,4,5],shift:[],ask:true};rs.push(r);UI.rid=r.id;await save();openSettings('work');
 }
-/* ---- 陪上班：帶娃娃去公司（或上學）。存的值一律是「上班」，畫面上的名字可以在設定改 ---- */
-const workLbl=()=>(S.settings.workLabel||'上班').trim()||'上班';
-// 常用的名字：[名字, 圖示, 分析裡怎麼稱呼陪你的娃娃]；自己打的名字用 💼 和「夥伴」
-const WORK_KINDS=[['上班','🏢','同事'],['上學','🏫','同學'],['上課','📚','同學'],['讀書','📖','讀書夥伴'],['補習','✏️','同學'],['打工','🧋','同事'],['實習','💼','同事'],['去工作室','🎨','助手'],['通勤','🚃','通勤夥伴']];
-const workKind=()=>WORK_KINDS.find(k=>k[0]===workLbl())||[workLbl(),'💼','夥伴'];
-const workIcon=()=>workKind()[1],workMate=()=>workKind()[2];
-const workDays=()=>S.settings.workDays||[1,2,3,4,5];
-// 固定星期，或排班（一天一天點）
-const workShift=()=>S.settings.workMode==='shift';
-const isWorkDay=t=>workShift()?(S.settings.workShiftDays||[]).includes(t):workDays().includes(new Date(t+'T12:00:00').getDay());
-const isWork=w=>w.place==='上班';
-const isHomeW=w=>w.place!=='出門'&&w.place!=='上班';
-const placeTag=w=>w.place==='出門'?'🚶 '+(w.spot&&(w.spot.c||w.spot.r)?esc(spotText(w.spot))+'・':''):isWork(w)?`${workIcon()} 陪${esc(workLbl())}${(w.itemIds||[]).length?'・':''}`:'🏠 ';
-const workWears=d=>(d?dollWears(d):S.wears).filter(isWork);
-const workCount=d=>new Set(workWears(d).map(w=>w.date)).size;
+async function delRoutine(){
+  const r=curR(),rs=routines();if(rs.length<2)return;
+  const n=S.wears.filter(w=>isWork(w)&&rOf(w).id===r.id).length;
+  if(n){toast(`已經有 ${n} 筆「${workLbl(r)}」的紀錄，不能刪；可以改名字或關掉首頁詢問`);return}
+  if(!confirm(`刪除「${workLbl(r)}」？`))return;
+  S.settings.routines=rs.filter(x=>x.id!==r.id);UI.rid='';await save();openSettings('work');
+}
+async function workToday(id,rid){
+  const d=S.dolls.find(x=>x.id===id),r=rById(rid)||R0();if(!d)return;
+  S.wears.push({id:uid('w'),date:today(),dollName:d.name,dollId:d.id,itemIds:[],lookId:null,photo:null,note:'',place:'上班',rid:r.id,spot:null});
+  await save();renderHome();toast(`已記錄：${d.name} 今天陪你${workLbl(r)} ${workIcon(r)}`);
+}
 function dollWears(d){return S.wears.filter(w=>w.dollId===d.id||(!w.dollId&&w.dollName&&w.dollName===d.name))}
 const DOLL_SVG=`<svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round">
   <circle cx="60" cy="50" r="36"/><circle cx="30" cy="22" r="10"/><circle cx="90" cy="22" r="10"/>
@@ -2668,7 +2701,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-42';
+const APP_VER='2026.10.01-43';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3466,8 +3499,8 @@ function drawDollPage(d){
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
     ${isLive(d)||starsOf(d).length?(()=>{const st=starsOf(d),rd=readyStars(d).length;return `<span class="dhome djar">⭐ ${st.length?`星星罐 ${st.length} 顆${rd?`・<b>🌟 ${rd} 顆可以打開</b>`:''}　`:''}<a href="javascript:void 0" onclick="openJar('${d.id}')">${rd?'打開星星罐':st.length?'再寫一句話':'寫一句話給 '+esc(d.name)}</a></span>`})():''}
-    ${workCount(d)?(()=>{const n=workCount(d),m=new Set(workWears(d).filter(w=>w.date.startsWith(today().slice(0,7))).map(w=>w.date)).size;
-      return `<span class="dhome">💼 工作紀錄：陪你${esc(workLbl())} ${n} 天${m?`（本月 ${m} 天）`:''}　<a href="javascript:void 0" onclick="closeSheet();openWearsOf('${d.id}','上班')">看紀錄</a></span>`})():''}
+    ${routines().filter(r=>workCount(d,r)).map(r=>{const n=workCount(d,r),m=new Set(workWears(d,r).filter(w=>w.date.startsWith(today().slice(0,7))).map(w=>w.date)).size,l=esc(workLbl(r));
+      return `<span class="dhome">${workIcon(r)} ${workLbl(r)==='上班'?'工作':l}紀錄：陪你${l} ${n} 天${m?`（本月 ${m} 天）`:''}　<a href="javascript:void 0" onclick="closeSheet();openWearsOf('${d.id}','上班','${r.id}')">看紀錄</a></span>`}).join('')}
     <div class="dlinks">
       <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
@@ -5722,7 +5755,7 @@ function openMemberHub(){
       ${go('🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色',"goVip('doll')")}
       ${go('🎄','季節・節日・配色','季節服、節日服穿過幾件，你最常用的配色',"goVip('use')")}
       ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
-      ${S.wears.some(isWork)?go(workIcon(),`誰最常陪你${esc(workLbl())}`,`最佳${esc(workMate())}、這個月的出勤、${esc(workLbl())}都穿什麼`,"goVip('work')"):''}
+      ${usedRoutines().map((r,ri)=>go(workIcon(r),`誰最常陪你${esc(workLbl(r))}`,`最佳${esc(workMate(r))}、這個月的出勤、${esc(workLbl(r))}都穿什麼`,`goVip('${ri?'work-'+r.id:'work'}')`)).join('')}
       ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
     </div>
     <div class="mfoot"><button class="btn ghost" onclick="closeSheet();go('wallet')">💰 錢包・${wallet().points} 點</button><button class="btn ghost" onclick="openMember()">📋 方案比較</button></div>`);
@@ -6196,7 +6229,7 @@ function openWearEdit(id){
   const w=S.wears.find(x=>x.id===id);if(!w)return;
   const sp=spNorm(w.spot);
   WEAR={editId:id,date:w.date,doll:w.dollName||'',dollId:w.dollId||null,photo:w.photo||null,picked:(w.itemIds||[]).slice(),cands:null,
-    place:w.place==='出門'||w.place==='上班'?w.place:'在家',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||''};
+    place:w.place==='出門'||w.place==='上班'?w.place:'在家',rid:w.rid||'',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||''};
   drawWearSheet();
 }
 function drawWearSheet(){
@@ -6209,8 +6242,9 @@ function drawWearSheet(){
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
     </div>`}
-    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門'],['上班',workIcon()+' '+esc(workLbl())]].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';drawWearSheet()">${l}</button>`).join('')}</div></label>
-    ${WEAR.place==='上班'?`<p class="hint" style="margin:-6px 0 12px">💼 謝謝他陪你${esc(workLbl())}！衣服可以不選，只記今天一起${esc(workLbl())}也可以。</p>`:''}
+    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門'],['上班',routines().length>1?'💼 日常':workIcon()+' '+esc(workLbl())]].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';drawWearSheet()">${l}</button>`).join('')}</div></label>
+    ${WEAR.place==='上班'?(()=>{const wr=rById(WEAR.rid)||R0();return `${routines().length>1?`<div class="parts" style="margin:-4px 0 10px">${routines().map(r=>`<button type="button" class="${r.id===wr.id?'on':''}" onclick="WEAR.rid='${r.id}';drawWearSheet()">${workIcon(r)} ${esc(workLbl(r))}</button>`).join('')}</div>`:''}
+    <p class="hint" style="margin:-6px 0 12px">💼 謝謝他陪你${esc(workLbl(wr))}！衣服可以不選，只記今天一起${esc(workLbl(wr))}也可以。</p>`})():''}
     <div class="f" id="w_where" style="${WEAR.place==='出門'?'':'display:none'}"><span>去了哪裡（選填）</span><div id="pp_WEAR">${placePickerHTML('WEAR')}</div></div>
     ${WEAR.place!=='出門'&&WEAR.gps?`<p class="hint" style="margin:-6px 0 10px">📍 這張照片是在 ${esc(spotText(WEAR.gps))} 拍的，出門的話按「出門」就能選。</p>`:''}
     ${WEAR.photoDate&&WEAR.photoDate!==WEAR.date?`<div class="notice" style="margin:0 0 12px"><b>📅 這張照片是 ${WEAR.photoDate.replace(/-/g,'/')} 拍的</b><div class="row" style="margin-top:8px"><button class="btn sm" onclick="WEAR.date=WEAR.photoDate;drawWearSheet()">改成那天</button><button class="btn sm ghost" onclick="WEAR.photoDate=null;drawWearSheet()">不用</button></div></div>`:''}
@@ -6222,7 +6256,7 @@ function drawWearSheet(){
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
     <div id="wpick">${wearPickHTML()}</div>
-    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':!WEAR.picked.length&&WEAR.place==='上班'?`記下今天一起${esc(workLbl())}`:'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
+    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':!WEAR.picked.length&&WEAR.place==='上班'?`記下今天一起${esc(workLbl(rById(WEAR.rid)||R0()))}`:'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
   `);
   document.querySelector('#sheet .panel').classList.add('full');
 }
@@ -6363,24 +6397,24 @@ async function commitWear(){
     const w=S.wears.find(x=>x.id===WEAR.editId);if(!w)return;
     const old={date:w.date,dollId:w.dollId,place:w.place};
     const d0=WEAR.dollId&&S.dolls.find(x=>x.id===WEAR.dollId);
-    Object.assign(w,{date:WEAR.date,dollId:WEAR.dollId||null,dollName:d0?d0.name:WEAR.doll,itemIds:WEAR.picked.slice(),photo:WEAR.photo,place:WEAR.place||'',spot:sp});
+    Object.assign(w,{date:WEAR.date,dollId:WEAR.dollId||null,dollName:d0?d0.name:WEAR.doll,itemIds:WEAR.picked.slice(),photo:WEAR.photo,place:WEAR.place||'',rid:WEAR.place==='上班'?(rById(WEAR.rid)||R0()).id:undefined,spot:sp});
     if(old.place==='出門'&&old.dollId&&(old.date!==w.date||old.dollId!==w.dollId||w.place!=='出門'))unlinkOuting(old.dollId,old.date,w.id);
     if(w.place==='出門'&&w.dollId){const d=S.dolls.find(x=>x.id===w.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(w.date))d.outs.push(w.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[w.date]=sp}}}
     await save();
     if(UI.tab==='home')renderHome();else if(UI.tab==='wear')renderWears();else if(UI.tab==='album')renderAlbum();
     openWearDetail(w.id);toast('已更新這筆紀錄');return;
   }
-  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||'',spot:sp});
+  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||'',...(WEAR.place==='上班'?{rid:(rById(WEAR.rid)||R0()).id}:{}),spot:sp});
   // 選「出門」就順便記一次帶出門，地點也記到娃娃的足跡
   if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[WEAR.date]=sp}}}
   const wid=S.wears[S.wears.length-1].id;
   await save();if(UI.tab==='home')renderHome();else renderWears();
-  if(WEAR.place==='上班'&&!WEAR.picked.length&&!WEAR.photo){closeSheet();toast(`已記錄：今天一起${workLbl()} 💼`);return}
+  if(WEAR.place==='上班'&&!WEAR.picked.length&&!WEAR.photo){const wr=rById(WEAR.rid)||R0();closeSheet();toast(`已記錄：今天一起${workLbl(wr)} ${workIcon(wr)}`);return}
   openShare('wear',wid);toast('已記錄！要不要做成小卡分享？');
 }
 // 全部穿搭紀錄：可以依娃娃、在家／出門篩選，依月份分組；點一筆看詳細
 // 從首頁進來只看那隻娃娃（本月在最上面，下面是全部）；從洞察進來是所有娃娃
-function openWearsOf(id,place){UI.wearDoll=id||'';UI.wearLock=!!id;UI.wearPlace=place||'';go('wear')}
+function openWearsOf(id,place,rid){UI.wearDoll=id||'';UI.wearLock=!!id;UI.wearPlace=place||'';UI.wearRid=rid||'';go('wear')}
 function renderWears(){
   const el=document.getElementById('wearList');
   const ttl=document.getElementById('wearTitle'),ld=UI.wearLock&&S.dolls.find(d=>d.id===UI.wearDoll);
@@ -6389,10 +6423,11 @@ function renderWears(){
   const dl=S.dolls.filter(d=>dollWears(d).length),wd=UI.wearDoll||'',wp=UI.wearPlace||'';
   if(wd&&!UI.wearLock&&!dl.some(d=>d.id===wd))UI.wearDoll='';
   const doll=S.dolls.find(d=>d.id===UI.wearDoll);
-  let list=(doll?dollWears(doll):S.wears).filter(w=>!wp||w.place===wp||(wp==='在家'&&isHomeW(w))).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  let list=(doll?dollWears(doll):S.wears).filter(w=>(!wp||w.place===wp||(wp==='在家'&&isHomeW(w)))&&!(wp==='上班'&&UI.wearRid&&rOf(w).id!==UI.wearRid)).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const month=today().slice(0,7),mn=list.filter(w=>(w.date||'').startsWith(month)).length;
   const chips=`${!UI.wearLock&&dl.length>1?`<div class="chips">${[['','全部娃娃'],...dl.map(d=>[d.id,d.name])].map(([k,n])=>`<button class="chip ${(UI.wearDoll||'')===k?'on':''}" onclick="UI.wearDoll='${k}';renderWears()">${esc(n)}</button>`).join('')}</div>`:''}
-    <div class="swap" style="margin-bottom:12px">${[['','全部'],['在家','🏠 在家'],['出門','🚶 出門'],...((doll?dollWears(doll):S.wears).some(isWork)||wp==='上班'?[['上班',workIcon()+' '+esc(workLbl())]]:[])].map(([k,n])=>`<button class="${wp===k?'on':''}" onclick="UI.wearPlace='${k}';renderWears()">${n}</button>`).join('')}</div>
+    <div class="swap" style="margin-bottom:12px">${[['','全部'],['在家','🏠 在家'],['出門','🚶 出門'],...((doll?dollWears(doll):S.wears).some(isWork)||wp==='上班'?[['上班',routines().length>1?'💼 日常':workIcon()+' '+esc(workLbl())]]:[])].map(([k,n])=>`<button class="${wp===k?'on':''}" onclick="UI.wearPlace='${k}';UI.wearRid='';renderWears()">${n}</button>`).join('')}</div>
+    ${wp==='上班'&&usedRoutines().length>1?`<div class="chips" style="margin:-4px 0 10px">${[['','全部'],...usedRoutines().map(r=>[r.id,workIcon(r)+' '+esc(workLbl(r))])].map(([k,n])=>`<button class="chip ${(UI.wearRid||'')===k?'on':''}" onclick="UI.wearRid='${k}';renderWears()">${n}</button>`).join('')}</div>`:''}
     <p class="hint" style="margin:-4px 0 10px">本月 ${mn} 筆・全部 ${list.length} 筆${list.filter(w=>w.photo).length?`・${list.filter(w=>w.photo).length} 張照片`:''}</p>`;
   if(!list.length){el.innerHTML=chips+(UI.wearLock&&doll&&!wp?`<div class="empty"><strong>${esc(doll.name)} 還沒有穿搭紀錄</strong>幫 ${esc(doll.name)} 換好衣服後，按上面的「記錄今天穿了什麼」</div>`:'<div class="empty"><strong>沒有符合的紀錄</strong>換個篩選看看</div>');return}
   el.innerHTML=chips+(mn?'':`<p class="mh">本月</p><p class="hint" style="margin:0 0 14px">這個月還沒有紀錄。</p>`)+byMonth(list).map(([m,ws])=>`<p class="mh">${m===month?'本月':m?`${m.slice(0,4)} 年 ${+m.slice(5)} 月`:'沒有日期'}・${ws.length} 筆</p>
@@ -6407,7 +6442,7 @@ function openWearDetail(id){
   const w=S.wears.find(x=>x.id===id);if(!w)return;
   const its=(w.itemIds||[]).map(anyItem).filter(Boolean);
   openSheet(`<h3>${esc(w.date.replace(/-/g,'/'))}${w.dollName?'・'+esc(w.dollName):''}</h3>
-    <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:isWork(w)?`${workIcon()} 陪你${esc(workLbl())}`:'🏠 在家'}</p>
+    <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:isWork(w)?`${workIcon(rOf(w))} 陪你${esc(workLbl(rOf(w)))}`:'🏠 在家'}</p>
     ${w.photo?`<div class="hero" style="aspect-ratio:4/5;cursor:zoom-in" onclick="openPhoto('${w.id}')"><img src="${w.photo}" alt="" style="object-fit:cover;padding:0"></div>`:''}
     ${its.length?`<p class="mh">穿了 ${its.length} 件</p><div class="hscroll">${its.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}</div></button>`).join('')}</div>`:'<p class="hint">這筆沒有勾選衣服。</p>'}
     <div class="row" style="margin-top:14px"><button class="btn ghost grow" onclick="openWearEdit('${w.id}')">✏️ 編輯</button><button class="btn grow" onclick="closeSheet();openShare('wear','${w.id}')">做成小卡</button>${w.photo?`<button class="btn ghost" onclick="savePhotos(['${w.id}'])">⬇️ 存到手機</button>`:''}</div>
@@ -6768,10 +6803,12 @@ function yearStats(y){
   const busy=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
   const spend=items.reduce((a,i)=>a+money(i.price),0);
   // 陪上班：這一年一起去了幾天、最佳同事
-  const wk=ws.filter(isWork),wkDays=new Set(wk.map(w=>w.date)).size,wkc={};
-  wk.forEach(w=>{if(w.dollId)(wkc[w.dollId]=wkc[w.dollId]||new Set()).add(w.date)});
-  const mate=Object.entries(wkc).map(([id,st])=>({d:S.dolls.find(d=>d.id===id),n:st.size})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
-  return {work:wkDays?{days:wkDays,mate}:null,y:+y,newDolls:dolls.slice().sort((a,b)=>(a.home||'').localeCompare(b.home||'')),months:Array.from({length:12},(_,i)=>mc[i+1]||0),wears:ws.length,outs:fp.length,places:places.size,items:items.length,dolls:dolls.length,fav,mvp,busy:busy?+busy[0]:0,spend};
+  // 每個日常各自算（天數多的在前）
+  const works=routines().map(rt=>{const wk=ws.filter(w=>isWork(w)&&rOf(w).id===rt.id),wkc={};
+    wk.forEach(w=>{if(w.dollId)(wkc[w.dollId]=wkc[w.dollId]||new Set()).add(w.date)});
+    const mate=Object.entries(wkc).map(([id,st])=>({d:S.dolls.find(d=>d.id===id),n:st.size})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
+    return {r:rt,days:new Set(wk.map(w=>w.date)).size,mate}}).filter(x=>x.days).sort((a,b)=>b.days-a.days);
+  return {works,work:works[0]||null,y:+y,newDolls:dolls.slice().sort((a,b)=>(a.home||'').localeCompare(b.home||'')),months:Array.from({length:12},(_,i)=>mc[i+1]||0),wears:ws.length,outs:fp.length,places:places.size,items:items.length,dolls:dolls.length,fav,mvp,busy:busy?+busy[0]:0,spend};
 }
 // 有紀錄的年份（新的在前）
 function recapYears(){return [...new Set([...S.wears.map(w=>(w.date||'').slice(0,4)),...footprints().map(f=>f.date.slice(0,4))].filter(y=>/^\d{4}$/.test(y)))].sort().reverse()}
@@ -6797,11 +6834,12 @@ function yearSection(){
       <p class="hint" style="margin:0 0 12px;text-align:center">謝謝你們${sofar?'今年':'這一年'}來到我身邊 🤍</p>`:''}
     ${r.fav.length?`<p class="mh">年度最愛</p><div class="blist">${r.fav.map((x,k)=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}<div class="tx"><b>${k===0?'👑 ':''}${esc(x.name)}</b><span>穿了 ${x.n} 次</span></div><div class="rt">›</div></div>`).join('')}</div>`:''}
     ${r.mvp?`<div class="note" style="margin-top:14px">${r.y} 出場最多的是 <strong>${esc(r.mvp.d.name)}</strong>（${r.mvp.n} 次）${r.busy?`，最常換裝的是 <strong>${r.busy} 月</strong>`:''}${r.dolls?`；這一年有 ${r.dolls} 隻新娃娃來到家裡`:''}。</div>`:''}
-    ${r.work?`<div class="note" style="margin-top:10px">${workIcon()} 這一年一起${esc(workLbl())} ${r.work.days} 天${r.work.mate?`，年度最佳${esc(workMate())}是 ${esc(r.work.mate.d.name)}（${r.work.mate.n} 天）`:''}。</div>`:''}
+    ${r.works.map(w=>`<div class="note" style="margin-top:10px">${workIcon(w.r)} 這一年一起${esc(workLbl(w.r))} ${w.days} 天${w.mate?`，年度最佳${esc(workMate(w.r))}是 ${esc(w.mate.d.name)}（${w.mate.n} 天）`:''}。</div>`).join('')}
     <button class="btn wide" style="margin-top:6px" onclick="openShare('year','${y}')">📅 做成 ${y} 年度回顧小卡</button>`;
 }
 async function scYear(x,T,W,H,P,serif,num,sans){
   const r=SC.year,story=SC.ratio==='story',IW=W-P*2;
+  if(r.work)r.work.drawn=false;
   x.fillStyle=T.accent;x.font=`600 28px ${num}`;x.letterSpacing='10px';x.fillText('MY DOLL YEAR',P,P+30);x.letterSpacing='0px';
   x.fillStyle=T.ink;x.font=`700 ${story?170:150}px ${num}`;x.fillText(String(r.y),P-6,P+(story?210:190));
   x.font=`700 ${story?68:60}px ${serif}`;x.fillText('娃娃的一年',P,P+(story?300:268));
@@ -6857,18 +6895,20 @@ x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText(`${r.y} 來到身邊的�
   }
   // 年度最佳同事（陪上班）：放得下才放
   if(r.work&&r.work.mate&&y+120<=footY){
-    const mt=r.work.mate;
+    const mt=r.work.mate;r.work.drawn=true;
     x.fillStyle=T.card;x.globalAlpha=.9;rrect(x,P,y,IW,110,30);x.fill();x.globalAlpha=1;
     let tx=P+30;const im=mt.d.photo?await loadImg(mt.d.photo).catch(()=>null):null;
     if(im){x.save();x.beginPath();x.arc(P+70,y+55,40,0,7);x.fillStyle=T.soft;x.fill();x.clip();const s=Math.max(80/im.width,80/im.height);x.drawImage(im,P+70-im.width*s/2,y+15,im.width*s,im.height*s);x.restore();tx=P+130}
-    x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(`${workIcon()} 年度最佳${workMate()}`,tx,y+44);
+    x.fillStyle=T.sub;x.font=`500 24px ${sans}`;x.fillText(`${workIcon(r.work.r)} 年度最佳${workMate(r.work.r)}`,tx,y+44);
     x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText(fitText(x,mt.d.name,IW-(tx-P)-240),tx,y+86);
-    x.textAlign='right';x.fillStyle=T.sub;x.font=`600 24px ${sans}`;const unit=`天一起${workLbl()}`;x.fillText(unit,W-P-30,y+74);const uw=x.measureText(unit).width;
+    x.textAlign='right';x.fillStyle=T.sub;x.font=`600 24px ${sans}`;const unit=`天一起${workLbl(r.work.r)}`;x.fillText(unit,W-P-30,y+74);const uw=x.measureText(unit).width;
     x.fillStyle=T.accent;x.font=`700 44px ${num}`;x.fillText(`${mt.n}`,W-P-30-uw-12,y+74);x.textAlign='left';
     y+=140;
-  }else if(r.work&&r.work.mate&&y+44<=footY){
-    // 放不下整塊就寫成一行
-    x.fillStyle=T.sub;x.font=`600 28px ${sans}`;x.fillText(fitText(x,`${workIcon()} 年度最佳${workMate()}：${r.work.mate.d.name}・${r.work.mate.n} 天`,IW),P,y+30);y+=56;
+  }
+  // 其他日常（或放不下整塊的）寫成一行一個
+  for(const w of r.works.filter(w=>w.mate&&!(w===r.work&&r.work.drawn))){
+    if(y+44>footY)break;
+    x.fillStyle=T.sub;x.font=`600 28px ${sans}`;x.fillText(fitText(x,`${workIcon(w.r)} 年度最佳${workMate(w.r)}：${w.mate.d.name}・${w.mate.n} 天`,IW),P,y+30);y+=52;
   }
   // 限動比較長：放每個月的穿搭次數
   if(footY-y>=300&&r.months.some(Boolean)){
@@ -7197,24 +7237,28 @@ function dollStyleSection(){
 }
 // 會員：陪上班（誰最常陪你上班、上班都穿什麼）
 function workSection(){
-  if(!S.wears.some(isWork))return '';
-  const l=esc(workLbl()),head=`<h2 class="sec" data-sec="work">誰最常陪你${l} <span class="vip">會員</span></h2>`;
-  if(!isMember())return head+`<div class="locked">
-    <div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最佳${esc(workMate())}：小白</b><span>陪你${l} 38 天</span></div></div>
+  const rs=usedRoutines();if(!rs.length)return '';
+  if(!isMember()){const r=rs[0],l=esc(workLbl(r));return `<h2 class="sec" data-sec="work">誰最常陪你${l} <span class="vip">會員</span></h2><div class="locked">
+    <div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最佳${esc(workMate(r))}：小白</b><span>陪你${l} 38 天</span></div></div>
       <div class="rowitem"><div class="th"></div><div class="tx"><b>這個月一起${l} 12 天</b><span>最常在星期一</span></div></div></div>
-    <div class="lk-cover"><b>誰是你的最佳${esc(workMate())}？</b><span>每隻娃娃陪你${l}幾天、這個月的出勤、${l}都穿什麼</span>
-      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
-  const mk=today().slice(0,7),days=new Set(S.wears.filter(isWork).map(w=>w.date)),mdays=[...days].filter(x=>x.startsWith(mk)).length;
-  const by=S.dolls.map(d=>({d,n:workCount(d),m:new Set(workWears(d).filter(w=>w.date.startsWith(mk)).map(w=>w.date)).size})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
-  const WK=['日','一','二','三','四','五','六'],wd=[0,0,0,0,0,0,0];[...days].forEach(x=>{const t=new Date(x+'T12:00:00');if(!isNaN(t))wd[t.getDay()]++});
-  const top=wd.indexOf(Math.max(...wd)),mx=by.length?by[0].n:1;
-  const cnt={};S.wears.filter(isWork).forEach(w=>(w.itemIds||[]).forEach(i=>cnt[i]=(cnt[i]||0)+1));
-  const tops=Object.entries(cnt).map(([i,n])=>[anyItem(i),n]).filter(([i])=>i&&i.category!=='套裝').sort((a,b)=>b[1]-a[1]).slice(0,5);
-  let h=head+`<p class="mh">一起${l} ${days.size} 天・這個月 ${mdays} 天${days.size>2&&wd.filter(n=>n===wd[top]).length===1?`・最常在星期${WK[top]}`:''}</p>`;
-  if(by.length)h+=`<div class="note">🏆 最佳${esc(workMate())}：${esc(by[0].d.name)}，陪你${l} ${by[0].n} 天${by[0].m?`，這個月 ${by[0].m} 天`:''}</div>`;
-  h+=by.map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 天${x.m?`・本月 ${x.m}`:''}</em></div><div class="track"><i class="worn" style="width:${x.n/mx*100}%"></i></div></div>`).join('');
-  if(tops.length)h+=`<p class="mh">${l}最常穿</p><div class="hscroll">${tops.map(([i,n])=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}・${n} 次</div></button>`).join('')}</div>`;
-  return h;
+    <div class="lk-cover"><b>誰是你的最佳${esc(workMate(r))}？</b><span>每隻娃娃陪你${l}幾天、這個月的出勤、${l}都穿什麼</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`}
+  // 每個日常各自一段：早上上班、晚上讀書的最佳夥伴可以不一樣
+  return rs.map((r,ri)=>{
+    const l=esc(workLbl(r)),ws=S.wears.filter(w=>isWork(w)&&rOf(w).id===r.id);
+    const mk=today().slice(0,7),days=new Set(ws.map(w=>w.date)),mdays=[...days].filter(x=>x.startsWith(mk)).length;
+    const by=S.dolls.map(d=>({d,n:workCount(d,r),m:new Set(workWears(d,r).filter(w=>w.date.startsWith(mk)).map(w=>w.date)).size})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+    const WK=['日','一','二','三','四','五','六'],wd=[0,0,0,0,0,0,0];[...days].forEach(x=>{const t=new Date(x+'T12:00:00');if(!isNaN(t))wd[t.getDay()]++});
+    const top=wd.indexOf(Math.max(...wd)),mx=by.length?by[0].n:1;
+    const cnt={};ws.forEach(w=>(w.itemIds||[]).forEach(i=>cnt[i]=(cnt[i]||0)+1));
+    const tops=Object.entries(cnt).map(([i,n])=>[anyItem(i),n]).filter(([i])=>i&&i.category!=='套裝').sort((a,b)=>b[1]-a[1]).slice(0,5);
+    let h=`<h2 class="sec" data-sec="${ri?'work-'+r.id:'work'}">${workIcon(r)} 誰最常陪你${l} <span class="vip">會員</span></h2>
+      <p class="mh">一起${l} ${days.size} 天・這個月 ${mdays} 天${days.size>2&&wd.filter(n=>n===wd[top]).length===1?`・最常在星期${WK[top]}`:''}</p>`;
+    if(by.length)h+=`<div class="note">🏆 最佳${esc(workMate(r))}：${esc(by[0].d.name)}，陪你${l} ${by[0].n} 天${by[0].m?`，這個月 ${by[0].m} 天`:''}</div>`;
+    h+=by.map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 天${x.m?`・本月 ${x.m}`:''}</em></div><div class="track"><i class="worn" style="width:${x.n/mx*100}%"></i></div></div>`).join('');
+    if(tops.length)h+=`<p class="mh">${l}最常穿</p><div class="hscroll">${tops.map(([i,n])=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}・${n} 次</div></button>`).join('')}</div>`;
+    return h;
+  }).join('');
 }
 // 會員：穿搭習慣（星期幾、每月趨勢、最近的風格變化）
 // 會員：套裝排行——整套穿出場幾次、哪些套裝常常只拿一部分出來搭
@@ -7759,7 +7803,7 @@ const HELP=[
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
     ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定），也會看顏色：白黑灰米棕百搭、同色系安全，避開撞色和風格差太多的組合，你常用的配色也會加分。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門／上班'],['📷','放照片'],['☑️','勾選衣服']],
-    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。到 設定 → 陪上班 可以改成上學、讀書、打工…或自己取名字，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
+    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。早上上班、晚上讀書，可以在 設定 → 陪上班 按「＋ 新增日常」分開記（最多 3 個），各有各的最佳夥伴。名字可以改成上學、讀書、打工…或自己取，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
     ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
@@ -7849,7 +7893,7 @@ function openSettings(page){
   const st=S.settings,c=cfg();
   const th=st.theme||'light';
   if(!page){
-    const row=(k,ico,t,sub)=>`<button class="setrow" onclick="readForm();openSettings('${k}')"><i>${ico}</i><span><b>${t}</b>${sub?`<small>${sub}</small>`:''}</span><em>›</em></button>`;
+    const row=(k,ico,t,sub)=>`<button class="setrow" onclick="readForm();${k==='work'?"UI.rid='';UI.shiftM='';":''}openSettings('${k}')"><i>${ico}</i><span><b>${t}</b>${sub?`<small>${sub}</small>`:''}</span><em>›</em></button>`;
     const ago=st.lastBackup?Math.floor((Date.now()-st.lastBackup)/864e5):null;
     const smode={ask:'每次詢問',tap:'點選去背',local:'簡易去背',ai:'AI 出圖',api:'去背服務'}[st.stickerMode||'ask'];
     openSheet(`
@@ -7872,7 +7916,7 @@ function openSettings(page){
     </div>
     <p class="setlabel">其他</p>
     <div class="setgroup">
-      ${row('work',workIcon(),'陪'+esc(workLbl()),S.wears.some(isWork)?(workShift()?'排班':'固定：'+[1,2,3,4,5,6,0].filter(n=>workDays().includes(n)).map(n=>'週'+'日一二三四五六'[n]).join('、')):'帶娃娃去上班、上學')}
+      ${routines().length>1?row('work','💼','陪伴日常',routines().map(r=>workIcon(r)+' '+esc(workLbl(r))).join('、')):row('work',workIcon(),'陪'+esc(workLbl()),S.wears.some(isWork)?(workShift()?'排班':'固定：'+[1,2,3,4,5,6,0].filter(n=>workDays().includes(n)).map(n=>'週'+'日一二三四五六'[n]).join('、')):'帶娃娃去上班、上學')}
       ${row('region','🌏','我住在',homeCountry())}
       ${row('lang','🌐','語言',langPref()==='auto'?'跟隨手機':`<span translate="no">${LANGS.find(x=>x[0]===langPref())[1]}</span>`)}
       ${row('look','🎨','外觀',{light:'淺色',dark:'深色',auto:'跟隨系統'}[th])}
@@ -7881,7 +7925,7 @@ function openSettings(page){
     </div>`);
     return;
   }
-  const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${page==='work'?'陪'+esc(workLbl()):SET_PAGES[page]}</h3>`;
+  const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${page==='work'?(routines().length>1?'陪伴日常':'陪'+esc(workLbl())):SET_PAGES[page]}</h3>`;
   let body='';
   if(page==='member'){
     const paid=!!st.member,tr=trialOn();
@@ -7923,21 +7967,26 @@ function openSettings(page){
     <button class="btn wide" onclick="sendFeedback()">寄出</button>
     ${FEEDBACK_EMAIL?`<div class="row" style="margin-top:12px;align-items:center"><span class="grow hint" style="margin:0">打不開寄信 App？直接寄到 <b translate="no">${esc(FEEDBACK_EMAIL)}</b></span><button class="btn sm ghost" onclick="copyFeedbackMail()">複製</button></div>`:''}
     ${FEEDBACK_IG?`<div class="row" style="margin-top:8px;align-items:center"><span class="grow hint" style="margin:0">也可以到 Instagram 私訊 <b translate="no">@${esc(FEEDBACK_IG)}</b></span><button class="btn sm ghost" onclick="openIG()">打開</button></div>`:''}`;
-  if(page==='work')body=`<p class="hint" style="margin:-6px 0 12px">帶娃娃去上班、上學、陪讀…記穿搭時選「${workIcon()} ${esc(workLbl())}」，衣服可以不選。不算出門和足跡，但算有換裝。</p>
+  if(page==='work'){
+    const r=curR(),l=esc(workLbl(r)),rs=routines();UI.rid=r.id;
+    body=`<p class="hint" style="margin:-6px 0 12px">帶娃娃去上班、上學、讀書…記穿搭時選「${rs.length>1?'💼 日常':workIcon(r)+' '+l}」，衣服可以不選。不算出門和足跡，但算有換裝。早上上班、晚上讀書，可以分成兩個日常各記各的（最多 ${ROUTINE_MAX} 個）。</p>
+    <div class="parts" style="margin:0 0 12px">${rs.map(x=>`<button type="button" class="${x.id===r.id?'on':''}" onclick="UI.rid='${x.id}';UI.shiftM='';openSettings('work')">${workIcon(x)} ${esc(workLbl(x))}</button>`).join('')}${rs.length<ROUTINE_MAX?`<button type="button" onclick="addRoutine()">＋ 新增日常</button>`:''}</div>
     <div class="card">
-      <div class="f" style="margin:0 0 10px"><span>叫它什麼</span><div class="parts" style="margin:0">${WORK_KINDS.map(([x,ic])=>`<button type="button" class="${workLbl()===x?'on':''}" onclick="S.settings.workLabel='${x}';save().then(()=>openSettings('work'))">${ic} ${x}</button>`).join('')}</div></div>
-      <div class="row" style="gap:8px"><input type="text" id="wk_lbl" class="grow" maxlength="6" placeholder="自己取，例如 練團、上工" value="${WORK_KINDS.some(k=>k[0]===workLbl())?'':esc(workLbl())}"><button class="btn sm quiet" onclick="const v=document.getElementById('wk_lbl').value.trim();if(v){S.settings.workLabel=v;save().then(()=>openSettings('work'))}">用這個</button></div>
-      <p class="hint" style="margin:8px 0 0">分析裡會叫陪你的娃娃「最佳${esc(workMate())}」。</p>
+      <div class="f" style="margin:0 0 10px"><span>叫它什麼</span><div class="parts" style="margin:0">${WORK_KINDS.map(([x,ic])=>`<button type="button" class="${workLbl(r)===x?'on':''}" onclick="setRoutine('label','${x}')">${ic} ${x}</button>`).join('')}</div></div>
+      <div class="row" style="gap:8px"><input type="text" id="wk_lbl" class="grow" maxlength="6" placeholder="自己取，例如 練團、上工" value="${WORK_KINDS.some(k=>k[0]===workLbl(r))?'':l}"><button class="btn sm quiet" onclick="const v=document.getElementById('wk_lbl').value.trim();if(v)setRoutine('label',v)">用這個</button></div>
+      <p class="hint" style="margin:8px 0 0">分析裡會叫陪你的娃娃「最佳${esc(workMate(r))}」。</p>
     </div>
     <div class="card">
-      <div class="f" style="margin:0 0 10px"><span>哪幾天要${esc(workLbl())}</span><div class="swap" style="margin:0">${[['week','固定星期'],['shift','排班']].map(([k,l])=>`<button class="${(workShift()?'shift':'week')===k?'on':''}" onclick="S.settings.workMode='${k}';save().then(()=>openSettings('work'))">${l}</button>`).join('')}</div></div>
-      ${workShift()?`<p class="hint" style="margin:0 0 8px">點日期排班，再點一次取消。月底如果下個月還沒排，首頁會提醒你。</p>${shiftCal()}`
-        :`<div class="parts" style="margin:0">${[1,2,3,4,5,6,0].map(n=>`<button type="button" class="${workDays().includes(n)?'on':''}" onclick="toggleWorkDay(${n})">${'日一二三四五六'[n]}</button>`).join('')}</div>`}
+      <div class="f" style="margin:0 0 10px"><span>哪幾天要${l}</span><div class="swap" style="margin:0">${[['week','固定星期'],['shift','排班']].map(([k,t])=>`<button class="${(workShift(r)?'shift':'week')===k?'on':''}" onclick="setRoutine('mode','${k}')">${t}</button>`).join('')}</div></div>
+      ${workShift(r)?`<p class="hint" style="margin:0 0 8px">點日期排班，再點一次取消。月底如果下個月還沒排，首頁會提醒你。</p>${shiftCal(r)}`
+        :`<div class="parts" style="margin:0">${[1,2,3,4,5,6,0].map(n=>`<button type="button" class="${workDays(r).includes(n)?'on':''}" onclick="toggleWorkDay(${n})">${'日一二三四五六'[n]}</button>`).join('')}</div>`}
     </div>
     <div class="card">
-      <div class="row"><span class="grow"><b style="font-size:14px">首頁詢問</b><div class="hint">${esc(workLbl())}那天早上首頁問「今天也一起${esc(workLbl())}嗎？」，點一下就記好<br>記過一次「${esc(workLbl())}」之後才會開始問</div></span>
-        <button class="btn sm ${st.workAsk!==false?'ghost':''}" onclick="S.settings.workAsk=${st.workAsk===false};save().then(()=>openSettings('work'))">${st.workAsk!==false?'關閉':'開啟'}</button></div>
-    </div>`;
+      <div class="row"><span class="grow"><b style="font-size:14px">首頁詢問</b><div class="hint">${l}那天早上首頁問「今天也一起${l}嗎？」，點一下就記好<br>記過一次之後才會開始問</div></span>
+        <button class="btn sm ${r.ask!==false?'ghost':''}" onclick="setRoutine('ask',${r.ask===false})">${r.ask!==false?'關閉':'開啟'}</button></div>
+    </div>
+    ${rs.length>1?`<button class="btn ghost wide" style="color:var(--muted)" onclick="delRoutine()">刪除「${l}」</button>`:''}`;
+  }
   if(page==='notify'){
     const on=notifyReady();
     body=`
