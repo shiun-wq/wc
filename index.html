@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=36"></script>
+<script src="i18n/i18n.js?v=37"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1366,14 +1366,16 @@ const CATS=[
  ['套裝',null],['上衣','top'],['襯衫','top'],['毛衣','top'],['背心','top'],['T-shirt','top'],
  ['裙子','bottom'],['褲子','bottom'],['吊帶裙','bottom'],['吊帶褲','bottom'],
  ['洋裝','dress'],['連身衣','dress'],['爬爬衣','dress'],['睡衣','dress'],
- ['外套','outer'],['披風','outer'],['斗篷','outer'],
+ ['外套','outer'],['斗篷','outer'],
  ['帽子','head'],['髮飾','head'],['頭帶','head'],['耳罩','head'],
- ['襪子','socks'],['長襪','socks'],['褲襪','socks'],
- ['鞋子','shoes'],['靴子','shoes'],['拖鞋','shoes'],
- ['包包','bag'],['小包','bag'],
- ['圍巾','acc'],['項鍊','acc'],['領結','acc'],['腰帶','acc'],['手套','acc'],['眼鏡','acc'],['翅膀','acc'],['尾巴','acc'],['配件','acc'],
+ ['襪子','socks'],
+ ['鞋子','shoes'],['靴子','shoes'],
+ ['圍巾','acc'],['領結','acc'],['眼鏡','acc'],['包包','bag'],
  ['道具',null],['其他',null]
 ];
+// 以前有、現在建檔選單拿掉的類別：舊資料還是這個類型，搭配時放的位置和篩選照舊
+const OLD_CATS=[['披風','outer'],['長襪','socks'],['褲襪','socks'],['拖鞋','shoes'],['小包','bag'],
+ ['項鍊','acc'],['腰帶','acc'],['手套','acc'],['翅膀','acc'],['尾巴','acc'],['配件','acc']];
 // 衣櫃的類別篩選：每個篩選對應到一組單品類型（可以左右滑，想加類別直接加在這裡）
 const FGROUPS=[
  ['上衣',['上衣','襯衫','毛衣','背心','T-shirt']],
@@ -1381,15 +1383,12 @@ const FGROUPS=[
  ['褲子',['褲子','吊帶褲']],
  ['洋裝',['洋裝','連身衣','爬爬衣']],
  ['睡衣',['睡衣']],
- ['外套',['外套','披風','斗篷']],
+ ['外套',['外套','斗篷','披風']],
  ['帽子',['帽子','耳罩']],
  ['髮飾',['髮飾','頭帶']],
  ['襪子',['襪子','長襪','褲襪']],
  ['鞋子',['鞋子','靴子','拖鞋']],
- ['包包',['包包','小包']],
- ['配件',['圍巾','項鍊','領結','腰帶','手套','眼鏡','配件']],
- ['翅膀尾巴',['翅膀','尾巴']],
- ['道具',['道具','其他']]
+ ['配件',['圍巾','領結','眼鏡','包包','道具','其他','小包','項鍊','腰帶','手套','翅膀','尾巴','配件']]
 ];
 // 使用者可以在設定裡隱藏預設類別，或新增自己的類別
 const customCats=()=>S.settings.customCats||[];
@@ -1397,7 +1396,7 @@ const allCats=()=>{const b=CATS.map(c=>c[0]),i=b.indexOf('道具');return [...b.
 const filterNames=()=>['套裝',...FGROUPS.map(g=>g[0]),...customCats()];
 const visibleFilters=()=>['全部',...filterNames().filter(f=>!(S.settings.hiddenCats||[]).includes(f))];
 const fmap=()=>Object.assign(Object.fromEntries(FGROUPS),Object.fromEntries(customCats().map(c=>[c,[c]])));
-const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','配件'];
+const COMMON_PARTS=['帽子','上衣','裙子','褲子','吊帶裙','洋裝','外套','襪子','鞋子','包包','髮飾','圍巾'];
 // 娃衣尺寸：預設四種，使用者可以在設定裡增減
 const DEFAULT_SIZES=['5cm','10cm','15cm','20cm'];
 const sizes=()=>S.settings.sizes;
@@ -1416,7 +1415,9 @@ const LANGS=[['auto','跟隨手機'],['zh-Hant','繁體中文'],['zh-Hans','简�
 function langPref(){try{return localStorage.getItem('lang')||'auto'}catch(e){return 'auto'}}
 function setLang(l){try{localStorage.setItem('lang',l)}catch(e){}location.reload()}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const slotOf=c=>(CATS.find(x=>x[0]===c)||[])[1]||null;
+const slotOf=c=>([...CATS,...OLD_CATS].find(x=>x[0]===c)||[])[1]||null;
+// 類型選單：舊資料的類型已經不在清單上時，也留著讓它選得到
+const catOpts=cur=>{const a=allCats();return cur&&!a.includes(cur)?[...a,cur]:a};
 
 /* ---- 存檔：照片分開存 ----
    照片（base64）很大，每次都把整個衣櫃重寫一遍會越來越慢。
@@ -2767,7 +2768,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-58';
+const APP_VER='2026.10.01-60';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4214,7 +4215,7 @@ function drawOrder(){
     ${d.photo?`<div class="row" style="gap:8px;margin:-4px 0 12px"><button type="button" class="btn sm ghost" onclick="orderCropOpen()">✂️ 調整${isDoll?'照片':'商品圖'}</button><button type="button" class="btn sm ghost" onclick="document.getElementById('o_ph').click()">換一張</button><button type="button" class="btn sm ghost" style="color:var(--muted)" onclick="OD.photo=null;OD.photoSrc=null;OD.photoCrop=null;drawOrder()">拿掉</button></div>`:''}
     <div class="split">
       ${isDoll?`<label class="f"><span>尺寸</span><select onchange="OD.size=this.value"><option value="">未設定</option>${sizes().map(z=>`<option ${z===d.size?'selected':''}>${esc(z)}</option>`).join('')}</select></label>`
-      :`<label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${allCats().map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`}
+      :`<label class="f"><span>類型</span><select onchange="OD.category=this.value"><option value="">未設定</option>${catOpts(d.category).map(c=>`<option ${c===d.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`}
       <label class="f"><span>金額</span><input type="number" inputmode="decimal" value="${esc(d.price)}" placeholder="例如 680" oninput="OD.price=this.value"></label>
     </div>
     ${isDoll?'':`<label class="f"><span>尺寸</span><div class="parts" id="o_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${d.size===z?'on':''}" onclick="OD.size=OD.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#o_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===OD.size))">${esc(z)}</button>`).join('')}</div></label>`}
@@ -5150,10 +5151,11 @@ function openItem(id){
       <button class="${UI.detailImg==='photo'?'on':''}" onclick="UI.detailImg='photo';openItem('${id}')">原始照片</button>
       <button onclick="recut('${id}')">重做貼圖</button>
     </div>
-    ${i.cutout?`<div class="row" style="margin:-6px 0 14px">
-      <button class="btn quiet sm grow" onclick="editSticker('${id}')">修補貼圖</button>
-      <button class="btn ghost sm grow" onclick="dlSticker('${id}')">下載 PNG</button>
-    </div>`:''}
+    <div class="row" style="margin:-6px 0 14px">
+      <button class="btn ghost sm grow" onclick="rephoto('${id}')">📷 換照片</button>
+      ${i.cutout?`<button class="btn quiet sm grow" onclick="editSticker('${id}')">修補貼圖</button>
+      <button class="btn ghost sm grow" onclick="dlSticker('${id}')">下載 PNG</button>`:''}
+    </div>
     <div class="tagline">
       ${(i.styles||[]).map(s=>`<span class="tg st">${esc(s.name)} ${s.score||''}</span>`).join('')}
       ${(i.colors||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
@@ -5202,6 +5204,16 @@ function dlSticker(id){
   if(!i||!i.cutout){toast('這件還沒有貼圖，先按重做貼圖');return}
   fetch(i.cutout).then(r=>r.blob()).then(b=>saveFiles([new File([b],(i.name||'sticker').replace(/[\\/:*?"<>|]/g,'')+'.png',{type:'image/png'})])).then(ok=>{if(ok&&!isApp())toast('已下載')});
 }
+// 已建檔的娃衣重拍：只換照片和貼圖，名稱、價格、穿搭紀錄都留著
+function rephoto(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+    i.photo=await compress(f);i.cutout=null;i.cutSrc=null;i.cutMask=null;
+    await save();renderCloset();UI.detailImg='cutout';openItem(id);
+    toast('照片換好了，接著做新貼圖');recut(id);};
+  inp.click();
+}
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
   toast('製作貼圖中，AI 出圖要等幾秒…');
@@ -5229,7 +5241,7 @@ function editItem(id){
     <h3>編輯</h3>
     <label class="f"><span>名稱</span><input type="text" id="e_name" value="${esc(i.name)}"></label>
     <div class="split">
-      <label class="f"><span>類型</span><select id="e_cat">${allCats().map(c=>`<option ${c===i.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
+      <label class="f"><span>類型</span><select id="e_cat">${catOpts(i.category).map(c=>`<option ${c===i.category?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
       <label class="f"><span>季節</span><select id="e_season"><option value=""></option>${['春','夏','秋','冬','四季'].map(s=>`<option ${s===i.season?'selected':''}>${s}</option>`).join('')}</select></label>
     </div>
     <label class="f"><span>系列（選填）${itip('同一個品牌推出的系列或主題，例如「甜心派對系列」。之後出售時可以一起寫出來。')}</span><input type="text" id="e_series" list="seriesDL5" maxlength="30" value="${esc(i.series||'')}">${seriesDL('seriesDL5')}</label>
@@ -5343,7 +5355,7 @@ function renderQueue(){
         <input type="text" placeholder="名稱（可留給 AI 填）" value="${esc(q.name)}" oninput="UI.queue[${n}].name=this.value">
         <div class="split" style="margin-top:6px">
           <select onchange="UI.queue[${n}].category=this.value;UI.queue[${n}].isSet=(this.value==='套裝');UI.queue[${n}].kindOk=true;if(UI.queue[${n}].isSet)dropOneCut(UI.queue[${n}]);renderQueue()">
-            ${allCats().map(c=>`<option ${c===q.category?'selected':''}>${esc(c)}</option>`).join('')}
+            ${catOpts(q.category).map(c=>`<option ${c===q.category?'selected':''}>${esc(c)}</option>`).join('')}
           </select>
           <button class="btn sm quiet" onclick="analyze(${n})" ${q.analyzing?'disabled':''}>${q.analyzing?'<span class="spin"></span>分析中':'AI 分析'}</button>
         </div>
@@ -8138,7 +8150,7 @@ const HELP=[
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
     ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
-    ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
+    ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。','想重拍？到單品頁按「📷 換照片」，拍好會接著做新貼圖；名稱、價格、穿搭紀錄都會留著。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期的娃衣，有空再補就好。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
