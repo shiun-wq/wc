@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=28"></script>
+<script src="i18n/i18n.js?v=29"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2752,7 +2752,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-49';
+const APP_VER='2026.10.01-50';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4449,7 +4449,7 @@ function renderMemory(){
       <div><b>${list.length}</b><span>件娃衣的回憶</span></div>
       <div><b>${back?fmt$(back):'—'}</b><span>賣出回收</span></div></div>
     ${list.map(i=>{
-      const ws=S.wears.filter(w=>w.itemIds.includes(i.id));
+      const ws=wearsWith(i.id);
       const dl={};ws.forEach(w=>{const n=(S.dolls.find(d=>d.id===w.dollId)||{}).name||w.dollName;if(n)dl[n]=(dl[n]||0)+1});
       const fav=Object.entries(dl).sort((a,b)=>b[1]-a[1])[0];
       const stay=i.createdAt?Math.max(1,Math.round((new Date(i.archivedAt)-i.createdAt)/864e5)):null;
@@ -4668,8 +4668,13 @@ async function delMemory(id){
 /* ============================================================
    6. 衣櫃
    ============================================================ */
-function wearCount(id){return S.wears.filter(w=>w.itemIds.includes(id)).length}
-function lastWear(id){const w=S.wears.filter(x=>x.itemIds.includes(id)).map(x=>x.date).sort();return w.length?w[w.length-1]:null}
+// 這筆穿搭有沒有穿到這件：直接勾了它；或它是套裝，而這筆把套裝裡的單品全部都勾了
+function setPieceIds(id){const it=anyItem(id);if(!it||it.category!=='套裝'||!it.setId)return null;
+  const ps=[...S.items,...S.memory].filter(x=>x.setId===it.setId&&x.category!=='套裝').map(x=>x.id);return ps.length?ps:null}
+function wornIn(w,id,ps){const ids=w.itemIds||[];if(ids.includes(id))return true;ps=ps===undefined?setPieceIds(id):ps;return !!ps&&ps.every(x=>ids.includes(x))}
+function wearsWith(id){const ps=setPieceIds(id);return S.wears.filter(w=>wornIn(w,id,ps))}
+function wearCount(id){return wearsWith(id).length}
+function lastWear(id){const w=wearsWith(id).map(x=>x.date).sort();return w.length?w[w.length-1]:null}
 function setName(id){return (S.sets.find(s=>s.id===id)||{}).name||''}
 function img(it){return it.cutout||it.photo||''}
 // 穿搭紀錄的縮圖：有照片用照片，沒有就把這次穿的單品貼圖拼在一起（最多 4 件）
@@ -7923,7 +7928,7 @@ const HELP=[
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
     ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定），也會看顏色：白黑灰米棕百搭、同色系安全，避開撞色和風格差太多的組合，你常用的配色也會加分。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門／上班'],['📷','放照片'],['☑️','勾選衣服']],
-    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，分析和年度回顧也會列出你的加班夥伴；國定假日首頁問的時候按「今天放假」就好。早上上班、晚上讀書，可以在 設定 → 陪上班 按「＋ 新增日常」分開記（最多 3 個），各有各的最佳夥伴。名字可以改成上學、讀書、打工…或自己取，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
+    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，分析和年度回顧也會列出你的加班夥伴；國定假日首頁問的時候按「今天放假」就好。早上上班、晚上讀書，可以在 設定 → 陪上班 按「＋ 新增日常」分開記（最多 3 個），各有各的最佳夥伴。名字可以改成上學、讀書、打工…或自己取，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。','穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
     ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
