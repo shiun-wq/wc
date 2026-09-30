@@ -2756,7 +2756,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-54';
+const APP_VER='2026.10.01-55';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4685,8 +4685,21 @@ const outfitWears=list=>(list||S.wears).filter(isOutfit);
 // 同一套的單品合成一組；一組要顯示成哪一件（有「套裝」那筆就用它）
 const grpKey=it=>it&&it.setId?'set:'+it.setId:it&&it.id;
 function grpRep(k){if(!String(k).startsWith('set:'))return anyItem(k);const sid=k.slice(4),all=[...S.items,...S.memory].filter(x=>x.setId===sid);return all.find(x=>x.category==='套裝')||all[0]}
-// 每一組被穿了幾次（一次穿搭穿到其中任何一件就算一次）
-function grpWearCount(list){const c={};(list||outfitWears()).forEach(w=>new Set((w.itemIds||[]).map(id=>grpKey(anyItem(id))).filter(Boolean)).forEach(k=>c[k]=(c[k]||0)+1));return c}
+// 一筆穿搭拆成「組」：套裝裡的單品全部都穿到（或直接勾了套裝）才算整套；只穿一部分，就只算穿到的那幾件
+function wearGroups(w){
+  const ids=[...new Set(w.itemIds||[])],out=new Set(),bySet={};
+  ids.forEach(id=>{const it=anyItem(id);if(!it)return;if(!it.setId){out.add(id);return}(bySet[it.setId]=bySet[it.setId]||[]).push(it)});
+  Object.entries(bySet).forEach(([sid,its])=>{
+    const ps=setPieceIds((grpRep('set:'+sid)||{}).id)||[...S.items,...S.memory].filter(x=>x.setId===sid&&x.category!=='套裝').map(x=>x.id);
+    const full=its.some(x=>x.category==='套裝')||(ps.length&&ps.every(x=>ids.includes(x)));
+    if(full)out.add('set:'+sid);else its.forEach(x=>{if(x.category!=='套裝')out.add(x.id)});
+  });
+  return [...out];
+}
+// 每一組被穿了幾次
+function grpWearCount(list){const c={};(list||outfitWears()).forEach(w=>wearGroups(w).forEach(k=>c[k]=(c[k]||0)+1));return c}
+// 花費用：一套被用到幾次（穿到其中任何一件就算用到這套）
+function setUseCount(list){const c={};(list||outfitWears()).forEach(w=>new Set((w.itemIds||[]).map(id=>grpKey(anyItem(id))).filter(Boolean)).forEach(k=>c[k]=(c[k]||0)+1));return c}
 function setPieceIds(id){const it=anyItem(id);if(!it||it.category!=='套裝'||!it.setId)return null;
   const ps=[...S.items,...S.memory].filter(x=>x.setId===it.setId&&x.category!=='套裝').map(x=>x.id);return ps.length?ps:null}
 function wornIn(w,id,ps){const ids=w.itemIds||[];if(ids.includes(id))return true;ps=ps===undefined?setPieceIds(id):ps;return !!ps&&ps.every(x=>ids.includes(x))}
@@ -5752,9 +5765,8 @@ function matchStats(){
   const items=S.items.filter(i=>i.category!=='套裝'),ok=new Set(items.map(i=>i.id));
   const partners={},wearN={},pair={},sid={};items.forEach(i=>{if(i.setId)sid[i.id]=i.setId});
   // 同一套的單品合成一組：跟套裝一起穿只算搭了「一套」，套裝本身也只列一次
-  const gk=id=>sid[id]?'set:'+sid[id]:id;
   S.wears.forEach(w=>{
-    const gs=[...new Set([...new Set(w.itemIds)].filter(i=>ok.has(i)).map(gk))];
+    const gs=wearGroups(w).filter(k=>k.startsWith('set:')||ok.has(k));
     gs.forEach(a=>{wearN[a]=(wearN[a]||0)+1;partners[a]=partners[a]||new Set();gs.forEach(b=>{if(a!==b)partners[a].add(b)})});
     for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const k=[gs[i],gs[j]].sort().join('|');pair[k]=(pair[k]||0)+1}
   });
@@ -6958,8 +6970,8 @@ function yearStats(y){
   const items=S.items.filter(i=>i.category!=='套裝'&&(i.homeDate||i.buyDate||ymd(i.createdAt||0)).startsWith(y));
   const dolls=S.dolls.filter(d=>(d.home||'').startsWith(y));
   const ic={},dc={},mc={},grp={};
-  // 同一套的零件合成一筆（一次穿搭只算一次）
-  ws.forEach(w=>{new Set((w.itemIds||[]).map(id=>{const it=anyItem(id);if(!it)return null;const k=it.setId?'set:'+it.setId:id;if(!grp[k])grp[k]=it;return k}).filter(Boolean)).forEach(k=>ic[k]=(ic[k]||0)+1);
+  // 整套都穿到才算整套一筆；只穿一部分就算那幾件
+  ws.forEach(w=>{wearGroups(w).forEach(k=>{if(!grp[k])grp[k]=k.startsWith('set:')?grpRep(k):anyItem(k);ic[k]=(ic[k]||0)+1});
     const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
   wsAll.forEach(w=>{if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1});
   const fav=Object.entries(ic).map(([k,n])=>{let it=grp[k],name=it&&it.name;
@@ -7370,9 +7382,8 @@ const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','
 // 每隻娃娃的穿搭輪廓：穿過哪些類型、風格、顏色（用穿搭紀錄算）
 function dollProfile(d){
   const ws=dollWears(d),cat={},sty={},fam={},seen=new Set();
-  ws.filter(isOutfit).forEach(w=>{const g=new Set();w.itemIds.forEach(id=>{
-    const i0=anyItem(id);if(!i0)return;const k=grpKey(i0);if(g.has(k))return;g.add(k);
-    const i=k.startsWith('set:')?grpRep(k):i0;if(!i)return;
+  ws.filter(isOutfit).forEach(w=>{wearGroups(w).forEach(k=>{const id=k;
+    const i=k.startsWith('set:')?grpRep(k):anyItem(k);if(!i)return;
     cat[i.category]=(cat[i.category]||0)+1;
     (i.styles||[]).forEach(x=>sty[x.name]=(sty[x.name]||0)+1);
     new Set((i.colors||[]).map(colorFam)).forEach(f=>{if(famLabel[f])fam[f]=(fam[f]||0)+1});
@@ -7884,7 +7895,7 @@ function spendStats(){
   pi.forEach(i=>add(i.buyDate||ds(i.createdAt),priceOf(i)));
   S.dolls.forEach(d=>{if(money(d.price))add(d.home||ds(d.createdAt),money(d.price))});
   // 每穿一次的成本：衣櫃裡的，以「組」算（套裝整套一個價格，穿到其中任何一件就算穿了一次）
-  const gw=grpWearCount(),seen=new Set(),cpw=[];
+  const gw=setUseCount(),seen=new Set(),cpw=[];
   S.items.filter(i=>priceOf(i)>0).forEach(i=>{const k=grpKey(i);if(seen.has(k))return;seen.add(k);
     const it=grpRep(k)||i,w=gw[k]||0,p=priceOf(i);cpw.push({it,p,w,c:p/Math.max(w,1),set:k.startsWith('set:')})});
   const worn=cpw.filter(x=>x.w>0),wornSum=worn.reduce((a,x)=>a+x.p,0),wornN=worn.reduce((a,x)=>a+x.w,0);
