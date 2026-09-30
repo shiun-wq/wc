@@ -769,5 +769,19 @@
 "套裝不管拆成幾件，價格只算一次；套裝裡的單品全部穿到才算整套穿過一次。": "However many pieces a set is split into, its price counts once. A set counts as worn only when every piece in it is worn.",
 "外觀可以選淺色、深色，或跟著手機自動切換；娃娃月曆一週從星期日或星期一開始，也在這裡改。": "Appearance can be light, dark, or follow your phone. You can also choose whether the doll calendar starts on Sunday or Monday here.",
 "有問題或想要的功能，到「意見回饋」寫信告訴我；「給你的一封信」可以再看一次第一次打開時的信。": "Questions or feature ideas? Write to me from “Feedback”. “A letter for you” shows the letter from your first visit again.",
-"右上 ✏️ 改資料、配件": "Tap ✏️ at the top right to edit details and accessories"
+"右上 ✏️ 改資料、配件": "Tap ✏️ at the top right to edit details and accessories",
+"AI 自動去背": "AI auto cut",
+"AI 自動找出衣服剪下來，剪的是原照片，細節不會變。不準的可以再修": "AI finds the clothes and cuts them out of your original photo, so no details change. You can touch up anything it misses",
+"一律 AI 自動去背 免費，自動找出衣服": "Always AI auto cut — free, finds the clothes for you",
+"自動去背的模型載入失敗，請檢查網路後再試一次": "Couldn't load the auto cut model. Check your connection and try again",
+"自動去背沒找到衣服，改用「點選去背」點一下試試": "Auto cut couldn't find the clothes. Try “Tap to cut” and tap on them",
+"AI 自動去背・點選去背・筆刷修補": "AI auto cut · Tap to cut · Brush repair",
+"在手機上做，剪的是原照片，不花次數": "Done on your phone from your original photo, uses no credits",
+"「AI 自動去背」免費：自動找出衣服剪下來，剪的是原照片，蕾絲、花紋都不會被改掉。先按「AI 分析」再做，套裝每一件會找得更準。": "“AI auto cut” is free: it finds the clothes and cuts them out of your original photo, so lace and patterns stay exactly as they are. Tap “AI analyze” first and each piece of a set is found more accurately.",
+"「點選去背」也免費：點一下衣服就圈出來，什麼背景都可以。": "“Tap to cut” is free too: tap the clothes and they're outlined, on any background.",
+"「貼圖製作」可以選每次詢問，或固定用 AI 自動去背、點選去背、簡易去背。": "In “Stickers” you can choose to be asked each time, or always use AI auto cut, Tap to cut or Simple cut-out.",
+"套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。": "For a set, tap “AI analyze” to split it into pieces, or set the type to “Set” and pick the pieces yourself (free), then tap “Sticker each piece”.",
+"是套裝！剛剛的貼圖是當單件做的，已拿掉，按「逐件做貼圖」每件各自做": "It's a set! The sticker was made as a single piece, so it was removed. Tap “Sticker each piece” to make each one",
+"次數用完也可以用點數：建檔分析、穿搭辨識、搭配建議 1 點，買前檢查 3 點（會員限定）。": "When you run out, you can use points: add-item analysis, outfit recognition and outfit ideas cost 1 point, pre-purchase check costs 3 points (members only).",
+"AI 服務回傳的內容看不懂，請再試一次": "Couldn't read the AI service's reply. Please try again"
 }

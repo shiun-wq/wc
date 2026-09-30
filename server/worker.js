@@ -105,7 +105,8 @@ export default {
       up = await fetch(apiURL(base, '/chat/completions'), {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
-        body: JSON.stringify({ model, max_tokens: task === 'test' ? 16 : MAX_TOKENS, stream: false, messages })
+        // 測試也給多一點字數：會思考的模型（例如 Gemini 3）先想一下才回答，太少會回空的
+        body: JSON.stringify({ model, max_tokens: task === 'test' ? 1024 : MAX_TOKENS, stream: false, messages })
       });
     } catch (e) {
       return json({ error: 'AI 服務連不上，稍後再試' }, 502, cors);
