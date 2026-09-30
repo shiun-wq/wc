@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=29"></script>
+<script src="i18n/i18n.js?v=30"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2752,7 +2752,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-50';
+const APP_VER='2026.10.01-51';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -6635,7 +6635,7 @@ function openShare(kind,id){
     ${!SC.ann&&!SC.photo&&!SC.hasDollPiece&&SC.doll&&SC.doll.photo?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" checked onchange="SC.withDoll=this.checked;scRender()"> 讓 ${esc(SC.doll.name)} 也入鏡</label>`:''}
     ${SC.ann&&SC.ann.stats&&SC.ann.stats.length?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.annStats?'checked':''} onchange="SC.annStats=this.checked;S.settings.annStats=this.checked;save();scRender()"> 放上${SC.ann.stats.map(r=>r[0]).join('、')}的次數</label>`:''}
     ${!SC.ann&&(SC.items.length||SC.year)?`<label class="remember" style="margin:0 0 12px"><input type="checkbox" ${SC.hideNames?'checked':''} onchange="SC.hideNames=this.checked;S.settings.scHideNames=this.checked;save();scRender()"> 隱藏娃衣名稱（不想讓人知道穿了哪幾件）</label>`:''}
-    <label class="f"><span>寫一句話（選填）</span><input type="text" id="scCap" maxlength="36" placeholder="${SC.ann?'謝謝你來到我身邊 🤍':'今天是草莓甜點日 🍓'}" oninput="scCapChange(this.value)"></label>
+    <label class="f"><span>寫一句話（選填，太長會自動換行，最多 3 行）</span><textarea id="scCap" rows="2" maxlength="60" placeholder="${SC.ann?'謝謝你來到我身邊 🤍':'今天是草莓甜點日 🍓'}" oninput="scCapChange(this.value)">${esc(SC.cap||'')}</textarea></label>
     <div class="row">
       <button class="btn ghost grow" onclick="scDownload()">下載圖片</button>
       ${navigator.share?`<button class="btn grow" onclick="scShare()">分享</button>`:''}
@@ -6650,6 +6650,17 @@ function scSet(k,v){
 let scTimer;
 function scCapChange(v){SC.cap=v;clearTimeout(scTimer);scTimer=setTimeout(scRender,250)}
 function rrect(x,X,Y,W,H,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath()}
+// 小卡的一句話：太長就換行（最多 3 行，再多才用…）
+function capLines(x,maxW,max=3){
+  const t='「'+String(SC.cap||'').replace(/\s*\n\s*/g,' ').trim()+'」',out=[];let line='';
+  for(const ch of t){if(x.measureText(line+ch).width>maxW&&line){out.push(line);line=ch;if(out.length===max)break}else line+=ch}
+  if(out.length<max&&line)out.push(line);
+  else if(line&&out.length===max){let l=out[max-1];while(l.length>1&&x.measureText(l+'…」').width>maxW)l=l.slice(0,-1);out[max-1]=l+'…」'}
+  return out;
+}
+// 換行多出來的高度：先量好，版面才能往上挪
+function capExtra(font,maxW,lh){if(!SC.cap)return 0;const c=document.createElement('canvas').getContext('2d');c.font=font;return (capLines(c,maxW).length-1)*lh}
+function drawCap(x,X,Y,maxW,lh){const L=capLines(x,maxW);L.forEach((l,i)=>x.fillText(l,X,Y+i*lh));return (L.length-1)*lh}
 function fitText(x,t,maxW){if(x.measureText(t).width<=maxW)return t;while(t.length>1&&x.measureText(t+'…').width>maxW)t=t.slice(0,-1);return t+'…'}
 // 主圖：穿搭照，或照畫布位置擺的平鋪貼圖；Look 可以把娃娃放在左邊
 async function scArt(x,T,AX,AY,AW,AH,R,noShadow){
@@ -6733,12 +6744,13 @@ async function scAnn(x,T,W,H,P,serif,num,sans){
   x.textAlign='center';
   x.fillStyle=T.accent;x.font=`600 32px ${num}`;x.letterSpacing='10px';x.fillText(A.tag,W/2,P+50);x.letterSpacing='0px';
   // 大數字；限動比較高，整塊往下移到置中
-  const K=annStatsOn()?130:0,R0=story?340:(K?190:250),endEst=P+(story?300:230)+(story?520:(K?330:400))+R0+(story?150:120)+62+(SC.cap?84:0)+K;
+  const K=annStatsOn()?130:0,R0=story?340:(K?190:250),endEst=P+(story?300:230)+(story?520:(K?330:400))+R0+(story?150:120)+62+(SC.cap?84+capExtra(`500 40px ${serif}`,W-P*2,52):0)+K;
   const by=P+(story?300:230)+Math.max(0,(H-P-120-endEst)/2);
   x.fillStyle=T.ink;x.font=`700 ${story?240:200}px ${num}`;x.fillText(A.big,W/2,by);
   if(A.unit){x.fillStyle=T.sub;x.font=`600 40px ${num}`;x.letterSpacing='8px';x.fillText(A.unit,W/2,by+60);x.letterSpacing='0px'}
   // 娃娃
-  const cy=by+(story?520:(K?330:400)),R=R0;
+  // 放不下（統計＋很長的一句話）時，娃娃圓圈縮小、往上挪，文字才不會壓到最下面
+  const over=Math.max(0,endEst-(H-P-120)),cy=by+(story?520:(K?330:400))-over/2,R=Math.max(130,R0-over/2);
   x.fillStyle=T.soft;x.globalAlpha=.8;x.beginPath();x.arc(W/2,cy,R,0,7);x.fill();x.globalAlpha=1;
   x.strokeStyle=T.accent;x.globalAlpha=.35;x.lineWidth=3;x.setLineDash([4,14]);x.beginPath();x.arc(W/2,cy,R+26,0,7);x.stroke();x.setLineDash([]);x.globalAlpha=1;
   const im=SC.doll&&SC.doll.photo?await loadImg(SC.doll.photo).catch(()=>null):null;
@@ -6752,7 +6764,7 @@ async function scAnn(x,T,W,H,P,serif,num,sans){
   y+=62;x.fillStyle=T.sub;x.font=`600 34px ${num}`;x.letterSpacing='4px';
   x.fillText(A.since?`${fmt(A.since)}  →  ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`:`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`,W/2,y);x.letterSpacing='0px';
   if(K){y=drawAnnStats(x,T,P+40,y+34,W-P*2-80,num,sans)-10;x.textAlign='center'}
-  if(SC.cap){y+=84;x.fillStyle=T.ink;x.font=`500 40px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),W/2,y)}
+  if(SC.cap){y+=84;x.fillStyle=T.ink;x.font=`500 40px ${serif}`;y+=drawCap(x,W/2,y,W-P*2,52)}
   x.textAlign='left';
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
@@ -6788,7 +6800,7 @@ async function scFoot(x,T,W,H,P,serif,num,sans){
   x.fillStyle=T.ink;x.font=`700 84px ${serif}`;x.fillText(fitText(x,`${d.name} 的足跡`,W-P*2-40),P,P+130);
   x.fillStyle=T.ink;x.fillRect(P,P+160,W-P*2,3);
   const hasTW=hc==='台灣',hasW=Object.keys(ct).length>0;
-  const statH=104,capH=SC.cap?80:0,worldH=hasW?(story?420:(hasTW?260:560)):0;
+  const statH=104,capH=SC.cap?80+capExtra(`500 36px ${serif}`,W-P*2,48):0,worldH=hasW?(story?420:(hasTW?260:560)):0;
   const MY=P+196,MH=H-MY-P-120-statH-40-capH-(worldH?worldH+24:0);
   // 地圖卡
   x.fillStyle=T.card;x.globalAlpha=.85;rrect(x,P,MY,W-P*2,MH,36);x.fill();x.globalAlpha=1;
@@ -6805,7 +6817,7 @@ async function scFoot(x,T,W,H,P,serif,num,sans){
   if(regs.size)stats.push([`去過的${unitOf(hc)}`,regs.size,'個']);
   if(cts.size)stats.push(['去過的國家',cts.size,'個']);
   y=drawAnnStats(x,T,P,y+8,W-P*2,num,sans,stats);
-  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y+60)}
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;drawCap(x,P,y+60,W-P*2,48)}
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
 // 紀念小卡的共用：娃娃照（沒有就用名字第一個字）、日期文字
@@ -6818,7 +6830,10 @@ function annDateText(){
 async function scAnnPolaroid(x,T,W,H,P,serif,num,sans){
   const A=SC.ann,story=SC.ratio==='story';
   x.textAlign='center';x.fillStyle=T.accent;x.font=`600 30px ${num}`;x.letterSpacing='10px';x.fillText(A.tag,W/2,P+48);x.letterSpacing='0px';x.textAlign='left';
-  const K=annStatsOn()?130:0,FW=W-220,FX=110,aw=FW-60,ah=(story?aw*1.25:aw*.86)-(story?0:K),FH=30+ah+230,FY=Math.max(P+90,(H-P-120-FH-K)/2+20);
+  const K=annStatsOn()?130:0,FW=W-220,FX=110,aw=FW-60;
+  // 照片框下面要放：日期、統計、一句話（可能好幾行）、頁尾；放不下就把照片變矮
+  const tail=(story?120:84)+(K?120:0)+(SC.cap?66+capExtra(`500 38px ${serif}`,W-P*2,50):0)+170;
+  const ah0=(story?aw*1.25:aw*.86)-(story?0:K),ah=Math.max(aw*.45,ah0-Math.max(0,P+90+30+ah0+230+tail-H)),FH=30+ah+230,FY=Math.max(P+90,(H-P-120-FH-K)/2+20);
   x.save();x.translate(W/2,FY+FH/2);x.rotate(2.2*Math.PI/180);x.translate(-W/2,-(FY+FH/2));
   x.save();x.shadowColor='rgba(0,0,0,.2)';x.shadowBlur=44;x.shadowOffsetY=20;x.fillStyle='#FFFEFB';x.fillRect(FX,FY,FW,FH);x.restore();
   const AX=FX+30,AY=FY+30,soft=SC.theme==='night'?'#EADCD9':T.soft;
@@ -6839,7 +6854,7 @@ async function scAnnPolaroid(x,T,W,H,P,serif,num,sans){
   let y=FY+FH+(story?120:84);
   x.textAlign='center';x.fillStyle=T.sub;x.font=`600 32px ${num}`;x.letterSpacing='4px';x.fillText(annDateText(),W/2,y);x.letterSpacing='0px';
   if(K){y=drawAnnStats(x,T,P+40,y+30,W-P*2-80,num,sans)-10;x.textAlign='center'}
-  if(SC.cap){y+=66;x.fillStyle=T.ink;x.font=`500 38px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),W/2,y)}
+  if(SC.cap){y+=66;x.fillStyle=T.ink;x.font=`500 38px ${serif}`;y+=drawCap(x,W/2,y,W-P*2,50)}
   x.textAlign='left';
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
@@ -6865,19 +6880,19 @@ async function scAnnMag(x,T,W,H,P,serif,num,sans){
   x.fillStyle=T.ink;x.font=`700 54px ${serif}`;x.fillText(fitText(x,A.line,W-P*2),P,y);
   y+=58;x.fillStyle=T.sub;x.font=`600 30px ${num}`;x.letterSpacing='4px';x.fillText(annDateText(),P,y);x.letterSpacing='0px';
   if(K)y=drawAnnStats(x,T,P,y+30,W-P*2,num,sans)-10;
-  if(SC.cap){y+=64;x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y)}
+  if(SC.cap){y+=64;x.fillStyle=T.ink;x.font=`500 36px ${serif}`;y+=drawCap(x,P,y,W-P*2,48)}
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
 // 拍立得：照片放在白框裡，稍微歪一點，上面貼一條紙膠帶
 async function scPolaroid(x,T,W,H,P,serif,num,sans){
   const d=new Date(SC.date+'T00:00:00');
-  const FW=W-200,FX=100,aw=FW-64,ah=SC.ratio==='story'?aw*1.35:aw*.92,FH=32+ah+170,FY=Math.max(110,(H-150-(FH+120))/2);
+  const FW=W-200,FX=100,aw=FW-64,ah=SC.ratio==='story'?aw*1.35:aw*.92,cx2=capExtra(`500 30px ${serif}`,FW-80,40),FH=32+ah+170+cx2,FY=Math.max(110,(H-150-(FH+120))/2);
   x.save();x.translate(W/2,FY+FH/2);x.rotate(-2*Math.PI/180);x.translate(-W/2,-(FY+FH/2));
   x.save();x.shadowColor='rgba(0,0,0,.18)';x.shadowBlur=40;x.shadowOffsetY=18;x.fillStyle='#FFFEFB';x.fillRect(FX,FY,FW,FH);x.restore();
   await scArt(x,Object.assign({},T,SC.theme==='night'?{card:'#F4EEEA',line:'#E6DCD4',soft:'#EADCD9'}:{}),FX+32,FY+32,aw,ah,6,true);
   x.fillStyle='#3A2E33';x.font=`600 54px ${serif}`;x.fillText(fitText(x,SC.title,FW-280),FX+40,FY+32+ah+92);
   x.textAlign='right';x.fillStyle='#8C7F85';x.font=`600 40px ${num}`;x.fillText(`${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`,FX+FW-40,FY+32+ah+88);x.textAlign='left';
-  if(SC.cap){x.fillStyle='#6B5A66';x.font=`500 30px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',FW-80),FX+40,FY+32+ah+140)}
+  if(SC.cap){x.fillStyle='#6B5A66';x.font=`500 30px ${serif}`;drawCap(x,FX+40,FY+32+ah+140,FW-80,40)}
   x.restore();
   // 紙膠帶
   x.save();x.translate(W/2,FY+6);x.rotate(3*Math.PI/180);x.fillStyle=T.accent;x.globalAlpha=.28;x.fillRect(-110,-26,220,52);x.restore();
@@ -6891,8 +6906,8 @@ async function scMag(x,T,W,H,P,serif,num,sans){
   x.textAlign='right';x.fillStyle=T.sub;x.fillText(`NO.${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`,W-P,P+26);x.letterSpacing='0px';x.textAlign='left';
   x.fillStyle=T.ink;x.font=`700 96px ${serif}`;x.fillText(fitText(x,SC.title,W-P*2),P,P+140);
   x.fillStyle=T.ink;x.fillRect(P,P+172,W-P*2,3);
-  const n=Math.min(SC.items.length,SC.ratio==='story'?10:6),rows=Math.ceil(n/2);
-  const listH=rows*56+(SC.cap?80:0)+130;
+  const n=SC.hideNames?0:Math.min(SC.items.length,SC.ratio==='story'?10:6),rows=Math.ceil(n/2);
+  const listH=rows*56+(SC.cap?80+capExtra(`500 36px ${serif}`,W-P*2,48):0)+130;
   const AY=P+200,AH=H-AY-listH-P;
   await scArt(x,T,0,AY,W,AH,0,true);
   let y=AY+AH+64;
@@ -6902,7 +6917,7 @@ async function scMag(x,T,W,H,P,serif,num,sans){
     if(!SC.hideNames){x.fillStyle=T.ink;x.font=`500 28px ${sans}`;x.fillText(fitText(x,it.name,(W-P*2)/2-80),cx+60,cy)}
   });
   y+=rows*56+10;
-  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',W-P*2),P,y+30)}
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;drawCap(x,P,y+30,W-P*2,48)}
   await scFooter(x,T,P,W,H-P,serif,sans);
 }
 // 隱藏娃衣名稱：有照片的話整個娃衣區都拿掉（當作沒有娃衣）；沒照片時娃衣就是主角，只藏名字
@@ -6971,7 +6986,7 @@ async function scYear(x,T,W,H,P,serif,num,sans){
   if(!story&&r.newDolls.length)y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個'],['新來的娃衣',r.items,'件']])+44;
   else{y=drawAnnStats(x,T,P,y,IW,num,sans,[['穿搭',r.wears,'次'],['出門',r.outs,'次'],['去過的地方',r.places,'個']])+16;
     y=drawAnnStats(x,T,P,y,IW,num,sans,[['新來的娃衣',r.items,'件'],['新來的娃娃',r.dolls,'隻'],['最常換裝',r.busy||'—',r.busy?'月':'']])+(story?60:40)}
-  const capH=SC.cap?80:0,footY=H-P-100-capH;
+  const capX=capExtra(`500 36px ${serif}`,IW,48),capH=SC.cap?80+capX:0,footY=H-P-100-capH;
   // 今年來到身邊的娃娃：排排站
   if(r.newDolls.length){
     const ims=(await Promise.all(r.newDolls.slice(0,6).map(d=>d.photo?loadImg(d.photo).catch(()=>null):null)));
@@ -7044,7 +7059,7 @@ x.fillStyle=T.ink;x.font=`700 34px ${serif}`;x.fillText(`${r.y} 來到身邊的�
       x.fillStyle=T.sub;x.font=`500 20px ${sans}`;x.textAlign='center';x.fillText(i+1,bx+bw*.32,top+bh+30);x.textAlign='left'});
     y=top+bh+60;
   }
-  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;x.fillText(fitText(x,'「'+SC.cap+'」',IW),P,Math.max(y+20,H-P-150))}
+  if(SC.cap){x.fillStyle=T.ink;x.font=`500 36px ${serif}`;drawCap(x,P,Math.max(y+20,H-P-150-capX),IW,48)}
   const dl=SC.doll;SC.doll=null;await scFooter(x,T,P,W,H-P,serif,sans);SC.doll=dl;
 }
 // 會員小卡邊框：蕾絲、星星、格紋、緞帶
@@ -7128,7 +7143,7 @@ async function scDraw0(){
   x.textAlign='left';
   // 下方資訊區的高度
   const showRow=!!SC.photo&&SC.items.length;
-  const infoH=(showRow?280:120)+(SC.cap?90:0)+70;
+  const infoH=(showRow?280:120)+(SC.cap?90+capExtra(`500 38px ${serif}`,W-P*2,50):0)+70;
   const AX=P,AY=P+170,AW=W-P*2,AH=H-AY-infoH-P;
   await scArt(x,T,AX,AY,AW,AH,44);
   // 下方資訊
@@ -7149,7 +7164,7 @@ async function scDraw0(){
   }
   if(SC.cap){
     x.fillStyle=T.ink;x.font=`500 38px ${serif}`;
-    x.fillText(fitText(x,'「'+SC.cap+'」',AW),AX,y);y+=70;
+    y+=drawCap(x,AX,y,AW,50)+70;
   }
   await scFooter(x,T,P,W,H-P,serif,sans);
   return c;
