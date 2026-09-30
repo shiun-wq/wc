@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=30"></script>
+<script src="i18n/i18n.js?v=31"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1095,6 +1095,10 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .letter .sign{text-align:right;margin:16px 0 0;color:var(--ink-2)}
 .letter .sign small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
 .fbtype{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.wnote{flex:0 0 auto;width:52px;padding:0;font-size:20px}.wnote.on{background:var(--berry,#B5536B);border-color:transparent;box-shadow:0 0 0 2px rgba(181,83,107,.18)}
+.wnotebox{display:flex;gap:8px;align-items:flex-end;margin:0 -18px 8px;padding:8px 18px 0;background:var(--paper)}.wnotebox textarea{flex:1;min-height:72px}
+.wdnote{white-space:pre-wrap;font-size:14px;line-height:1.7;background:var(--paper-2);border-radius:14px;padding:10px 12px;margin:0 0 12px}
+.dcnote{display:block;color:var(--ink-2);font-size:12.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
 .qth{position:relative;cursor:pointer}.qth i{position:absolute;right:4px;bottom:4px;font-style:normal;font-size:13px;line-height:1;padding:4px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .qfrom{font-size:12.5px;line-height:1.6;color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:8px 10px;margin:0 0 8px}.qfrom .btn{margin-top:6px;display:flex}
 .otcheer{padding:8px 4px 4px}.otmoon{font-size:56px;line-height:1;margin:6px 0 10px;animation:otfloat 2.4s ease-in-out infinite}
@@ -2752,7 +2756,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-51';
+const APP_VER='2026.10.01-52';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3542,7 +3546,7 @@ function dollCal(d){
   let day='';
   if(sel){const r=dayRecs(d,sel),wd='日一二三四五六'[new Date(sel+'T12:00:00').getDay()];
     const rows=[...r.anns.map(a=>`<div class="dcrow"><span>${esc(a)}</span></div>`),
-      ...r.ws.map(w=>`<button class="dcrow" onclick="openWearDetail('${w.id}')"><span>${placeTag(w)}${(w.itemIds||[]).map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('、')||(isWork(w)?'':'沒有勾選衣服')}</span><em>›</em></button>`),
+      ...r.ws.map(w=>`<button class="dcrow" onclick="openWearDetail('${w.id}')"><span>${placeTag(w)}${(w.itemIds||[]).map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('、')||(isWork(w)?'':'沒有勾選衣服')}${w.note?`<small class="dcnote">✏️ ${esc(w.note)}</small>`:''}</span><em>›</em></button>`),
       ...(r.outOnly?[`<button class="dcrow" onclick="openDollFoot('${d.id}')"><span>🚶 出門${(d.outPlaces||{})[sel]?'・'+esc(spotText(spNorm(d.outPlaces[sel])||{})):''}</span><em>›</em></button>`]:[])];
     day=`<div class="dcday"><b>${+sel.slice(5,7)}/${+sel.slice(8)}（${wd}）</b>${rows.length?rows.join(''):`<p class="hint" style="margin:6px 0 0">這天沒有紀錄。</p>`}
       ${sel<=td&&isLive(d)&&!r.ws.length?`<button class="btn sm ghost" style="margin-top:8px" onclick="openWear();WEAR.date='${sel}';WEAR.dollId='${d.id}';WEAR.doll=${esc(JSON.stringify(d.name))};drawWearSheet()">幫 ${esc(d.name)} 記一筆</button>`:''}</div>`}
@@ -6340,7 +6344,7 @@ function tripMemText(m){
 let WEAR={date:today(),doll:'',photo:null,picked:[],cands:null},WEAR_PRESET=null;
 function openWear(){
   const d=mainDoll();
-  WEAR={date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:WEAR_PRESET||[],cands:null,place:'在家',cat:'全部',sort:WEAR.sort||'new',q:'',fit:true};
+  WEAR={note:'',noteOpen:false,date:today(),doll:d?d.name:'',dollId:d?d.id:null,photo:null,picked:WEAR_PRESET||[],cands:null,place:'在家',cat:'全部',sort:WEAR.sort||'new',q:'',fit:true};
   drawWearSheet();
 }
 // 編輯已經存好的穿搭紀錄：把那筆的內容帶回記錄畫面，存的時候改原本那筆
@@ -6348,9 +6352,12 @@ function openWearEdit(id){
   const w=S.wears.find(x=>x.id===id);if(!w)return;
   const sp=spNorm(w.spot);
   WEAR={editId:id,date:w.date,doll:w.dollName||'',dollId:w.dollId||null,photo:w.photo||null,picked:(w.itemIds||[]).slice(),cands:null,
-    place:w.place==='出門'||w.place==='上班'?w.place:'在家',rid:w.rid||'',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||''};
+    place:w.place==='出門'||w.place==='上班'?w.place:'在家',rid:w.rid||'',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||'',noteOpen:false};
   drawWearSheet();
 }
+// 記穿搭的小記事：底部固定列的 ✏️，點了才展開，衣服再多也不用滑到底
+function wearNoteBox(){return WEAR.noteOpen?`<div class="wnotebox"><textarea id="w_note" rows="3" maxlength="300" placeholder="今天發生了什麼？寫幾句就好（選填）" oninput="WEAR.note=this.value;document.querySelector('.wnote').classList.toggle('on',!!this.value.trim())">${esc(WEAR.note||'')}</textarea><button class="btn sm ghost" onclick="WEAR.noteOpen=false;wearBarDraw()">收起</button></div>`:''}
+function wearBarDraw(){const bar=document.getElementById('wbar');if(!bar)return;bar.querySelector('.wnotebox')?.remove();if(WEAR.noteOpen){bar.insertAdjacentHTML('afterbegin',wearNoteBox());const t=document.getElementById('w_note');if(t)t.focus()}}
 function drawWearSheet(){
   WEAR_PRESET=null;
   openSheet(`
@@ -6376,7 +6383,7 @@ function drawWearSheet(){
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
     <div id="wpick">${wearPickHTML()}</div>
-    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':!WEAR.picked.length&&WEAR.place==='上班'?`記下今天一起${esc(workLbl(rById(WEAR.rid)||R0()))}`:'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
+    <div class="stickybar" id="wbar">${wearNoteBox()}<div class="row" style="gap:8px"><button class="btn ghost wnote ${WEAR.note?'on':''}" onclick="WEAR.noteOpen=!WEAR.noteOpen;wearBarDraw()" aria-label="小記事" title="寫幾句（選填）">✏️</button><button class="btn grow" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':!WEAR.picked.length&&WEAR.place==='上班'?`記下今天一起${esc(workLbl(rById(WEAR.rid)||R0()))}`:'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div></div>
   `);
   document.querySelector('#sheet .panel').classList.add('full');
 }
@@ -6517,14 +6524,14 @@ async function commitWear(){
     const w=S.wears.find(x=>x.id===WEAR.editId);if(!w)return;
     const old={date:w.date,dollId:w.dollId,place:w.place};
     const d0=WEAR.dollId&&S.dolls.find(x=>x.id===WEAR.dollId);
-    Object.assign(w,{date:WEAR.date,dollId:WEAR.dollId||null,dollName:d0?d0.name:WEAR.doll,itemIds:WEAR.picked.slice(),photo:WEAR.photo,place:WEAR.place||'',rid:WEAR.place==='上班'?(rById(WEAR.rid)||R0()).id:undefined,spot:sp});
+    Object.assign(w,{note:(WEAR.note||'').trim(),date:WEAR.date,dollId:WEAR.dollId||null,dollName:d0?d0.name:WEAR.doll,itemIds:WEAR.picked.slice(),photo:WEAR.photo,place:WEAR.place||'',rid:WEAR.place==='上班'?(rById(WEAR.rid)||R0()).id:undefined,spot:sp});
     if(old.place==='出門'&&old.dollId&&(old.date!==w.date||old.dollId!==w.dollId||w.place!=='出門'))unlinkOuting(old.dollId,old.date,w.id);
     if(w.place==='出門'&&w.dollId){const d=S.dolls.find(x=>x.id===w.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(w.date))d.outs.push(w.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[w.date]=sp}}}
     await save();
     if(UI.tab==='home')renderHome();else if(UI.tab==='wear')renderWears();else if(UI.tab==='album')renderAlbum();
     openWearDetail(w.id);toast('已更新這筆紀錄');return;
   }
-  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:'',place:WEAR.place||'',...(WEAR.place==='上班'?{rid:(rById(WEAR.rid)||R0()).id}:{}),spot:sp});
+  S.wears.push({id:uid('w'),date:WEAR.date,dollName:WEAR.doll,dollId:WEAR.dollId||null,itemIds:WEAR.picked.slice(),lookId:null,photo:WEAR.photo,note:(WEAR.note||'').trim(),place:WEAR.place||'',...(WEAR.place==='上班'?{rid:(rById(WEAR.rid)||R0()).id}:{}),spot:sp});
   // 選「出門」就順便記一次帶出門，地點也記到娃娃的足跡
   if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[WEAR.date]=sp}}}
   const wid=S.wears[S.wears.length-1].id;
@@ -6565,6 +6572,7 @@ function openWearDetail(id){
   openSheet(`<h3>${esc(w.date.replace(/-/g,'/'))}${w.dollName?'・'+esc(w.dollName):''}</h3>
     <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:isWork(w)?`${workIcon(rOf(w))} 陪你${esc(workLbl(rOf(w)))}${isOT(w)?`・🌙 ${esc(workExtra(rOf(w)))}`:''}`:'🏠 在家'}</p>
     ${w.photo?`<div class="hero" style="aspect-ratio:4/5;cursor:zoom-in" onclick="openPhoto('${w.id}')"><img src="${w.photo}" alt="" style="object-fit:cover;padding:0"></div>`:''}
+    ${w.note?`<div class="wdnote">✏️ ${esc(w.note)}</div>`:''}
     ${its.length?`<p class="mh">穿了 ${its.length} 件</p><div class="hscroll">${its.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}</div></button>`).join('')}</div>`:'<p class="hint">這筆沒有勾選衣服。</p>'}
     <div class="row" style="margin-top:14px"><button class="btn ghost grow" onclick="openWearEdit('${w.id}')">✏️ 編輯</button><button class="btn grow" onclick="closeSheet();openShare('wear','${w.id}')">做成小卡</button>${w.photo?`<button class="btn ghost" onclick="savePhotos(['${w.id}'])">⬇️ 存到手機</button>`:''}</div>
     <button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delWear('${w.id}')">刪除這筆</button>`);
@@ -6614,7 +6622,7 @@ function openShare(kind,id){
     cw=document.getElementById('canvas').clientWidth||cw;title='今天想這樣穿';doll=mainDoll();
   }
   Object.assign(SC,{items:items.map(i=>S.items.find(x=>x.id===i)).filter(Boolean),photo,layout,cw,date,doll,title,
-    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:'',hideNames:!!S.settings.scHideNames,pos:{x:.5,y:.5}});
+    theme:SC.theme||(document.documentElement.dataset.theme==='dark'?'night':'cream'),ratio:SC.ratio||'post',lay:SC.lay||'classic',cap:kind==='wear'?noteCap((S.wears.find(x=>x.id===id)||{}).note):'',wearId:kind==='wear'?id:null,noteEmpty:kind==='wear'&&!((S.wears.find(x=>x.id===id)||{}).note||'').trim(),hideNames:!!S.settings.scHideNames,pos:{x:.5,y:.5}});
   SC.hasDollPiece=!!(layout&&layout.some(p=>p.dollId));
   if(SC.hasDollPiece){const d=S.dolls.find(x=>x.id===layout.find(p=>p.dollId).dollId);if(d)SC.doll=d}
   SC.withDoll=!photo&&!SC.hasDollPiece&&!!(SC.doll&&SC.doll.photo);
@@ -6648,7 +6656,12 @@ function scSet(k,v){
   scRender();
 }
 let scTimer;
-function scCapChange(v){SC.cap=v;clearTimeout(scTimer);scTimer=setTimeout(scRender,250)}
+// 小記事帶進小卡：太長就取前面 60 字
+function noteCap(n){n=String(n||'').replace(/\s*\n\s*/g,' ').trim();return n.length>60?n.slice(0,59)+'…':n}
+function scCapChange(v){SC.cap=v;clearTimeout(scTimer);scTimer=setTimeout(scRender,250);
+  // 這筆穿搭還沒寫小記事：小卡上的一句話順便存成小記事（已經有的不會被蓋掉）
+  if(SC.wearId&&SC.noteEmpty){const w=S.wears.find(x=>x.id===SC.wearId);if(w){w.note=v.trim();clearTimeout(scNoteT);scNoteT=setTimeout(save,800)}}}
+var scNoteT=0;
 function rrect(x,X,Y,W,H,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+W,Y,X+W,Y+H,r);x.arcTo(X+W,Y+H,X,Y+H,r);x.arcTo(X,Y+H,X,Y,r);x.arcTo(X,Y,X+W,Y,r);x.closePath()}
 // 小卡的一句話：太長就換行（最多 3 行，再多才用…）
 function capLines(x,maxW,max=3){
@@ -7943,7 +7956,7 @@ const HELP=[
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
     ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定），也會看顏色：白黑灰米棕百搭、同色系安全，避開撞色和風格差太多的組合，你常用的配色也會加分。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門／上班'],['📷','放照片'],['☑️','勾選衣服']],
-    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，分析和年度回顧也會列出你的加班夥伴；國定假日首頁問的時候按「今天放假」就好。早上上班、晚上讀書，可以在 設定 → 陪上班 按「＋ 新增日常」分開記（最多 3 個），各有各的最佳夥伴。名字可以改成上學、讀書、打工…或自己取，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。','穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。']],
+    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，分析和年度回顧也會列出你的加班夥伴；國定假日首頁問的時候按「今天放假」就好。早上上班、晚上讀書，可以在 設定 → 陪上班 按「＋ 新增日常」分開記（最多 3 個），各有各的最佳夥伴。名字可以改成上學、讀書、打工…或自己取，分析裡的「最佳同事」也會跟著變成最佳同學、讀書夥伴；上班時間可以選固定星期，或排班制一天一天點。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。','想寫幾句的話，按最下面「存入」左邊的 ✏️（選填，不寫也沒關係）；寫過的小記事會出現在紀錄和娃娃月曆裡，做小卡時也會自動帶進「一句話」。','穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
     ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
