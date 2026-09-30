@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=26"></script>
+<script src="i18n/i18n.js?v=27"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1105,6 +1105,17 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .calgrid small{font-size:12px;color:var(--muted);padding:2px 0}
 .calgrid button{aspect-ratio:1;min-height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:15px;cursor:pointer;padding:0}
 .calgrid button.on{background:var(--berry,#B5536B);border-color:transparent;color:#fff;font-weight:700}
+.dgrid button{aspect-ratio:auto;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding:4px 0 6px;position:relative}
+.dgrid button small{font-size:11px;color:var(--muted);padding:0}
+.dgrid button b{font-size:17px;line-height:1.2;min-height:20px;font-weight:400}
+.dgrid button em{position:absolute;bottom:3px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--berry,#B5536B)}
+.dgrid button.sel{border-color:var(--berry,#B5536B);box-shadow:inset 0 0 0 1.5px var(--berry,#B5536B)}
+.dgrid button.fut{opacity:.45}
+.dcal{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px}
+.dcday{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.dcday>b{display:block;font-size:14px;margin-bottom:4px}
+.dcrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 2px;border-bottom:1px solid var(--paper-2);font-size:13.5px;color:var(--ink)}
+.dcrow span{flex:1;line-height:1.5}.dcrow em{font-style:normal;color:var(--muted)}
 .calgrid button.td{box-shadow:inset 0 0 0 2px var(--gold,#C9A45C)}
 .divider{height:1px;background:var(--line);margin:20px 0}
 .warn{font-size:12.5px;color:var(--amber);line-height:1.6}
@@ -2487,13 +2498,13 @@ function shiftCard(){
 const curR=()=>rById(UI.rid)||R0();
 async function toggleShift(t){const r=curR(),a=(r.shift||[]).slice(),i=a.indexOf(t);if(i<0)a.push(t);else a.splice(i,1);r.shift=a.sort();await save();openSettings('work')}
 function shiftCal(r){
-  const m=UI.shiftM||today().slice(0,7),y=+m.slice(0,4),mo=+m.slice(5,7),first=new Date(y,mo-1,1).getDay(),n=new Date(y,mo,0).getDate();
+  const m=UI.shiftM||today().slice(0,7),y=+m.slice(0,4),mo=+m.slice(5,7),first=(new Date(y,mo-1,1).getDay()-weekStart()+7)%7,n=new Date(y,mo,0).getDate();
   const on=new Set(r.shift||[]),cnt=[...on].filter(x=>x.startsWith(m)).length;
   const mv=k=>ymd(new Date(y,mo-1+k,1).getTime()).slice(0,7);
   let cells='';for(let i=0;i<first;i++)cells+='<i></i>';
   for(let d=1;d<=n;d++){const t=m+'-'+String(d).padStart(2,'0');cells+=`<button type="button" class="${on.has(t)?'on':''} ${t===today()?'td':''}" onclick="toggleShift('${t}')">${d}</button>`}
   return `<div class="shcal"><div class="shhead"><button type="button" onclick="UI.shiftM='${mv(-1)}';openSettings('work')" aria-label="上個月">‹</button><b>${y} 年 ${mo} 月・${cnt} 天</b><button type="button" onclick="UI.shiftM='${mv(1)}';openSettings('work')" aria-label="下個月">›</button></div>
-    <div class="calgrid">${'日一二三四五六'.split('').map(x=>`<small>${x}</small>`).join('')}${cells}</div></div>`;
+    <div class="calgrid">${weekHead().map(x=>`<small>${x}</small>`).join('')}${cells}</div></div>`;
 }
 async function toggleWorkDay(n){const r=curR(),a=workDays(r).slice(),i=a.indexOf(n);if(i<0)a.push(n);else a.splice(i,1);r.days=a;await save();openSettings('work')}
 async function setRoutine(k,v){curR()[k]=v;await save();openSettings('work')}
@@ -2739,7 +2750,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-46';
+const APP_VER='2026.10.01-48';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3490,7 +3501,56 @@ async function dollOut(){
   drawDoll();
   if(UI.tab==='dolls')renderDolls();
 }
-function openDoll(id){
+/* ---- 娃娃履歷的月曆：把穿搭紀錄蓋成章，一天一個圖示（照特別程度挑），點日期在下面展開那天的紀錄 ---- */
+const weekStart=()=>S.settings.weekStart===0?0:1;   // 預設星期一開始，設定 → 外觀可以改成星期日
+const weekHead=()=>{const w='日一二三四五六',s0=weekStart();return Array.from({length:7},(_,i)=>w[(i+s0)%7])};
+// 這天是不是紀念日：到家週年、到家那天、自己加的紀念日
+function dayAnns(d,t){
+  const out=[],md=t.slice(5);
+  if(d.home&&/^\d{4}-\d\d-\d\d$/.test(d.home)){if(t===d.home)out.push('🎉 來到家裡的那天');else if(d.home.slice(5)===md&&t>d.home)out.push(`🎂 到家 ${+t.slice(0,4)-+d.home.slice(0,4)} 週年`)}
+  (d.dates||[]).forEach(x=>{if(x.md===md)out.push(`🎂 ${x.label||'紀念日'}${x.year&&+t.slice(0,4)>x.year?`（${+t.slice(0,4)-x.year} 歲）`:''}`)});
+  return out;
+}
+// 一天的紀錄：穿搭＋沒有穿搭紀錄的出門（補記的足跡）
+function dayRecs(d,t){
+  const ws=dollWears(d).filter(w=>w.date===t);
+  const outOnly=(d.outs||[]).includes(t)&&!ws.some(w=>w.place==='出門');
+  return {ws,outOnly,anns:dayAnns(d,t)};
+}
+function dayIcon(r){
+  if(r.anns.length)return '🎂';
+  if(r.outOnly||r.ws.some(w=>w.place==='出門'))return '🚶';
+  const wk=r.ws.filter(isWork);
+  if(wk.some(isOT))return '🌙';
+  if(wk.length)return workIcon(rOf(wk[0]));
+  if(r.ws.length)return '🏠';
+  return '';
+}
+function dollCal(d){
+  const m=UI.dcalM||today().slice(0,7),y=+m.slice(0,4),mo=+m.slice(5,7),n=new Date(y,mo,0).getDate();
+  const lead=(new Date(y,mo-1,1).getDay()-weekStart()+7)%7,mv=k=>ymd(new Date(y,mo-1+k,1).getTime()).slice(0,7),td=today();
+  const cnt={};let cells='';for(let i=0;i<lead;i++)cells+='<i></i>';
+  for(let k=1;k<=n;k++){
+    const t=m+'-'+String(k).padStart(2,'0'),r=dayRecs(d,t),ic=dayIcon(r),many=r.ws.length+(r.outOnly?1:0)+(r.anns.length&&(r.ws.length||r.outOnly)?1:0)>1;
+    if(ic)cnt[ic]=(cnt[ic]||0)+1;
+    cells+=`<button type="button" class="${t===UI.dcalSel?'sel':''} ${t===td?'td':''} ${t>td?'fut':''}" onclick="UI.dcalSel=UI.dcalSel==='${t}'?'':'${t}';dcalDraw('${d.id}')"><small>${k}</small><b>${ic||''}</b>${many?'<em></em>':''}</button>`;
+  }
+  const sum=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join('・');
+  const sel=UI.dcalSel&&UI.dcalSel.startsWith(m)?UI.dcalSel:'';
+  let day='';
+  if(sel){const r=dayRecs(d,sel),wd='日一二三四五六'[new Date(sel+'T12:00:00').getDay()];
+    const rows=[...r.anns.map(a=>`<div class="dcrow"><span>${esc(a)}</span></div>`),
+      ...r.ws.map(w=>`<button class="dcrow" onclick="openWearDetail('${w.id}')"><span>${placeTag(w)}${(w.itemIds||[]).map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('、')||(isWork(w)?'':'沒有勾選衣服')}</span><em>›</em></button>`),
+      ...(r.outOnly?[`<button class="dcrow" onclick="openDollFoot('${d.id}')"><span>🚶 出門${(d.outPlaces||{})[sel]?'・'+esc(spotText(spNorm(d.outPlaces[sel])||{})):''}</span><em>›</em></button>`]:[])];
+    day=`<div class="dcday"><b>${+sel.slice(5,7)}/${+sel.slice(8)}（${wd}）</b>${rows.length?rows.join(''):`<p class="hint" style="margin:6px 0 0">這天沒有紀錄。</p>`}
+      ${sel<=td&&isLive(d)&&!r.ws.length?`<button class="btn sm ghost" style="margin-top:8px" onclick="openWear();WEAR.date='${sel}';WEAR.dollId='${d.id}';WEAR.doll=${esc(JSON.stringify(d.name))};drawWearSheet()">幫 ${esc(d.name)} 記一筆</button>`:''}</div>`}
+  return `<div class="dcal shcal" id="dcal"><div class="shhead"><button type="button" onclick="UI.dcalM='${mv(-1)}';UI.dcalSel='';dcalDraw('${d.id}')" aria-label="上個月">‹</button><b>${y} 年 ${mo} 月</b><button type="button" onclick="UI.dcalM='${mv(1)}';UI.dcalSel='';dcalDraw('${d.id}')" aria-label="下個月">›</button></div>
+    ${sum?`<p class="hint" style="margin:0 0 8px;text-align:center">這個月：${sum}</p>`:`<p class="hint" style="margin:0 0 8px;text-align:center">這個月還沒有紀錄</p>`}
+    <div class="calgrid dgrid">${weekHead().map(x=>`<small>${x}</small>`).join('')}${cells}</div>${day}</div>`;
+}
+// 只換月曆那一塊，履歷不會跳回最上面
+function dcalDraw(id){const d=S.dolls.find(x=>x.id===id),el=document.getElementById('dcal');if(d&&el)el.outerHTML=dollCal(d)}
+function openDoll(id){UI.dcalM='';UI.dcalSel='';
   const d=id?S.dolls.find(x=>x.id===id):null;
   DD=d?{...d}:{id:null,name:'',size:(mainDoll()||{}).size||'',photo:null,raw:null,home:'',note:'',src:'',attr:'none',work:'',chara:'',price:'',from:''};
   DD.isMain=d?d.id===(mainDoll()||{}).id:!S.dolls.length;
@@ -3545,6 +3605,8 @@ function drawDollPage(d){
       <button onclick="openAlbum('${d.id}')"><b>${wearPhotos(d).length}</b><span>📷 相簿 ›</span></button>
     </div>
     ${nd.length&&isLive(d)?`<p class="dsec">紀念日</p><div class="danns">${nd.slice(0,4).map(x=>`<div><span>${x.ic}</span><b>${esc(x.label)}</b><em>${+x.md.slice(0,2)}/${+x.md.slice(3)}・${x.left===0?'就是今天':x.left===1?'明天':`再 ${x.left} 天`}</em></div>`).join('')}</div>`:''}
+    <p class="dsec">月曆</p>
+    ${dollCal(d)}
     <p class="dsec">整理紀錄</p>
     ${dollCareBlock(d)}
     ${acc.length?`<p class="dsec">附的配件</p><div class="care"><div class="carelist">${acc.map(a=>`<div class="ci ${a.state==='不見了'?'done':''}"><span>${(ACC_STATE.find(x=>x[0]===a.state)||[])[1]||'✓'}</span><div class="grow"><b>${esc(a.name)}</b><small>${esc(a.state)}${a.note?'・'+esc(a.note):''}</small></div></div>`).join('')}</div><p class="hint" style="margin:8px 0 0">要改配件，按右上「編輯」。</p></div>`:''}
@@ -7854,7 +7916,7 @@ const HELP=[
   ['🏡','首頁：每隻娃娃的專屬頁',[['🧸','點頭像切換娃娃'],['📍','出門・在家'],['👗','穿搭紀錄'],['📷','相簿']],
     ['首頁上的資訊都是目前這隻娃娃自己的：第二排是他的出門、在家、穿搭紀錄、相簿；下面是他尺寸的娃衣、本月穿搭和穿過的比例。','點「穿過的比例」可以看他穿過哪些娃衣（越常穿越前面），也可以幫他選適合的風格。','「今天穿這套？」每天幫他搭一套，今天已經記錄過穿搭就不會出現。購買中、壓箱底也只列他尺寸的。','「好久沒換裝」只提醒目前選的娃娃；按叉叉可以選 2 週後再提醒，或不再提醒。','首頁下方的切換列最多釘選 5 隻；所有娃娃的穿搭紀錄在「洞察」。']],
   ['🧸','娃娃櫃與紀念日',[['➕','新增娃娃'],['📅','填到家日、生日'],['📋','娃娃履歷'],['🎂','紀念日慶祝']],
-    ['點進娃娃是一張履歷：姓名、尺寸、到家日、生日、來源；下面是紀念日和整理紀錄。要改資料或配件，按右上「編輯」。','到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','很珍惜的娃娃可以在「編輯」標記「💝 紀念收藏」，寫下紀念原因。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','想寫給娃娃的話，放進娃娃頁的「⭐ 星星罐」，約好的紀念日再打開（見「星星罐：寫給娃娃的話」）。']],
+    ['娃娃履歷裡有月曆：每天蓋一個章（🎂 紀念日、🚶 出門、🌙 加班、🏢 陪上班、🏠 在家），一天有好幾筆會多一個小點；點日期會在下面列出那天記了什麼。一週從星期日或星期一開始，可以到 設定 → 外觀 改。','點進娃娃是一張履歷：姓名、尺寸、到家日、生日、來源；下面是紀念日和整理紀錄。要改資料或配件，按右上「編輯」。','到家日、生日前 7 天、前一天和當天首頁會提醒，也可以做紀念小卡。','很珍惜的娃娃可以在「編輯」標記「💝 紀念收藏」，寫下紀念原因。','還在預購的娃娃，記在娃娃櫃最下面的「等待到家」，到家那天按「迎接到家」。','想寫給娃娃的話，放進娃娃頁的「⭐ 星星罐」，約好的紀念日再打開（見「星星罐：寫給娃娃的話」）。']],
   ['🪡','娃娃的整理與配件',[['⚠️','記錄狀況'],['🦴','骨架、磁鐵、棉花'],['🙋','自己或手作娘'],['🎀','配件在不在']],
     ['弄髒、棉花塌了，或要裝骨架、換棉花，都可以記在娃娃頁的「狀況與整理」。','交給手作娘的會顯示「在手作娘那裡」和預計回來的日期，回來按「完成」。','按「完成」後不會消失，會留在「整理紀錄」，寫著什麼時候送出、什麼時候回來。','娃娃附的尾巴、耳朵、頭飾在「編輯」裡記在「附的配件」；有配件才會顯示在娃娃頁。','要交給新主人時，按「複製娃娃履歷」，到家日、整理紀錄和配件會整理成一段文字。']],
   ['🚗','暫時離家・封存・道別',[['🚗','暫時離家'],['🏠','回家了'],['📦','封存櫃'],['👋','道別']],
@@ -8023,7 +8085,7 @@ function openSettings(page){
     <div class="card">
       <div class="f" style="margin:0 0 10px"><span>哪幾天要${l}</span><div class="swap" style="margin:0">${[['week','固定星期'],['shift','排班']].map(([k,t])=>`<button class="${(workShift(r)?'shift':'week')===k?'on':''}" onclick="setRoutine('mode','${k}')">${t}</button>`).join('')}</div></div>
       ${workShift(r)?`<p class="hint" style="margin:0 0 8px">點日期排班，再點一次取消。月底如果下個月還沒排，首頁會提醒你。</p>${shiftCal(r)}`
-        :`<div class="parts" style="margin:0">${[1,2,3,4,5,6,0].map(n=>`<button type="button" class="${workDays(r).includes(n)?'on':''}" onclick="toggleWorkDay(${n})">${'日一二三四五六'[n]}</button>`).join('')}</div>`}
+        :`<div class="parts" style="margin:0">${(weekStart()?[1,2,3,4,5,6,0]:[0,1,2,3,4,5,6]).map(n=>`<button type="button" class="${workDays(r).includes(n)?'on':''}" onclick="toggleWorkDay(${n})">${'日一二三四五六'[n]}</button>`).join('')}</div>`}
     </div>
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">首頁詢問</b><div class="hint">${l}那天早上首頁問「今天也一起${l}嗎？」，點一下就記好<br>記過一次之後才會開始問</div></span>
@@ -8076,7 +8138,10 @@ function openSettings(page){
       <option value="" ${S.settings.cur?'':'selected'}>跟著國家（${esc(CUR_NAME[CUR_OF[homeCountry()]||'USD'])}）</option>${Object.keys(CUR_NAME).map(k=>`<option value="${k}" ${S.settings.cur===k?'selected':''}>${esc(CUR_NAME[k])}</option>`).join('')}</select></label>`;
   if(page==='look')body=`<div class="swap" id="s_theme">
       ${[['light','淺色'],['dark','深色'],['auto','跟隨系統']].map(([k,l])=>`<button class="${th===k?'on':''}" onclick="setTheme('${k}')">${l}</button>`).join('')}
-    </div>`;
+    </div>
+    <p class="mlabel" style="margin-top:18px">月曆一週從哪天開始</p>
+    <div class="swap">${[[0,'星期日'],[1,'星期一']].map(([k,l])=>`<button class="${weekStart()===k?'on':''}" onclick="S.settings.weekStart=${k};save().then(()=>openSettings('look'))">${l}</button>`).join('')}</div>
+    <p class="hint" style="margin:8px 4px 0">娃娃履歷的月曆、排班的月曆都會照這個排。</p>`;
   if(page==='lang')body=`<div class="setgroup">
       ${LANGS.map(([k,l])=>`<button class="setrow" onclick="setLang('${k}')"><span><b ${k==='auto'?'':'translate="no"'}>${l}</b></span><em>${langPref()===k?'✓':''}</em></button>`).join('')}
     </div>

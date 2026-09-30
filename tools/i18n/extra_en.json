@@ -628,5 +628,17 @@
 "把今天的謝謝放進 {0} 的星星罐，約好的日子再一起打開。": "Put today’s thank-you in {0}’s star jar and open it together on the day you choose.",
 "下次再說": "Maybe later",
 "⭐ 寫一張": "⭐ Write one",
-"謝謝你今天陪我{0} 🌙": "Thanks for keeping me company for {0} today 🌙"
+"謝謝你今天陪我{0} 🌙": "Thanks for keeping me company for {0} today 🌙",
+"月曆": "Calendar",
+"這個月：{0}": "This month: {0}",
+"這個月還沒有紀錄": "No records this month yet",
+"這天沒有紀錄。": "No records this day.",
+"幫 {0} 記一筆": "Log one for {0}",
+"🎉 來到家裡的那天": "🎉 The day they came home",
+"🎂 到家 {0} 週年": "🎂 {0} years at home",
+"月曆一週從哪天開始": "Calendar week starts on",
+"星期日": "Sunday",
+"星期一": "Monday",
+"娃娃履歷的月曆、排班的月曆都會照這個排。": "Used by the doll profile calendar and the shift calendar.",
+"娃娃履歷裡有月曆：每天蓋一個章（🎂 紀念日、🚶 出門、🌙 加班、🏢 陪上班、🏠 在家），一天有好幾筆會多一個小點；點日期會在下面列出那天記了什麼。一週從星期日或星期一開始，可以到 設定 → 外觀 改。": "The doll profile has a calendar: each day gets a stamp (🎂 anniversary, 🚶 outing, 🌙 overtime, 🏢 work, 🏠 home), with a small dot when there are several records; tap a date to list what was logged below. Change whether weeks start on Sunday or Monday in Settings → Appearance."
 }
