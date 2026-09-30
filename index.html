@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=33"></script>
+<script src="i18n/i18n.js?v=35"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1095,6 +1095,16 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .letter .sign{text-align:right;margin:16px 0 0;color:var(--ink-2)}
 .letter .sign small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
 .fbtype{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.cpick{display:flex;flex-wrap:wrap;gap:6px}
+.cpick button{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;padding:4px 2px;border-radius:10px;border:1.5px solid transparent;background:none;font-size:11px;color:var(--ink-2)}
+.cpick button i{width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+.cpick.sm{gap:2px}.cpick.sm button{min-width:0;padding:2px;border-radius:50%;border-width:2px}.cpick.sm button span{display:none}.cpick.sm button i{width:20px;height:20px}
+.cpick button.on{border-color:var(--berry,#B5536B);background:var(--paper-2);color:var(--ink);font-weight:700}
+.qall{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 12px}
+.qall summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none}.qall summary small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.qall[open] summary{margin-bottom:10px}
+.piece .mt .miss{color:var(--muted)}
+.qcolbtn{display:inline-flex;align-items:center;gap:3px}.qcolbtn i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .wnote{flex:0 0 auto;width:52px;padding:0;font-size:20px}.wnote.on{background:var(--berry,#B5536B);border-color:transparent;box-shadow:0 0 0 2px rgba(181,83,107,.18)}
 .wnotebox{display:flex;gap:8px;align-items:flex-end;margin:0 -18px 8px;padding:8px 18px 0;background:var(--paper)}.wnotebox textarea{flex:1;min-height:72px}
 .wdnote{white-space:pre-wrap;font-size:14px;line-height:1.7;background:var(--paper-2);border-radius:14px;padding:10px 12px;margin:0 0 12px}
@@ -1251,6 +1261,7 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
       <p class="hint" style="text-align:center;margin:-4px 0 14px">還沒到貨的？<a href="javascript:void 0" style="color:var(--berry-deep);font-weight:600" onclick="UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)">用訂單截圖記進購買中 ›</a></p>
       <div id="arriveTip"></div>
       <div id="cutTip"></div>
+      <div id="queueAll"></div>
       <div id="queue"></div>
       <div id="queueActions"></div>
     </section>
@@ -2604,7 +2615,7 @@ function renderHome(){
   <p class="hint" style="margin:-4px 0 10px">給它們一點出場機會吧，或是 <a href="javascript:void 0" onclick="openSell()" style="color:var(--berry-deep);font-weight:600">做成出售貼文</a> 讓它們找新主人</p>
   <div class="hscroll">${cold.map(i=>{const l=lastWear(i.id);return `<button class="piece" onclick="openItem('${i.id}')">
     <div class="sw"><img src="${img(i)}" alt=""><span class="tag">${l?days(l)+' 天':'沒穿過'}</span></div>
-    <div class="nm">${esc(i.name)}</div></button>`}).join('')}</div>`:''}
+    <div class="nm">${esc(nameOf(i))}</div></button>`}).join('')}</div>`:''}
 
   <h2 class="sec">${d?esc(d.name)+' 的':''}最近穿搭</h2>
   ${recent.length?`<div class="blist">${recent.map(w=>`<div class="rowitem" onclick="openWearDetail('${w.id}')">
@@ -2650,10 +2661,10 @@ function renderWorn(){
       ${sug.length?`<p class="hint" style="margin:10px 0 0">${esc(d.name)} 常穿的是 ${sug.map(esc).join('、')}，要加進去嗎？<a href="javascript:void 0" style="color:var(--berry-deep);font-weight:600;margin-left:6px" onclick="${sug.map(n=>`toggleDollStyle('${d.id}','${n}',true)`).join(';')}">全部加入</a></p>`:''}
     </div>
     <p class="mh">穿過的・越常穿越前面</p>
-    ${worn.length?`<div class="grid wgrid">${worn.map(x=>`<button class="piece" onclick="openItem('${x.it.id}')"><div class="sw">${img(x.it)?`<img src="${img(x.it)}" alt="">`:''}<span class="tag">${x.n} 次</span></div><div class="nm">${esc(x.it.name)}</div></button>`).join('')}</div>`
+    ${worn.length?`<div class="grid wgrid">${worn.map(x=>`<button class="piece" onclick="openItem('${x.it.id}')"><div class="sw">${img(x.it)?`<img src="${img(x.it)}" alt="">`:''}<span class="tag">${x.n} 次</span></div><div class="nm">${esc(nameOf(x.it))}</div></button>`).join('')}</div>`
       :`<div class="empty"><strong>${esc(d.name)} 還沒有穿搭紀錄</strong>記錄穿搭後，這裡會列出他穿過的娃衣</div>`}
     ${never.length?`<details class="archive" style="margin-top:16px"><summary><b>還沒穿過的合身娃衣</b><span>${never.length} 件</span><em>›</em></summary>
-      <div class="grid wgrid" style="margin-top:10px">${never.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw"><img src="${img(i)}" alt=""></div><div class="nm">${esc(i.name)}</div></button>`).join('')}</div></details>`:''}`;
+      <div class="grid wgrid" style="margin-top:10px">${never.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw"><img src="${img(i)}" alt=""></div><div class="nm">${esc(nameOf(i))}</div></button>`).join('')}</div></details>`:''}`;
 }
 async function toggleDollStyle(id,n,on){
   const d=S.dolls.find(x=>x.id===id);if(!d)return;
@@ -2719,7 +2730,7 @@ function todayPickHTML(){
     <p class="hint" style="margin:0">衣櫃裡 ${esc(d.size)} 的娃衣還不到兩件，建檔時記得選尺寸，這裡就會每天幫 ${esc(d.name)} 搭一套。</p></section>`:'';
   return `<section class="hcard pick-today">
     <div class="hct"><b>今天穿這套？</b><span>${d?esc(d.name)+'・':''}每天一套</span><button class="pkset" onclick="S.settings.pickSets=${!pickSetsOn()};S.settings.pickN=(S.settings.pickN||0)+1;save();renderHome();toast('${pickSetsOn()?'之後只混搭，不會整套推薦':'有合身的套裝時，偶爾會整套推薦'}')">${pickSetsOn()?'👗 可整套':'🔀 只混搭'}</button></div>
-    <div class="ptrow">${its.map(i=>`<button onclick="openItem('${i.id}')"><img src="${img(i)}" alt=""><small>${esc(i.name)}</small></button>`).join('')}</div>
+    <div class="ptrow">${its.map(i=>`<button onclick="openItem('${i.id}')"><img src="${img(i)}" alt=""><small>${esc(nameOf(i))}</small></button>`).join('')}</div>
     <div class="row" style="margin-top:10px">
       <button class="btn sm ghost" onclick="S.settings.pickN=(S.settings.pickN||0)+1;save();renderHome()">換一套</button>
       <button class="btn sm quiet grow" onclick="IDEA.res={ids:${JSON.stringify(its.map(i=>i.id)).replace(/"/g,"'")}};ideaToCanvas()">放到畫布</button>
@@ -2756,7 +2767,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-55';
+const APP_VER='2026.10.01-57';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3323,7 +3334,7 @@ function openPhoto(wid){
   v.innerHTML=`<div class="pvimg"><img src="${w.photo}" alt=""></div>
     <div class="pvinfo"><b>${esc(w.date||'')}${d?'・'+esc(d.name):w.dollName?'・'+esc(w.dollName):''}</b>
       <span>${w.place==='出門'?`📍 ${w.spot?esc(spotText(w.spot)):'出門'}`:'🏠 在家'}</span>
-      ${its.length?`<small>穿：${its.map(i=>esc(i.name)).join('、')}</small>`:''}
+      ${its.length?`<small>穿：${its.map(i=>esc(nameOf(i))).join('、')}</small>`:''}
       <div class="row" style="margin-top:10px"><button class="btn sm ghost grow" data-a="save">⬇️ 存到手機</button><button class="btn sm grow" data-a="card">做成小卡</button></div></div>
     <button class="pvx" aria-label="關閉">×</button>`;
   v.onclick=e=>{const a=e.target.closest('[data-a]');
@@ -4406,7 +4417,7 @@ function archiveItem(id){
   MV={id,reason:'賣掉了',date:today(),price:'',memo:'',withSet:isSet&&mates.length>0};
   openSheet(`<h3>移到回憶箱</h3>
     <div class="row" style="gap:12px;margin-bottom:14px"><div class="th memth">${img(i)?`<img src="${img(i)}" alt="">`:""}</div>
-      <div><b>${esc(i.name)}</b><div class="hint">穿過 ${wearCount(id)} 次${i.price?`・買 ${fmt$(money(i.price))}`:''}</div></div></div>
+      <div><b>${esc(nameOf(i))}</b><div class="hint">穿過 ${wearCount(id)} 次${i.price?`・買 ${fmt$(money(i.price))}`:''}</div></div></div>
     <label class="f"><span>它去哪裡了</span><div class="parts" id="mv_r" style="margin-top:0">${MEM_REASONS.map(r=>`<button type="button" class="${r===MV.reason?'on':''}" onclick="MV.reason='${r}';document.querySelectorAll('#mv_r button').forEach(b=>b.classList.toggle('on',txt(b)==='${r}'));document.getElementById('mv_p').style.display='${r}'==='賣掉了'?'':'none'">${r}</button>`).join('')}</div></label>
     <div class="split">
       <label class="f"><span>日期</span><input type="date" value="${MV.date}" onchange="MV.date=this.value"></label>
@@ -4459,7 +4470,7 @@ function renderMemory(){
       const stay=i.createdAt?Math.max(1,Math.round((new Date(i.archivedAt)-i.createdAt)/864e5)):null;
       return `<div class="memcard">
         <div class="th memth">${img(i)?`<img src="${img(i)}" alt="">`:""}</div>
-        <div class="bd"><b>${esc(i.name)}</b>
+        <div class="bd"><b>${esc(nameOf(i))}</b>
           <div class="lmeta"><span class="dchip none">${esc(i.reason||'回憶')}</span><span>${esc(i.archivedAt||'')}</span></div>
           ${(()=>{const g=all.filter(x=>x.groupOf===i.id);return g.length?`<div class="hint" style="margin:2px 0 4px">含 ${g.map(x=>esc(x.category)).join('、')}</div>`:''})()}
           ${setMates(i).length?`<button class="btn sm quiet" style="margin:4px 0" onclick="moveSetMates('${i.id}')">這套還有 ${setMates(i).length} 件在衣櫃，一起移進來</button>`:''}
@@ -4495,7 +4506,7 @@ function drawSell(){
       return `<div class="rowitem" style="display:block">
         <label class="row" style="gap:10px;align-items:center;cursor:pointer"><input type="checkbox" ${on?'checked':''} onchange="sellToggle('${i.id}',this.checked)">
           <div class="th" style="width:44px;height:44px;flex:0 0 44px">${img(i)?`<img src="${img(i)}" alt="">`:''}</div>
-          <div class="tx"><b>${esc(i.name)}</b><span>${esc(i.category)}${(i.sizes||[]).length?'・'+i.sizes.map(esc).join('/'):''}・穿過 ${c} 次${isPressed(i)?'・📦':''}</span></div></label>
+          <div class="tx"><b>${esc(nameOf(i))}</b><span>${esc(i.category)}${(i.sizes||[]).length?'・'+i.sizes.map(esc).join('/'):''}・穿過 ${c} 次${isPressed(i)?'・📦':''}</span></div></label>
         ${on?`<div class="split" style="margin-top:10px">
           <label class="f" style="margin:0"><span>價格</span><input type="number" inputmode="decimal" placeholder="例如 350" value="${esc(f.price)}" oninput="sellInfo('${i.id}').price=this.value"></label>
           <label class="f" style="margin:0"><span>衣況</span><select onchange="sellInfo('${i.id}').cond=this.value">${SELL_COND.map(x=>`<option ${x===f.cond?'selected':''}>${x}</option>`).join('')}</select></label></div>
@@ -4572,7 +4583,7 @@ async function makeSell(){
     </div>
     <button class="btn ghost wide sm" style="margin-top:8px" onclick="drawSell()">回去修改</button>
     <p class="hint" style="margin:12px 0 6px">賣掉了嗎？移到回憶箱，會記下賣出價格。</p>
-    <div class="parts" style="margin-top:0">${list.map(i=>`<button type="button" onclick="archiveItem('${i.id}');setTimeout(()=>{MV.price=sellInfo('${i.id}').price;const e=document.querySelector('#mv_p input');if(e)e.value=MV.price},50)">${esc(i.name)} 賣掉了</button>`).join('')}</div>`);
+    <div class="parts" style="margin-top:0">${list.map(i=>`<button type="button" onclick="archiveItem('${i.id}');setTimeout(()=>{MV.price=sellInfo('${i.id}').price;const e=document.querySelector('#mv_p input');if(e)e.value=MV.price},50)">${esc(nameOf(i))} 賣掉了</button>`).join('')}</div>`);
   document.getElementById('toast').classList.remove('on');
 }
 async function drawSellCard(list){
@@ -4722,7 +4733,7 @@ function renderCloset(){
   const FILTERS=visibleFilters(),FMAP=fmap();
   if(!FILTERS.includes(UI.cat))UI.cat='全部';
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
-  const modes=['全部','壓箱底','待處理','從未穿過','收藏紀念','節日服','最近新增'];
+  const modes=['全部','壓箱底','待處理','從未穿過','收藏紀念','節日服','最近新增','可以補充'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';UI.hol='';renderCloset()">${f}</button>`).join('');
   const sz=['全部尺寸',...sizes()];
   if(!sz.includes(UI.size))UI.size='全部尺寸';
@@ -4742,6 +4753,7 @@ function renderCloset(){
   if(UI.mode==='壓箱底')list=list.filter(isPressed);
   if(UI.mode==='收藏紀念')list=list.filter(i=>i.keepsake);
   if(UI.mode==='待處理')list=list.filter(i=>openIssues(i).length);
+  if(UI.mode==='可以補充')list=list.filter(i=>missingInfo(i).length);
   if(UI.mode==='節日服'){list=list.filter(i=>i.holiday);if(UI.hol)list=list.filter(i=>i.holiday===UI.hol)}
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
@@ -4764,7 +4776,7 @@ function renderCloset(){
   el.style.paddingBottom=UI.multi?'70px':'';
   const holBar=UI.mode==='節日服'?`<div class="chips wchips" style="margin:0 0 10px">${['',...HOL_NAMES.filter(n=>S.items.some(i=>i.holiday===n))].map(n=>`<button class="chip ${(UI.hol||'')===n?'on':''}" onclick="UI.hol='${n}';renderCloset()">${n?holIcon(n)+' '+n:'全部節日'}</button>`).join('')}</div>
     <p class="hint" style="margin:0 0 10px">節日服一年穿一次，超過 13 個月沒穿才會算壓箱底。</p>`:'';
-  el.innerHTML=top+holBar+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+  el.innerHTML=top+holBar+(UI.mode==='可以補充'?`<p class="hint" style="margin:0 0 10px">有空的時候再補就好，不補也沒關係 🤍 這裡列出還沒填顏色、價格、日期，或名稱是自動取的娃衣。可以按「多選」一次補好幾件。</p>`:'')+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">到貨 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（節日服是 13 個月）。從到貨日開始算，沒填到貨日就從購入日期，都沒填從建檔日算。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
     <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
     const sel=UI.multi&&UI.msel.has(i.id);
@@ -4774,8 +4786,8 @@ function renderCloset(){
         ${i.keepsake?'<span class="keep">🎀</span>':isPressed(i)?'<span class="keep press" title="壓箱底">📦</span>':''}
         ${openIssues(i).length?`<span class="carewarn" title="${openIssues(i).map(c=>c.type).join('、')}待處理">⚠️</span>`:''}
       </div>
-      <div class="nm">${esc(i.name)}</div>
-      <div class="mt">${esc(i.category)}${d!=null?`・${d} 天前`:''}</div>
+      <div class="nm">${esc(nameOf(i))}</div>
+      <div class="mt">${UI.mode==='可以補充'?`<span class="miss">可補：${missingInfo(i).join('・')}</span>`:`${esc(i.category)}${d!=null?`・${d} 天前`:''}`}</div>
     </button>`;
   }).join('')+`</div>`;
 }
@@ -4808,6 +4820,49 @@ function batchIds(){
   if(UI.batchSet!==false)[...UI.msel].forEach(id=>{const i=S.items.find(x=>x.id===id);if(i&&i.category==='套裝')setMates(i).forEach(m=>ids.add(m.id))});
   return [...ids];
 }
+/* ---- 顏色色票：12 個色系＋花色，點一下就選，可以複選（最多 3 個，第一個當主色）----
+   存的是「粉色」這種名字；AI 讀的細色名（淺粉色…）也歸在同一個色系，點色票會一起拿掉 */
+const SWATCHES=[['粉色','#F2A7BC'],['紅色','#D9534F'],['橘色','#F0A04B'],['黃色','#F2D14B'],['綠色','#7FB77E'],['藍色','#6C9BD2'],['紫色','#A98BC9'],['白色','#FFFFFF'],['米色','#E8D8BE'],['棕色','#9C7456'],['灰色','#A7A7A7'],['黑色','#2B2B2B'],['花色','conic-gradient(#F2A7BC,#F2D14B,#7FB77E,#6C9BD2,#A98BC9,#F2A7BC)']];
+const swFam=c=>c==='花色'||/花|多色|印花|格紋/.test(c||'')?'花色':colorFam(c);
+function swatchHTML(colors,fn,small){
+  const on=new Set((colors||[]).map(swFam));
+  return `<div class="cpick ${small?'sm':''}">${SWATCHES.map(([k,hex])=>{const f=swFam(k);return `<button type="button" class="${on.has(f)?'on':''}" onclick="${fn}('${k}')" aria-label="${k}" title="${k}"><i style="background:${hex}"></i><span>${k.replace('色','')}</span></button>`}).join('')}</div>`;
+}
+// 點色票：選了就拿掉（連同同色系的細色名），沒選就加上（最多 3 個）
+function toggleColor(arr,k){
+  const f=swFam(k),has=arr.some(c=>swFam(c)===f);
+  if(has)return arr.filter(c=>swFam(c)!==f);
+  if(arr.length>=3){toast('最多選 3 個顏色，第一個是主色');return arr}
+  return [...arr,k];
+}
+// 資料不完整的地方（衣櫃「待補資料」用）
+// 顯示用名稱：同一款買了好幾個顏色（名稱一樣）時，後面自動加顏色：「Fluffy cat 娃鞋・粉」
+var NAMEC=null;
+function nameOf(i){
+  if(!i)return '';
+  if(!NAMEC){NAMEC=new Map();[...S.items,...S.memory].forEach(x=>NAMEC.set(x.name,(NAMEC.get(x.name)||0)+1));setTimeout(()=>NAMEC=null,0)}
+  const c=(i.colors||[])[0];if(!c||(NAMEC.get(i.name)||0)<2)return i.name;
+  const l=c==='花色'?'花色':String(famLabel[colorFam(c)]||c).replace(/色$/,'');
+  return String(i.name).includes(l)?i.name:`${i.name}・${l}`;
+}
+function missingInfo(i){
+  if(!i||i.category==='套裝')return [];
+  const m=[];
+  if(!(i.colors||[]).length)m.push('顏色');
+  if(!priceOf(i)&&!(i.setId&&[...S.items,...S.memory].some(x=>x.setId===i.setId&&priceOf(x)>0)))m.push('價格');
+  if(!i.buyDate&&!i.homeDate)m.push('日期');
+  if(i.autoName)m.push('名稱');
+  return m;
+}
+// 沒填名稱：用「主色＋類型」自動取名，重複的加編號
+function autoName(colors,cat){
+  const c=(colors||[]).find(x=>x!=='花色'),base=((c?(famLabel[colorFam(c)]||c):'')+(cat||'娃衣'))||'娃衣';
+  let nm=base,k=2;const used=new Set([...S.items,...S.memory].map(x=>x.name));
+  while(used.has(nm))nm=base+' '+(k++);
+  return nm;
+}
+// 平分價格：總價除以件數取整數，除不盡的零頭加在第一件
+function splitPrice(total,n){const t=Math.round(+total||0),b=Math.floor(t/n),r=t-b*n;return Array.from({length:n},(_,i)=>String(b+(i===0?r:0)))}
 function openBatchMenu(){
   const n=UI.msel.size;if(!n)return;
   const row=(k,ico,t,sub)=>`<button class="setrow" onclick="openBatch('${k}')"><i>${ico}</i><span><b>${t}</b><small>${sub}</small></span><em>›</em></button>`;
@@ -4819,10 +4874,14 @@ function openBatchMenu(){
       ${row('holiday','🎄','節日主題','聖誕節、新年、萬聖節…')}
       ${row('cat','🗂️','類型','上衣、裙子、自訂類別…')}
       ${row('size','📏','尺寸','10cm、20cm…（單選）')}
+      ${row('color','🎨','顏色','點色票選，最多 3 個')}
     </div>
     <div class="setgroup" style="margin-top:10px">
+      ${row('name','✏️','名稱','同款不同色：名稱一樣，會自動加上顏色')}
       ${row('series','🔖','系列','選填，例如 甜心派對系列')}
       ${row('brand','🏷','品牌','')}
+      ${row('price','💰','價格','包色可以總價平分')}
+      ${row('shop','🛍️','購買管道','')}
       ${row('origin','🌏','產地','')}
       ${row('buy','📅','購入日期','')}
       ${row('home','📦','到貨日期','壓箱底會從到貨日開始算')}
@@ -4833,6 +4892,51 @@ function openBatchMenu(){
       ${big('del','🗑️','刪除','永久刪除，不能復原')}
     </div>
     ${batchHasSet()?`<label class="remember" style="margin:12px 0 0"><input type="checkbox" ${UI.batchSet!==false?'checked':''} onchange="UI.batchSet=this.checked"> 選到的套裝，拆出來的單品也一起改</label>`:''}`);
+}
+function drawBatchText(kind){
+  const n=UI.msel.size,nm=kind==='name';
+  openSheet(`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div><h3>批次改${nm?'名稱':'購買管道'}</h3>
+    ${nm?`<p class="hint" style="margin:-6px 0 12px">同一款不同顏色的，名稱填一樣就好，衣櫃會自動顯示成「名稱・粉」「名稱・藍」。顏色可以用「批次修改 → 顏色」或在各自的編輯頁點。</p>`:''}
+    <label class="f"><span>${nm?'名稱':'購買管道'}</span><input type="text" id="b_txt" maxlength="40" placeholder="${nm?'例如 Fluffy cat 娃鞋':'例如 淘寶、團購'}"></label>
+    <button class="btn wide" onclick="applyBatchText('${kind}')">套用到 ${n} 件</button>`);
+}
+async function applyBatchText(kind){
+  const v=(document.getElementById('b_txt').value||'').trim();if(!v){toast('先填內容');return}
+  const ids=kind==='name'?[...UI.msel]:batchIds();
+  ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i)return;
+    if(kind==='name'){i.name=v;delete i.autoName;if(i.category==='套裝'){const st=S.sets.find(x=>x.id===i.setId);if(st)st.name=v}}else i.shop=v});
+  await save();closeSheet();renderCloset();toast(`已更新 ${ids.length} 件的${kind==='name'?'名稱':'購買管道'}`);
+}
+function drawBatchColor(){
+  const n=UI.msel.size;
+  openSheet(`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div><h3>批次改顏色</h3>
+    <p class="hint" style="margin:-6px 0 12px">點色票選顏色（最多 3 個，第一個是主色），這 ${n} 件原本的顏色會換成這幾個。特殊色（霧霾藍、奶茶色…）可以寫在名稱裡。</p>
+    <div id="bcol">${swatchHTML(UI.bcol,'bColor')}</div>
+    <button class="btn wide" style="margin-top:14px" onclick="applyBatchColor()">套用到 ${n} 件</button>`);
+}
+function bColor(k){UI.bcol=toggleColor(UI.bcol,k);document.getElementById('bcol').innerHTML=swatchHTML(UI.bcol,'bColor')}
+async function applyBatchColor(){
+  if(!UI.bcol.length){toast('先選顏色');return}
+  const ids=batchIds();ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(i)i.colors=UI.bcol.slice()});
+  await save();closeSheet();renderCloset();toast(`已更新 ${ids.length} 件的顏色`);
+}
+function drawBatchPrice(){
+  const n=UI.msel.size,b=UI.bprice,per=b.split&&+b.v?splitPrice(b.v,n):null;
+  openSheet(`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div><h3>批次改價格</h3>
+    <div class="swap" style="margin:0 0 12px">${[[false,'每件都是這個價格'],[true,`總價平分給 ${n} 件`]].map(([k,l])=>`<button class="${b.split===k?'on':''}" onclick="UI.bprice.split=${k};drawBatchPrice()">${l}</button>`).join('')}</div>
+    <label class="f"><span>${b.split?'總價（包色、一起買的）':'每件的價格'}</span><input type="number" inputmode="decimal" id="b_price" value="${esc(b.v)}" placeholder="${b.split?'例如 900':'例如 300'}" oninput="UI.bprice.v=this.value;const h=document.getElementById('b_ph');if(h)h.textContent=UI.bprice.split&&+this.value?'每件 '+splitPrice(this.value,${n})[1]+(splitPrice(this.value,${n})[0]!==splitPrice(this.value,${n})[1]?'（第一件 '+splitPrice(this.value,${n})[0]+'）':''):''"></label>
+    ${b.split?`<p class="hint" id="b_ph" style="margin:-4px 0 10px">${per?'每件 '+per[1]+(per[0]!==per[1]?'（第一件 '+per[0]+'）':''):''}</p>`:''}
+    <p class="hint" style="margin:0 0 12px">選到的套裝算一件，拆出來的單品會跟著套裝的價格。</p>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatchPrice(true)">清空價格</button><button class="btn grow" onclick="applyBatchPrice()">套用到 ${n} 件</button></div>`);
+}
+async function applyBatchPrice(clear){
+  const b=UI.bprice,ids=[...UI.msel];
+  if(!clear&&!(+b.v>0)){toast('先填價格');return}
+  const ps=clear?ids.map(()=>''):b.split?splitPrice(b.v,ids.length):ids.map(()=>String(+b.v));
+  ids.forEach((id,k)=>{const i=S.items.find(x=>x.id===id);if(!i)return;i.price=ps[k];
+    // 套裝：拆出來的單品跟著套裝的價格（統計時一套只算一次）
+    if(i.category==='套裝')setMates(i).forEach(m=>m.price=ps[k])});
+  await save();closeSheet();renderCloset();toast(clear?`已清空 ${ids.length} 件的價格`:b.split?`總價 ${b.v} 平分給 ${ids.length} 件`:`已更新 ${ids.length} 件的價格`);
 }
 /* ---- 批次大動作：壓箱底、出售、刪除。動到很多件，所以一步一步確認 ---- */
 let BIG={};
@@ -4854,7 +4958,7 @@ function drawBig(){
   const {kind,ids,step}=BIG,n=ids.length,its=ids.map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
   const back=`<div class="sethead"><button onclick="bigBack()">‹ ${step>1?'上一步':'批次修改'}</button></div>`;
   const total=kind==='del'?3:2,stepTx=`<p class="bigstep">第 ${step} 步，共 ${total} 步</p>`;
-  const names=`<div class="hint" style="margin:0 0 12px">${its.slice(0,8).map(i=>esc(i.name)).join('、')}${its.length>8?` 等 ${its.length} 件`:''}</div>`;
+  const names=`<div class="hint" style="margin:0 0 12px">${its.slice(0,8).map(i=>esc(nameOf(i))).join('、')}${its.length>8?` 等 ${its.length} 件`:''}</div>`;
   const pressTx={on:'放進壓箱底',off:'從壓箱底拿出來',auto:'改回自動判斷'};
   let h='';
   if(kind==='press'){
@@ -4920,6 +5024,9 @@ async function bigDo(){
 const BATCH={size:['尺寸','sizes'],series:['系列','series'],brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],home:['到貨日期','homeDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
 function openBatch(kind){
   const ids=[...UI.msel];if(!ids.length)return;
+  if(kind==='color'){UI.bcol=[];return drawBatchColor()}
+  if(kind==='name'||kind==='shop')return drawBatchText(kind);
+  if(kind==='price'){UI.bprice={v:'',split:false};return drawBatchPrice()}
   if(!['origin','buy','home'].includes(kind))return openBatch2(kind,ids);
   const cur=ids.map(id=>(S.items.find(x=>x.id===id)||{})[BATCH[kind][1]]||'');
   const same=cur.every(v=>v===cur[0])?cur[0]:'';
@@ -5006,7 +5113,7 @@ function openCare(id){
   CR={id,type:'弄髒',date:today(),note:''};
   const it=S.items.find(x=>x.id===id);
   const chip=([t,ic])=>`<button type="button" data-k="${t}" class="${CR.type===t?'on':''}" onclick="CR.type='${t}';document.querySelectorAll('#cr_t button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${t}'))">${ic} ${t}</button>`;
-  openSheet(`<div class="sethead"><button onclick="openItem('${id}')">‹ ${esc(it.name)}</button></div><h3>記錄狀況</h3>
+  openSheet(`<div class="sethead"><button onclick="openItem('${id}')">‹ ${esc(nameOf(it))}</button></div><h3>記錄狀況</h3>
     <div id="cr_t"><p class="mh" style="margin-top:0">發現問題</p><div class="parts" style="margin-top:0">${CARE_ISSUES.map(chip).join('')}</div>
     <p class="mh">照顧紀錄</p><div class="parts" style="margin-top:0">${CARE_ACTS.map(chip).join('')}</div></div>
     <label class="f" style="margin-top:12px"><span>日期</span><input type="date" value="${CR.date}" max="${today()}" onchange="CR.date=this.value"></label>
@@ -5027,7 +5134,7 @@ function openItem(id){
   const mates={};S.wears.filter(w=>w.itemIds.includes(id)).forEach(w=>w.itemIds.forEach(x=>{if(x!==id)mates[x]=(mates[x]||0)+1}));
   const top=Object.entries(mates).sort((a,b)=>b[1]-a[1]).slice(0,3);
   openSheet(`
-    <h3>${esc(i.name)}</h3>
+    <h3>${esc(nameOf(i))}</h3>
     <div class="hero">${img(i)?`<img id="heroImg" src="${UI.detailImg==='photo'?(i.photo||i.cutout):img(i)}" alt="">`:''}</div>
     <div class="swap">
       <button class="${UI.detailImg==='cutout'?'on':''}" onclick="UI.detailImg='cutout';openItem('${id}')">貼圖</button>
@@ -5105,8 +5212,9 @@ function itipShow(e,b){
   const close=ev=>{if(ev.target!==b)off()};
   setTimeout(()=>{document.addEventListener('pointerdown',close,true);document.addEventListener('scroll',off,true)},0);
 }
+function eColor(k){UI.ecol=toggleColor(UI.ecol,k);document.getElementById('e_colors').innerHTML=swatchHTML(UI.ecol,'eColor')}
 function editItem(id){
-  const i=S.items.find(x=>x.id===id);
+  const i=S.items.find(x=>x.id===id);UI.ecol=(i.colors||[]).slice();
   openSheet(`
     <h3>編輯</h3>
     <label class="f"><span>名稱</span><input type="text" id="e_name" value="${esc(i.name)}"></label>
@@ -5132,6 +5240,7 @@ function editItem(id){
       <label class="f"><span>節日主題${itip('聖誕節、新年這類一年才穿一次的衣服。壓箱底會放寬到 13 個月，節日前首頁會提醒你。')}</span><select id="e_hol"><option value="">沒有</option>${HOL_NAMES.map(n=>`<option ${n===i.holiday?'selected':''}>${n}</option>`).join('')}</select></label>
       <label class="f"><span>標籤${itip('作品、系列、活動都可以當標籤，多個用逗號分開。衣櫃上方可以用標籤篩選。')}</span><input type="text" id="e_tags" list="tagDL" value="${esc((i.tags||[]).join('、'))}" placeholder="例如 戀與深空"><datalist id="tagDL">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label>
     </div>
+    <label class="f"><span>顏色${itip('點色票選，可以選 3 個，第一個是主色。特殊色（霧霾藍、奶茶色…）寫在名稱裡就好。推薦搭配和配色分析都會用到。')}</span><div id="e_colors">${swatchHTML(UI.ecol,'eColor')}</div></label>
     <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
     <label class="f"><span>材質</span><input type="text" id="e_mat" value="${esc(i.material||'')}"></label>
     <label class="f"><span>備註</span><textarea id="e_note">${esc(i.note||'')}</textarea></label>
@@ -5172,6 +5281,8 @@ function renameMates(i,oldName){
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
   const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]])))),oldName=i.name;
+  if(v('e_name').trim()!==i.name)delete i.autoName;
+  i.colors=UI.ecol.slice();
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.series=v('e_series').trim();i.brand=v('e_brand');i.shop=v('e_shop');
   i.buyDate=v('e_buy');i.homeDate=v('e_home');i.origin=v('e_origin').trim();i.holiday=v('e_hol');i.tags=parseTags(v('e_tags'));i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
   i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>txt(b));
@@ -5228,6 +5339,7 @@ function renderQueue(){
         </div>
         <div class="parts qsize ${(q.sizes||[]).length?'':'need'}" id="qsize${n}" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
         ${(q.sizes||[]).length?'':`<div class="hint needtip">請選一個尺寸，沒選不能建檔</div>`}
+        <button type="button" class="btn sm ghost qcolbtn" style="margin-top:6px" onclick="qColorOpen(${n})">${(q.colors||[]).length?q.colors.map(c=>`<i style="background:${(SWATCHES.find(x=>swFam(x[0])===swFam(c))||[])[1]||'#ccc'}"></i>`).join('')+' '+esc(q.colors.map(c=>c==='花色'?c:famLabel[colorFam(c)]||c).join('、')):'🎨 顏色'}</button>
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
@@ -5241,13 +5353,15 @@ function renderQueue(){
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
-          ${q.fromOrder?'':`<button class="btn sm ghost" onclick="qPhoto(${n})">📷 換照片</button>`}
           <button class="btn sm ghost" onclick="UI.queue.splice(${n},1);renderQueue()">移除</button>
           <span class="grow"></span>
           <span class="hint">${(q.styles||[]).map(s=>s.name).join('・')}</span>
         </div>
       </div>
     </div>`).join('');
+  // 一次建很多件：填一次、套用到清單裡每一件
+  const qa=document.getElementById('queueAll');
+  if(qa)qa.innerHTML=UI.queue.length>1?queueAllHTML():'';
   document.getElementById('queueActions').innerHTML=UI.queue.length?`
     <div class="row" style="margin-top:4px">
       <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析<small class="left">剩 ${quotaLeft('tag')}</small></button>
@@ -5276,6 +5390,38 @@ function cutTip(){
 function defaultSizes(){
   if(UI.lastSizes)return UI.lastSizes.slice(0,1);
   const d=mainDoll();return d&&d.size?[d.size]:[];
+}
+function qColor(n,k){const q=UI.queue[n];if(!q)return;q.colors=toggleColor(q.colors||[],k);const b=document.getElementById('qcol');if(b)b.innerHTML=swatchHTML(q.colors,`qColor.bind(null,${n})`)}
+function qColorOpen(n){const q=UI.queue[n];if(!q)return;
+  openSheet(`<h3>顏色</h3><p class="hint" style="margin:-6px 0 12px">點一下選顏色，可以選 3 個，第一個是主色。特殊色（霧霾藍、奶茶色…）寫在名稱裡就好。</p>
+    <div id="qcol">${swatchHTML(q.colors,`qColor.bind(null,${n})`)}</div>
+    <button class="btn wide" style="margin-top:16px" onclick="closeSheet()">完成</button>`,()=>renderQueue());}
+let QA={};
+function queueAllHTML(){
+  const n=UI.queue.length;
+  return `<details class="qall" ${UI.qaOpen?'open':''} ontoggle="UI.qaOpen=this.open"><summary>📋 套用到全部 ${n} 件<small>尺寸、品牌、價格、日期…填一次就好</small></summary>
+    <label class="f"><span>尺寸（全部換成）</span><div class="parts" id="qa_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${QA.size===z?'on':''}" onclick="QA.size=QA.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#qa_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===QA.size))">${esc(z)}</button>`).join('')}</div></label>
+    <label class="f"><span>名稱（只填還沒取名的）</span><input type="text" value="${esc(QA.name||'')}" placeholder="例如 Fluffy cat 娃鞋，再各自點顏色" oninput="QA.name=this.value"></label>
+    <div class="split"><label class="f"><span>系列</span><input type="text" list="seriesDL9" value="${esc(QA.series||'')}" oninput="QA.series=this.value">${seriesDL('seriesDL9')}</label>
+      <label class="f"><span>品牌</span><input type="text" list="brandDL9" value="${esc(QA.brand||'')}" oninput="QA.brand=this.value">${brandDL('brandDL9')}</label></div>
+    <label class="f"><span>購買管道</span><input type="text" value="${esc(QA.shop||'')}" oninput="QA.shop=this.value"></label>
+    <div class="split"><label class="f"><span>購入日期</span><input type="date" value="${esc(QA.buy||'')}" max="${today()}" onchange="QA.buy=this.value"></label>
+      <label class="f"><span>到貨日期</span><input type="date" value="${esc(QA.home||'')}" max="${today()}" onchange="QA.home=this.value"></label></div>
+    <label class="f"><span>價格</span><div class="swap" style="margin:0 0 6px">${[[false,'每件'],[true,`總價平分 ${n} 件`]].map(([k,l])=>`<button type="button" class="${!!QA.split===k?'on':''}" onclick="QA.split=${k};renderQueue()">${l}</button>`).join('')}</div>
+      <input type="number" inputmode="decimal" value="${esc(QA.price||'')}" placeholder="${QA.split?'例如 包色總價 900':'例如 300'}" oninput="QA.price=this.value"></label>
+    <p class="hint" style="margin:-4px 0 10px">尺寸會全部換掉；其他欄位只會填進還空著的，已經填好的不會被蓋掉。套裝算一件。</p>
+    <button class="btn wide" onclick="applyQueueAll()">套用到 ${n} 件</button></details>`;
+}
+function applyQueueAll(){
+  const n=UI.queue.length,ps=+QA.price>0?(QA.split?splitPrice(QA.price,n):UI.queue.map(()=>String(+QA.price))):null;
+  let c=0;
+  UI.queue.forEach((q,k)=>{
+    if(QA.size){q.sizes=[QA.size];UI.lastSizes=[QA.size]}
+    [['name','name'],['series','series'],['brand','brand'],['shop','shop'],['buy','buyDate'],['home','homeDate']].forEach(([a,f])=>{const v=(QA[a]||'').trim();if(v&&!String(q[f]||'').trim())q[f]=v});
+    if(ps&&!(+q.price>0))q.price=ps[k];
+    c++;
+  });
+  UI.qaOpen=false;renderQueue();toast(`已套用到 ${c} 件`);
 }
 function toggleQSize(n,z){
   const q=UI.queue[n];q.sizes=q.sizes||[];
@@ -5488,11 +5634,13 @@ async function commitQueue(){
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   for(const q of UI.queue)await setCover(q);
+  // 沒填名稱的：用「主色＋類型」自動取名，標記起來，衣櫃「待補資料」找得到
+  for(const q of UI.queue)if(!String(q.name||'').trim()){q.name=autoName(q.colors,q.isSet?'套裝':q.category);q.autoName=true}
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
       season:q.season,holiday:q.holiday||'',material:q.material,sizes:(q.sizes||[]).slice(),series:q.series||'',brand:q.brand||'',shop:q.shop||'',origin:q.origin||'',buyDate:q.buyDate||'',homeDate:q.homeDate||'',note:'',
-      keepsake:false,keepsakeReason:'',createdAt:Date.now()};
+      keepsake:false,keepsakeReason:'',createdAt:Date.now(),...(q.autoName?{autoName:true}:{})};
     if(q.isSet){
       const sid=uid('s'),nm=q.name||'未命名套裝';
       S.sets.push({id:sid,name:nm,createdAt:Date.now()});
@@ -5670,7 +5818,7 @@ function drawerListHTML(){
   const srt={new:(a,b)=>(b.createdAt||0)-(a.createdAt||0),worn:(a,b)=>wearCount(b.id)-wearCount(a.id),press:(a,b)=>isPressed(b)-isPressed(a)||(b.createdAt||0)-(a.createdAt||0)}[DR.sort];
   list.sort(srt);
   if(!list.length)return `<div class="hint" style="padding:18px 0;text-align:center">沒有符合的娃衣</div>`;
-  return `<div class="drawer">${list.map(i=>`<button data-id="${i.id}" class="${on.has(i.id)?'on':''}" onclick="drawerPick('${i.id}')" title="${esc(i.name)}"><img src="${img(i)}" alt="" loading="lazy">${isPressed(i)?'<i class="pbadge">📦</i>':''}<span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`;
+  return `<div class="drawer">${list.map(i=>`<button data-id="${i.id}" class="${on.has(i.id)?'on':''}" onclick="drawerPick('${i.id}')" title="${esc(nameOf(i))}"><img src="${img(i)}" alt="" loading="lazy">${isPressed(i)?'<i class="pbadge">📦</i>':''}<span class="cap">${esc(nameOf(i))}</span></button>`).join('')}</div>`;
 }
 function drawerRedraw(){
   document.querySelectorAll('#dcats button').forEach(b=>b.classList.toggle('on',b.dataset.k===DR.cat));
@@ -5806,7 +5954,7 @@ function matchSection(){
   const m=matchStats(),th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
   const row=(it,b,s,on)=>`<div class="rowitem" ${on?`onclick="${on}"`:''}>${th(it)}<div class="tx"><b>${b}</b><span>${s}</span></div>${on?'<div class="rt">›</div>':''}</div>`;
   let h=head;
-  if(m.versatile.length)h+=`<p class="mh">最萬搭的單品</p><div class="blist">${m.versatile.map((x,i)=>row(x.it,`${i===0?'👑 ':''}${esc(x.it.name)}`,`${x.set?'整套・':''}跟 ${x.n} 件（套）不同的搭過・穿了 ${x.w} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
+  if(m.versatile.length)h+=`<p class="mh">最萬搭的單品</p><div class="blist">${m.versatile.map((x,i)=>row(x.it,`${i===0?'👑 ':''}${esc(nameOf(x.it))}`,`${x.set?'整套・':''}跟 ${x.n} 件（套）不同的搭過・穿了 ${x.w} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
   if(m.looks.length)h+=`<p class="mh">最常穿的 Look</p><div class="blist">${m.looks.map(x=>{const d=lookDoll(x.l);return row(S.items.find(i=>i.id===x.l.itemIds[0]),esc(x.l.name),`穿了 ${x.n} 次${d?`・${esc(d.name)}`:''}`,`loadLook('${x.l.id}')`)}).join('')}</div>`;
   if(m.combos.length)h+=`<p class="mh">總是一起出場</p><div class="blist">${m.combos.map(x=>{
     const [a,b]=x.ids.map(i=>S.items.find(it=>it.id===i));if(!a||!b)return '';
@@ -5814,7 +5962,7 @@ function matchSection(){
     return `<div class="rowitem"><div class="th duo"><img src="${img(a)}" alt=""><img src="${img(b)}" alt=""></div>
       <div class="tx"><b>${esc(a.name)} × ${esc(b.name)}</b><span>一起穿了 ${x.n} 次</span></div>
       ${saved?'':`<div class="rt"><button class="btn sm quiet" onclick="comboToCanvas('${a.id}','${b.id}')">做成 Look</button></div>`}</div>`}).join('')}</div>`;
-  if(m.fav.length)h+=`<p class="mh">每隻娃娃的最愛</p><div class="blist">${m.fav.map(x=>row(x.it,`${esc(x.d.name)} 最常穿：${esc(x.it.name)}`,`穿了 ${x.n} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
+  if(m.fav.length)h+=`<p class="mh">每隻娃娃的最愛</p><div class="blist">${m.fav.map(x=>row(x.it,`${esc(x.d.name)} 最常穿：${esc(nameOf(x.it))}`,`穿了 ${x.n} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
   return h;
 }
 function comboToCanvas(a,b){
@@ -5977,7 +6125,7 @@ const sceneName=()=>IDEA.custom||IDEA.scene;
 function ideaResult(r){
   const its=r.ids.map(i=>S.items.find(x=>x.id===i)).filter(Boolean);
   return `<div class="idea">
-    <div class="idea-st">${its.map(i=>`<div><img src="${img(i)}" alt="">${isPressed(i)?'<i>📦</i>':''}<span>${esc(i.name)}</span></div>`).join('')}</div>
+    <div class="idea-st">${its.map(i=>`<div><img src="${img(i)}" alt="">${isPressed(i)?'<i>📦</i>':''}<span>${esc(nameOf(i))}</span></div>`).join('')}</div>
     <b>${esc(r.title)}</b>
     <p>${esc(r.reason)}</p>
     ${r.tip?`<p class="tipline">📷 ${esc(r.tip)}</p>`:''}
@@ -6433,7 +6581,7 @@ function candSetHTML(){
   const allOn=cs.rest.every(i=>WEAR.picked.includes(i.id));
   return `<div class="candset"><b>👗 大部分是「${esc(cs.name||'同一套')}」</b><span class="hint">這套還有 ${cs.rest.length} 件沒被認出來，照片裡看不到的（襪子、髮飾…）也可以一起加。</span>
     ${cs.rest.map(it=>`<div class="rowitem"><div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>
-      <div class="tx"><b>${esc(it.name)}</b><span>${esc(it.category)}・同一套</span></div>
+      <div class="tx"><b>${esc(nameOf(it))}</b><span>${esc(it.category)}・同一套</span></div>
       <div class="rt"><button class="btn sm ${WEAR.picked.includes(it.id)?'':'ghost'}" onclick="togglePick('${it.id}')">${WEAR.picked.includes(it.id)?'已加入':'加入'}</button></div></div>`).join('')}
     ${cs.rest.length>1?`<button class="btn sm ${allOn?'ghost':'quiet'} wide" style="margin-top:8px" onclick="candSetAll(${allOn})">${allOn?'全部拿掉':'整套一起加入'}</button>`:''}</div>`;
 }
@@ -6451,7 +6599,7 @@ function renderCands(){
       const low=c.score<70;
       return `<div class="rowitem">
         <div class="th"><img src="${img(it)}" alt=""></div>
-        <div class="tx"><b>${esc(it.name)}</b><span>相似度 ${c.score}%${low?'（不確定）':''}</span>
+        <div class="tx"><b>${esc(nameOf(it))}</b><span>相似度 ${c.score}%${low?'（不確定）':''}</span>
           <div class="conf ${low?'low':''}"><i style="width:${c.score}%"></i></div></div>
         <div class="rt"><button class="btn sm ${WEAR.picked.includes(c.id)?'':'ghost'}" onclick="togglePick('${c.id}')">${WEAR.picked.includes(c.id)?'已採用':'採用'}</button></div>
       </div>`;
@@ -6505,7 +6653,7 @@ function wearListHTML(){
   const {list,d,fitOn}=wearFiltered();
   return list.length?`<div class="pick">${list.map(i=>
       `<button data-id="${i.id}" class="${WEAR.picked.includes(i.id)?'on':''}" onclick="togglePick('${i.id}')">
-        <img src="${img(i)}" alt="" loading="lazy"><span class="cap">${esc(i.name)}</span></button>`).join('')}</div>`
+        <img src="${img(i)}" alt="" loading="lazy"><span class="cap">${esc(nameOf(i))}</span></button>`).join('')}</div>`
     :`<div class="hint" style="padding:18px 0;text-align:center">${fitOn?`沒有符合的 ${esc(d.size)} 娃衣，可以取消「只看 ${esc(d.size)}」看看`:'沒有符合的娃衣'}</div>`;
 }
 function wearPickedHTML(){
@@ -6601,7 +6749,7 @@ function openWearDetail(id){
     <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:isWork(w)?`${workIcon(rOf(w))} 陪你${esc(workLbl(rOf(w)))}${isOT(w)?`・🌙 ${esc(workExtra(rOf(w)))}`:''}`:'🏠 在家'}</p>
     ${w.photo?`<div class="hero" style="aspect-ratio:4/5;cursor:zoom-in" onclick="openPhoto('${w.id}')"><img src="${w.photo}" alt="" style="object-fit:cover;padding:0"></div>`:''}
     ${w.note?`<div class="wdnote">✏️ ${esc(w.note)}</div>`:''}
-    ${its.length?`<p class="mh">穿了 ${its.length} 件</p><div class="hscroll">${its.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}</div></button>`).join('')}</div>`:'<p class="hint">這筆沒有勾選衣服。</p>'}
+    ${its.length?`<p class="mh">穿了 ${its.length} 件</p><div class="hscroll">${its.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(nameOf(i))}</div></button>`).join('')}</div>`:'<p class="hint">這筆沒有勾選衣服。</p>'}
     <div class="row" style="margin-top:14px"><button class="btn ghost grow" onclick="openWearEdit('${w.id}')">✏️ 編輯</button><button class="btn grow" onclick="closeSheet();openShare('wear','${w.id}')">做成小卡</button>${w.photo?`<button class="btn ghost" onclick="savePhotos(['${w.id}'])">⬇️ 存到手機</button>`:''}</div>
     <button class="btn ghost wide" style="margin-top:8px;color:var(--muted)" onclick="delWear('${w.id}')">刪除這筆</button>`);
 }
@@ -7356,7 +7504,7 @@ function renderInsight(){
       const l=lastWear(i.id);
       return `<div class="rowitem" onclick="openItem('${i.id}')">
         <div class="th"><img src="${img(i)}" alt=""></div>
-        <div class="tx"><b>${esc(i.name)}</b><span>${esc(i.category)}</span></div>
+        <div class="tx"><b>${esc(nameOf(i))}</b><span>${esc(i.category)}</span></div>
         <div class="rt">${l?days(l)+' 天沒穿':`到貨 ${Math.floor((Date.now()-pressStart(i))/864e5)} 天還沒穿`}</div></div>`;
     }).join('');
   }
@@ -7370,7 +7518,7 @@ function renderInsight(){
       <div class="hint" style="margin-bottom:8px">這只是資訊，不是建議你賣掉。覺得重要就標記成紀念品，之後就不會再出現。</div>`;
     h+=dispose.slice(0,8).map(i=>`<div class="rowitem" onclick="openItem('${i.id}')">
       <div class="th"><img src="${img(i)}" alt=""></div>
-      <div class="tx"><b>${esc(i.name)}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
+      <div class="tx"><b>${esc(nameOf(i))}</b><span>同類型還有 ${items.filter(x=>x.category===i.category).length-1} 件・穿過 ${wearCount(i.id)} 次</span></div>
       <div class="rt">›</div></div>`).join('');
   }
   const it=UI.insTab||'base';
@@ -7439,7 +7587,7 @@ function workSection(){
     const ob=S.dolls.map(d=>({d,n:otCount(d,r)})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
     if(ob.length)h+=`<div class="note">🌙 ${esc(workExtra(r))}夥伴：${esc(ob[0].d.name)}，陪你${esc(workExtra(r))} ${ob[0].n} 天${ob.length>1?`（還有 ${ob.slice(1,3).map(x=>esc(x.d.name)).join('、')}）`:''}。辛苦你們了！</div>`;
     h+=by.map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 天${x.m?`・本月 ${x.m}`:''}</em></div><div class="track"><i class="worn" style="width:${x.n/mx*100}%"></i></div></div>`).join('');
-    if(tops.length)h+=`<p class="mh">${l}最常穿</p><div class="hscroll">${tops.map(([i,n])=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}・${n} 次</div></button>`).join('')}</div>`;
+    if(tops.length)h+=`<p class="mh">${l}最常穿</p><div class="hscroll">${tops.map(([i,n])=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(nameOf(i))}・${n} 次</div></button>`).join('')}</div>`;
     return h;
   }).join('');
 }
@@ -7675,7 +7823,7 @@ function buySoldHTML(){
     <div class="note">${strong?'你以前<b>賣掉過很像的</b>。':'以前送走的娃衣裡有類似的。'}當時為什麼讓它離開？如果是不常穿或不好搭，這件可能也會一樣，想清楚再下單。</div>
     <div class="blist">${list.map(v=>{const i=v.it,w=wearCount(i.id);
       return `<div class="rowitem"><div class="th"><img src="${img(i)}" alt=""></div>
-        <div class="tx"><b>${esc(i.name)}</b><span>${ai?lv[v.level]||'':'可能類似'}${v.reason?'・'+esc(v.reason):''}</span>
+        <div class="tx"><b>${esc(nameOf(i))}</b><span>${ai?lv[v.level]||'':'可能類似'}${v.reason?'・'+esc(v.reason):''}</span>
           <span>${esc(i.reason||'')} ${esc(i.archivedAt||'')}・穿過 ${w} 次${i.soldPrice?`・賣了 ${fmt$(money(i.soldPrice))}`:''}</span>
           ${i.memo?`<span>「${esc(i.memo)}」</span>`:''}</div></div>`}).join('')}</div>`;
 }
@@ -7735,7 +7883,7 @@ function renderBuy(){
     const n=list.length,cold=list.filter(idle).length;
     const top=list.filter(i=>img(i)).map(i=>({i,w:wearCount(i.id)})).sort((a,b)=>b.w-a.w).slice(0,6);
     return `<div class="bstat"><span>${label}</span><b>${n}</b><em>${n?(cold?`${cold} 件半年以上沒穿`:'都有在穿'):'還沒有'}</em>
-      ${top.length?`<div class="bthumbs">${top.map(x=>`<button onclick="openItem('${x.i.id}')" title="${esc(x.i.name)}"><img src="${img(x.i)}" alt=""><small>${x.w?`穿 ${x.w} 次`:'沒穿過'}</small></button>`).join('')}${n>top.length?`<span class="more">+${n-top.length}</span>`:''}</div>`:''}</div>`;
+      ${top.length?`<div class="bthumbs">${top.map(x=>`<button onclick="openItem('${x.i.id}')" title="${esc(nameOf(x.i))}"><img src="${img(x.i)}" alt=""><small>${x.w?`穿 ${x.w} 次`:'沒穿過'}</small></button>`).join('')}${n>top.length?`<span class="more">+${n-top.length}</span>`:''}</div>`:''}</div>`;
   };
   // 統計
   let st='';
@@ -7927,7 +8075,7 @@ function soldSection(){
     <div><b>${fmt$(r.yearBack)}</b><span>今年回收</span></div>
     <div><b>${fmt$(Math.max(0,r.net))}</b><span>扣掉回血的淨花費</span></div></div>
   ${r.list.length?`<div class="blist">${r.list.map(i=>{const p=priceOf(i),sp=money(i.soldPrice);return `<div class="rowitem" onclick="go('memory')">${th(i)}
-    <div class="tx"><b>${esc(i.name)}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
+    <div class="tx"><b>${esc(nameOf(i))}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
 }
 function spendSection(){
   const head=`<h2 class="sec" data-sec="spend">花費分析 <span class="vip">會員</span></h2>`;
@@ -7957,9 +8105,9 @@ function spendSection(){
   </div>`;
   const th=it=>`<div class="th">${img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
   if(s.best.length)h+=`<p class="mh">最划算的娃衣</p><div class="blist">${s.best.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
-    <div class="tx"><b>${esc(x.it.name)}</b><span>每穿一次 ${fmt$(x.c)}・穿了 ${x.w} 次・${fmt$(x.p)}</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+    <div class="tx"><b>${esc(nameOf(x.it))}</b><span>每穿一次 ${fmt$(x.c)}・穿了 ${x.w} 次・${fmt$(x.p)}</span></div><div class="rt">›</div></div>`).join('')}</div>`;
   if(s.idle.length)h+=`<p class="mh">買了還沒穿過</p><div class="blist">${s.idle.map(x=>`<div class="rowitem" onclick="openItem('${x.it.id}')">${th(x.it)}
-    <div class="tx"><b>${esc(x.it.name)}</b><span>${fmt$(x.p)}・穿一次就回本一點</span></div><div class="rt">›</div></div>`).join('')}</div>`;
+    <div class="tx"><b>${esc(nameOf(x.it))}</b><span>${fmt$(x.p)}・穿一次就回本一點</span></div><div class="rt">›</div></div>`).join('')}</div>`;
   if(s.cats.length){const cm=s.cats[0][1];h+=`<p class="mh">花最多的類型</p>${s.cats.map(([k,v])=>`<div class="bar"><div class="lb"><span>${esc(k)}</span><em>${fmt$(v)}</em></div>
     <div class="track"><i class="worn" style="width:${v/cm*100}%"></i></div></div>`).join('')}`}
   h+=soldSection();
@@ -7978,11 +8126,11 @@ function mcap(el){
 const HELP=[
   // ── 衣櫃
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
+    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
     ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
-    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、系列、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
+    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期的娃衣，有空再補就好。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['到貨 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放；標記「紀念品」的不會進去。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','出售貼文可以選要不要寫品牌、系列、作品、購買管道、產地，還有無菸、無寵物環境。','賣掉後移到回憶箱，會記下賣了多少錢，洞察頁會算「賣出回血」。回血只算娃衣，娃娃離開不算在裡面。']],
   // ── 穿搭
