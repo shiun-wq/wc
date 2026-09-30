@@ -15,6 +15,8 @@
      IMAGE_QUALITY       GPT Image 的品質：low / medium / high，留空 = 服務預設    （Text，選填）
      ALLOWED_ORIGINS     允許使用的網址，逗號分隔                               （Text）
                          例：https://shiun-wq.github.io,capacitor://localhost,https://localhost
+     REASONING           AI 回答前「想多少」：low（預設，省錢）/ medium / high，
+                         填 off = 不送這個設定（中轉站不支援時會自動改回不送）      （Text，選填）
      DAILY_LIMIT         每台裝置每天最多幾次，預設 30（需要綁 KV 才會生效）      （Text，選填）
      GLOBAL_DAILY_LIMIT  全部人加起來每天最多幾次，預設 300（需要綁 KV）         （Text，選填）
    選填的 KV 綁定：變數名稱 QUOTA → 用來記每天用了幾次，防止被刷爆帳單。
@@ -100,14 +102,21 @@ export default {
     const key = (isImg && env.IMAGE_API_KEY) || env.API_KEY;
     if (isImg && imageStyle(env) === 'studio') return studioImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
     if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
+    // 會思考的模型（Gemini 3 等）先「想」再回答，想的字也算錢；App 要的只是一小段整理好的資料，叫它少想一點
+    const effort = String(env.REASONING || 'low').trim().toLowerCase();
+    const ask = withEffort => fetch(apiURL(base, '/chat/completions'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+      // 測試也給多一點字數：會思考的模型先想一下才回答，太少會回空的
+      body: JSON.stringify({ model, max_tokens: task === 'test' ? 1024 : MAX_TOKENS, stream: false, messages,
+        ...(withEffort ? { reasoning_effort: effort } : {}) })
+    });
     let up;
     try {
-      up = await fetch(apiURL(base, '/chat/completions'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
-        // 測試也給多一點字數：會思考的模型（例如 Gemini 3）先想一下才回答，太少會回空的
-        body: JSON.stringify({ model, max_tokens: task === 'test' ? 1024 : MAX_TOKENS, stream: false, messages })
-      });
+      const useEffort = effort !== 'off' && effort !== '';
+      up = await ask(useEffort);
+      // 中轉站或模型不接受這個設定（400／422）：拿掉再問一次
+      if (useEffort && (up.status === 400 || up.status === 422)) up = await ask(false);
     } catch (e) {
       return json({ error: 'AI 服務連不上，稍後再試' }, 502, cors);
     }
