@@ -2209,7 +2209,7 @@ async function aiChat(task,content){
       const h={'content-type':'application/json','x-device':deviceId()};
       r=await fetch(backendURL()+'/ai',{method:'POST',headers:h,body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
-    if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.status?' #'+j.status:'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
     return readAIReply(await r.text());
   }
   const c=cfg();
