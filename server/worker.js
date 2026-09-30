@@ -378,6 +378,8 @@ function cleanMessages(msgs) {
 function apiURL(base, path) {
   base = String(base).trim().replace(/\/+$/, '');
   if (/\/chat\/completions$/.test(base)) base = base.replace(/\/chat\/completions$/, '');
+  // 只填了網域（例如 https://xxx.com）：自動補上 /v1，大部分中轉站都是這樣
+  try { if (/^\/?$/.test(new URL(base).pathname)) base += '/v1'; } catch (e) {}
   return base + path;
 }
 

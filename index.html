@@ -2243,6 +2243,8 @@ const aiText=j=>{const m=j.choices?.[0]?.message;return (typeof m?.content==='st
 function apiURL(base,path){
   base=(base||'').trim().replace(/\/+$/,'');
   if(/\/(chat\/completions|messages|models)$/.test(base))base=base.replace(/\/[^/]+$/,'').replace(/\/chat$/,'');
+  // 只填了網域：自動補上 /v1
+  try{if(/^\/?$/.test(new URL(base).pathname))base+='/v1'}catch(e){}
   return base+path;
 }
 function authHead(key){
