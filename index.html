@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=33"></script>
+<script src="i18n/i18n.js?v=34"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1095,6 +1095,15 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .letter .sign{text-align:right;margin:16px 0 0;color:var(--ink-2)}
 .letter .sign small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
 .fbtype{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.cpick{display:flex;flex-wrap:wrap;gap:6px}
+.cpick button{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:40px;padding:4px 2px;border-radius:10px;border:1.5px solid transparent;background:none;font-size:11px;color:var(--ink-2)}
+.cpick button i{width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+.cpick.sm{gap:2px}.cpick.sm button{min-width:0;padding:2px;border-radius:50%;border-width:2px}.cpick.sm button span{display:none}.cpick.sm button i{width:20px;height:20px}
+.cpick button.on{border-color:var(--berry,#B5536B);background:var(--paper-2);color:var(--ink);font-weight:700}
+.qall{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin:0 0 12px}
+.qall summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none}.qall summary small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.qall[open] summary{margin-bottom:10px}
+.piece .mt .miss{color:var(--berry-deep,#9A3F57);font-weight:600}
 .wnote{flex:0 0 auto;width:52px;padding:0;font-size:20px}.wnote.on{background:var(--berry,#B5536B);border-color:transparent;box-shadow:0 0 0 2px rgba(181,83,107,.18)}
 .wnotebox{display:flex;gap:8px;align-items:flex-end;margin:0 -18px 8px;padding:8px 18px 0;background:var(--paper)}.wnotebox textarea{flex:1;min-height:72px}
 .wdnote{white-space:pre-wrap;font-size:14px;line-height:1.7;background:var(--paper-2);border-radius:14px;padding:10px 12px;margin:0 0 12px}
@@ -1251,6 +1260,7 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
       <p class="hint" style="text-align:center;margin:-4px 0 14px">還沒到貨的？<a href="javascript:void 0" style="color:var(--berry-deep);font-weight:600" onclick="UI.wishTab='order';go('wish');setTimeout(openOrderShot,300)">用訂單截圖記進購買中 ›</a></p>
       <div id="arriveTip"></div>
       <div id="cutTip"></div>
+      <div id="queueAll"></div>
       <div id="queue"></div>
       <div id="queueActions"></div>
     </section>
@@ -2756,7 +2766,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-55';
+const APP_VER='2026.10.01-56';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4722,7 +4732,7 @@ function renderCloset(){
   const FILTERS=visibleFilters(),FMAP=fmap();
   if(!FILTERS.includes(UI.cat))UI.cat='全部';
   document.getElementById('catchips').innerHTML=FILTERS.map(f=>`<button class="chip ${UI.cat===f?'on':''}" onclick="UI.cat=decodeURIComponent('${encodeURIComponent(f)}');renderCloset()">${esc(f)}</button>`).join('');
-  const modes=['全部','壓箱底','待處理','從未穿過','收藏紀念','節日服','最近新增'];
+  const modes=['全部','壓箱底','待處理','待補資料','從未穿過','收藏紀念','節日服','最近新增'];
   document.getElementById('viewchips').innerHTML=modes.map(f=>`<button class="chip ${UI.mode===f?'on':''}" onclick="UI.mode='${f}';UI.hol='';renderCloset()">${f}</button>`).join('');
   const sz=['全部尺寸',...sizes()];
   if(!sz.includes(UI.size))UI.size='全部尺寸';
@@ -4742,6 +4752,7 @@ function renderCloset(){
   if(UI.mode==='壓箱底')list=list.filter(isPressed);
   if(UI.mode==='收藏紀念')list=list.filter(i=>i.keepsake);
   if(UI.mode==='待處理')list=list.filter(i=>openIssues(i).length);
+  if(UI.mode==='待補資料')list=list.filter(i=>missingInfo(i).length);
   if(UI.mode==='節日服'){list=list.filter(i=>i.holiday);if(UI.hol)list=list.filter(i=>i.holiday===UI.hol)}
   if(UI.mode==='最近新增')list.sort((a,b)=>b.createdAt-a.createdAt);
   else list.sort((a,b)=>b.createdAt-a.createdAt);
@@ -4764,7 +4775,7 @@ function renderCloset(){
   el.style.paddingBottom=UI.multi?'70px':'';
   const holBar=UI.mode==='節日服'?`<div class="chips wchips" style="margin:0 0 10px">${['',...HOL_NAMES.filter(n=>S.items.some(i=>i.holiday===n))].map(n=>`<button class="chip ${(UI.hol||'')===n?'on':''}" onclick="UI.hol='${n}';renderCloset()">${n?holIcon(n)+' '+n:'全部節日'}</button>`).join('')}</div>
     <p class="hint" style="margin:0 0 10px">節日服一年穿一次，超過 13 個月沒穿才會算壓箱底。</p>`:'';
-  el.innerHTML=top+holBar+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">買來 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（照手機今天的日期算；有填購入日期就從購入日期算，沒填從建檔日算）。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
+  el.innerHTML=top+holBar+(UI.mode==='待補資料'?`<p class="hint" style="margin:0 0 10px">缺顏色、價格、購入／到貨日期，或名稱是自動取的。按右上「多選」全選，再用「批次修改」一次補齊；包色可以用「價格 → 總價平分」。</p>`:'')+(UI.mode==='壓箱底'?`<p class="hint" style="margin:0 0 10px">到貨 ${PRESS_NEW} 天都沒穿過，或最後一次穿是 ${PRESS_IDLE} 天前，會自動放進來（節日服是 13 個月）。從到貨日開始算，沒填到貨日就從購入日期，都沒填從建檔日算。也可以在單品頁手動放進去或拿出來；標成收藏紀念的不會進來。</p>
     <button class="btn quiet wide" style="margin-bottom:12px" onclick="openSell()">📦 挑幾件做成出售圖和貼文</button>`:'')+`<div class="grid">`+list.map(i=>{
     const c=wearCount(i.id),l=lastWear(i.id),d=l?days(l):null;
     const sel=UI.multi&&UI.msel.has(i.id);
@@ -4775,7 +4786,7 @@ function renderCloset(){
         ${openIssues(i).length?`<span class="carewarn" title="${openIssues(i).map(c=>c.type).join('、')}待處理">⚠️</span>`:''}
       </div>
       <div class="nm">${esc(i.name)}</div>
-      <div class="mt">${esc(i.category)}${d!=null?`・${d} 天前`:''}</div>
+      <div class="mt">${UI.mode==='待補資料'?`<b class="miss">缺 ${missingInfo(i).join('・')}</b>`:`${esc(i.category)}${d!=null?`・${d} 天前`:''}`}</div>
     </button>`;
   }).join('')+`</div>`;
 }
@@ -4808,6 +4819,40 @@ function batchIds(){
   if(UI.batchSet!==false)[...UI.msel].forEach(id=>{const i=S.items.find(x=>x.id===id);if(i&&i.category==='套裝')setMates(i).forEach(m=>ids.add(m.id))});
   return [...ids];
 }
+/* ---- 顏色色票：12 個色系＋花色，點一下就選，可以複選（最多 3 個，第一個當主色）----
+   存的是「粉色」這種名字；AI 讀的細色名（淺粉色…）也歸在同一個色系，點色票會一起拿掉 */
+const SWATCHES=[['粉色','#F2A7BC'],['紅色','#D9534F'],['橘色','#F0A04B'],['黃色','#F2D14B'],['綠色','#7FB77E'],['藍色','#6C9BD2'],['紫色','#A98BC9'],['白色','#FFFFFF'],['米色','#E8D8BE'],['棕色','#9C7456'],['灰色','#A7A7A7'],['黑色','#2B2B2B'],['花色','conic-gradient(#F2A7BC,#F2D14B,#7FB77E,#6C9BD2,#A98BC9,#F2A7BC)']];
+const swFam=c=>c==='花色'||/花|多色|印花|格紋/.test(c||'')?'花色':colorFam(c);
+function swatchHTML(colors,fn,small){
+  const on=new Set((colors||[]).map(swFam));
+  return `<div class="cpick ${small?'sm':''}">${SWATCHES.map(([k,hex])=>{const f=swFam(k);return `<button type="button" class="${on.has(f)?'on':''}" onclick="${fn}('${k}')" aria-label="${k}" title="${k}"><i style="background:${hex}"></i><span>${k.replace('色','')}</span></button>`}).join('')}</div>`;
+}
+// 點色票：選了就拿掉（連同同色系的細色名），沒選就加上（最多 3 個）
+function toggleColor(arr,k){
+  const f=swFam(k),has=arr.some(c=>swFam(c)===f);
+  if(has)return arr.filter(c=>swFam(c)!==f);
+  if(arr.length>=3){toast('最多選 3 個顏色，第一個是主色');return arr}
+  return [...arr,k];
+}
+// 資料不完整的地方（衣櫃「待補資料」用）
+function missingInfo(i){
+  if(!i||i.category==='套裝')return [];
+  const m=[];
+  if(!(i.colors||[]).length)m.push('顏色');
+  if(!priceOf(i)&&!(i.setId&&[...S.items,...S.memory].some(x=>x.setId===i.setId&&priceOf(x)>0)))m.push('價格');
+  if(!i.buyDate&&!i.homeDate)m.push('日期');
+  if(i.autoName)m.push('名稱');
+  return m;
+}
+// 沒填名稱：用「主色＋類型」自動取名，重複的加編號
+function autoName(colors,cat){
+  const c=(colors||[]).find(x=>x!=='花色'),base=((c?(famLabel[colorFam(c)]||c):'')+(cat||'娃衣'))||'娃衣';
+  let nm=base,k=2;const used=new Set([...S.items,...S.memory].map(x=>x.name));
+  while(used.has(nm))nm=base+' '+(k++);
+  return nm;
+}
+// 平分價格：總價除以件數取整數，除不盡的零頭加在第一件
+function splitPrice(total,n){const t=Math.round(+total||0),b=Math.floor(t/n),r=t-b*n;return Array.from({length:n},(_,i)=>String(b+(i===0?r:0)))}
 function openBatchMenu(){
   const n=UI.msel.size;if(!n)return;
   const row=(k,ico,t,sub)=>`<button class="setrow" onclick="openBatch('${k}')"><i>${ico}</i><span><b>${t}</b><small>${sub}</small></span><em>›</em></button>`;
@@ -4819,10 +4864,12 @@ function openBatchMenu(){
       ${row('holiday','🎄','節日主題','聖誕節、新年、萬聖節…')}
       ${row('cat','🗂️','類型','上衣、裙子、自訂類別…')}
       ${row('size','📏','尺寸','10cm、20cm…（單選）')}
+      ${row('color','🎨','顏色','點色票選，最多 3 個')}
     </div>
     <div class="setgroup" style="margin-top:10px">
       ${row('series','🔖','系列','選填，例如 甜心派對系列')}
       ${row('brand','🏷','品牌','')}
+      ${row('price','💰','價格','包色可以總價平分')}
       ${row('origin','🌏','產地','')}
       ${row('buy','📅','購入日期','')}
       ${row('home','📦','到貨日期','壓箱底會從到貨日開始算')}
@@ -4833,6 +4880,37 @@ function openBatchMenu(){
       ${big('del','🗑️','刪除','永久刪除，不能復原')}
     </div>
     ${batchHasSet()?`<label class="remember" style="margin:12px 0 0"><input type="checkbox" ${UI.batchSet!==false?'checked':''} onchange="UI.batchSet=this.checked"> 選到的套裝，拆出來的單品也一起改</label>`:''}`);
+}
+function drawBatchColor(){
+  const n=UI.msel.size;
+  openSheet(`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div><h3>批次改顏色</h3>
+    <p class="hint" style="margin:-6px 0 12px">點色票選顏色（最多 3 個，第一個是主色），這 ${n} 件原本的顏色會換成這幾個。特殊色（霧霾藍、奶茶色…）可以寫在名稱裡。</p>
+    <div id="bcol">${swatchHTML(UI.bcol,'bColor')}</div>
+    <button class="btn wide" style="margin-top:14px" onclick="applyBatchColor()">套用到 ${n} 件</button>`);
+}
+function bColor(k){UI.bcol=toggleColor(UI.bcol,k);document.getElementById('bcol').innerHTML=swatchHTML(UI.bcol,'bColor')}
+async function applyBatchColor(){
+  if(!UI.bcol.length){toast('先選顏色');return}
+  const ids=batchIds();ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(i)i.colors=UI.bcol.slice()});
+  await save();closeSheet();renderCloset();toast(`已更新 ${ids.length} 件的顏色`);
+}
+function drawBatchPrice(){
+  const n=UI.msel.size,b=UI.bprice,per=b.split&&+b.v?splitPrice(b.v,n):null;
+  openSheet(`<div class="sethead"><button onclick="openBatchMenu()">‹ 批次修改</button></div><h3>批次改價格</h3>
+    <div class="swap" style="margin:0 0 12px">${[[false,'每件都是這個價格'],[true,`總價平分給 ${n} 件`]].map(([k,l])=>`<button class="${b.split===k?'on':''}" onclick="UI.bprice.split=${k};drawBatchPrice()">${l}</button>`).join('')}</div>
+    <label class="f"><span>${b.split?'總價（包色、一起買的）':'每件的價格'}</span><input type="number" inputmode="decimal" id="b_price" value="${esc(b.v)}" placeholder="${b.split?'例如 900':'例如 300'}" oninput="UI.bprice.v=this.value;const h=document.getElementById('b_ph');if(h)h.textContent=UI.bprice.split&&+this.value?'每件 '+splitPrice(this.value,${n})[1]+(splitPrice(this.value,${n})[0]!==splitPrice(this.value,${n})[1]?'（第一件 '+splitPrice(this.value,${n})[0]+'）':''):''"></label>
+    ${b.split?`<p class="hint" id="b_ph" style="margin:-4px 0 10px">${per?'每件 '+per[1]+(per[0]!==per[1]?'（第一件 '+per[0]+'）':''):''}</p>`:''}
+    <p class="hint" style="margin:0 0 12px">選到的套裝算一件，拆出來的單品會跟著套裝的價格。</p>
+    <div class="row"><button class="btn ghost grow" onclick="applyBatchPrice(true)">清空價格</button><button class="btn grow" onclick="applyBatchPrice()">套用到 ${n} 件</button></div>`);
+}
+async function applyBatchPrice(clear){
+  const b=UI.bprice,ids=[...UI.msel];
+  if(!clear&&!(+b.v>0)){toast('先填價格');return}
+  const ps=clear?ids.map(()=>''):b.split?splitPrice(b.v,ids.length):ids.map(()=>String(+b.v));
+  ids.forEach((id,k)=>{const i=S.items.find(x=>x.id===id);if(!i)return;i.price=ps[k];
+    // 套裝：拆出來的單品跟著套裝的價格（統計時一套只算一次）
+    if(i.category==='套裝')setMates(i).forEach(m=>m.price=ps[k])});
+  await save();closeSheet();renderCloset();toast(clear?`已清空 ${ids.length} 件的價格`:b.split?`總價 ${b.v} 平分給 ${ids.length} 件`:`已更新 ${ids.length} 件的價格`);
 }
 /* ---- 批次大動作：壓箱底、出售、刪除。動到很多件，所以一步一步確認 ---- */
 let BIG={};
@@ -4920,6 +4998,8 @@ async function bigDo(){
 const BATCH={size:['尺寸','sizes'],series:['系列','series'],brand:['品牌','brand'],origin:['產地','origin'],buy:['購入日期','buyDate'],home:['到貨日期','homeDate'],cat:['類型','category'],holiday:['節日主題','holiday'],tag:['標籤','tags'],untag:['標籤','tags']};
 function openBatch(kind){
   const ids=[...UI.msel];if(!ids.length)return;
+  if(kind==='color'){UI.bcol=[];return drawBatchColor()}
+  if(kind==='price'){UI.bprice={v:'',split:false};return drawBatchPrice()}
   if(!['origin','buy','home'].includes(kind))return openBatch2(kind,ids);
   const cur=ids.map(id=>(S.items.find(x=>x.id===id)||{})[BATCH[kind][1]]||'');
   const same=cur.every(v=>v===cur[0])?cur[0]:'';
@@ -5105,8 +5185,9 @@ function itipShow(e,b){
   const close=ev=>{if(ev.target!==b)off()};
   setTimeout(()=>{document.addEventListener('pointerdown',close,true);document.addEventListener('scroll',off,true)},0);
 }
+function eColor(k){UI.ecol=toggleColor(UI.ecol,k);document.getElementById('e_colors').innerHTML=swatchHTML(UI.ecol,'eColor')}
 function editItem(id){
-  const i=S.items.find(x=>x.id===id);
+  const i=S.items.find(x=>x.id===id);UI.ecol=(i.colors||[]).slice();
   openSheet(`
     <h3>編輯</h3>
     <label class="f"><span>名稱</span><input type="text" id="e_name" value="${esc(i.name)}"></label>
@@ -5132,6 +5213,7 @@ function editItem(id){
       <label class="f"><span>節日主題${itip('聖誕節、新年這類一年才穿一次的衣服。壓箱底會放寬到 13 個月，節日前首頁會提醒你。')}</span><select id="e_hol"><option value="">沒有</option>${HOL_NAMES.map(n=>`<option ${n===i.holiday?'selected':''}>${n}</option>`).join('')}</select></label>
       <label class="f"><span>標籤${itip('作品、系列、活動都可以當標籤，多個用逗號分開。衣櫃上方可以用標籤篩選。')}</span><input type="text" id="e_tags" list="tagDL" value="${esc((i.tags||[]).join('、'))}" placeholder="例如 戀與深空"><datalist id="tagDL">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist></label>
     </div>
+    <label class="f"><span>顏色${itip('點色票選，可以選 3 個，第一個是主色。特殊色（霧霾藍、奶茶色…）寫在名稱裡就好。推薦搭配和配色分析都會用到。')}</span><div id="e_colors">${swatchHTML(UI.ecol,'eColor')}</div></label>
     <label class="f"><span>適用尺寸</span><div class="parts" id="e_sizes">${sizes().map(s=>`<button type="button" class="${(i.sizes||[]).includes(s)?'on':''}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join('')}</div></label>
     <label class="f"><span>材質</span><input type="text" id="e_mat" value="${esc(i.material||'')}"></label>
     <label class="f"><span>備註</span><textarea id="e_note">${esc(i.note||'')}</textarea></label>
@@ -5172,6 +5254,8 @@ function renameMates(i,oldName){
 async function saveEdit(id){
   const i=S.items.find(x=>x.id===id),v=k=>document.getElementById(k).value;
   const before=JSON.parse(JSON.stringify(Object.fromEntries(SET_SHARED.map(f=>[f,i[f]])))),oldName=i.name;
+  if(v('e_name').trim()!==i.name)delete i.autoName;
+  i.colors=UI.ecol.slice();
   i.name=v('e_name');i.category=v('e_cat');i.season=v('e_season');i.series=v('e_series').trim();i.brand=v('e_brand');i.shop=v('e_shop');
   i.buyDate=v('e_buy');i.homeDate=v('e_home');i.origin=v('e_origin').trim();i.holiday=v('e_hol');i.tags=parseTags(v('e_tags'));i.price=v('e_price');i.material=v('e_mat');i.note=v('e_note');
   i.sizes=[...document.querySelectorAll('#e_sizes button.on')].map(b=>txt(b));
@@ -5228,6 +5312,7 @@ function renderQueue(){
         </div>
         <div class="parts qsize ${(q.sizes||[]).length?'':'need'}" id="qsize${n}" style="margin-top:6px">${sizes().map(z=>`<button class="${(q.sizes||[]).includes(z)?'on':''}" onclick="toggleQSize(${n},decodeURIComponent('${encodeURIComponent(z)}'))">${esc(z)}</button>`).join('')}</div>
         ${(q.sizes||[]).length?'':`<div class="hint needtip">請選一個尺寸，沒選不能建檔</div>`}
+        <div style="margin-top:6px">${swatchHTML(q.colors,`qColor.bind(null,${n})`,true)}</div>
         ${q.isSet?`
           <div class="parts">${COMMON_PARTS.map(p=>`<button class="${q.parts.some(x=>x.name===p)?'on':''}" onclick="togglePart(${n},'${p}')">${p}</button>`).join('')}</div>
           ${q.parts.length?`<div class="partrow">${q.parts.map((pt,k)=>`
@@ -5241,13 +5326,15 @@ function renderQueue(){
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
-          ${q.fromOrder?'':`<button class="btn sm ghost" onclick="qPhoto(${n})">📷 換照片</button>`}
           <button class="btn sm ghost" onclick="UI.queue.splice(${n},1);renderQueue()">移除</button>
           <span class="grow"></span>
           <span class="hint">${(q.styles||[]).map(s=>s.name).join('・')}</span>
         </div>
       </div>
     </div>`).join('');
+  // 一次建很多件：填一次、套用到清單裡每一件
+  const qa=document.getElementById('queueAll');
+  if(qa)qa.innerHTML=UI.queue.length>1?queueAllHTML():'';
   document.getElementById('queueActions').innerHTML=UI.queue.length?`
     <div class="row" style="margin-top:4px">
       <button class="btn ghost" onclick="analyzeAll()">全部 AI 分析<small class="left">剩 ${quotaLeft('tag')}</small></button>
@@ -5276,6 +5363,33 @@ function cutTip(){
 function defaultSizes(){
   if(UI.lastSizes)return UI.lastSizes.slice(0,1);
   const d=mainDoll();return d&&d.size?[d.size]:[];
+}
+function qColor(n,k){const q=UI.queue[n];if(!q)return;q.colors=toggleColor(q.colors||[],k);renderQueue()}
+let QA={};
+function queueAllHTML(){
+  const n=UI.queue.length;
+  return `<details class="qall" ${UI.qaOpen?'open':''} ontoggle="UI.qaOpen=this.open"><summary>📋 套用到全部 ${n} 件<small>尺寸、品牌、價格、日期…填一次就好</small></summary>
+    <label class="f"><span>尺寸（全部換成）</span><div class="parts" id="qa_sz" style="margin:0">${sizes().map(z=>`<button type="button" data-k="${esc(z)}" class="${QA.size===z?'on':''}" onclick="QA.size=QA.size===this.dataset.k?'':this.dataset.k;document.querySelectorAll('#qa_sz button').forEach(b=>b.classList.toggle('on',b.dataset.k===QA.size))">${esc(z)}</button>`).join('')}</div></label>
+    <div class="split"><label class="f"><span>系列</span><input type="text" list="seriesDL9" value="${esc(QA.series||'')}" oninput="QA.series=this.value">${seriesDL('seriesDL9')}</label>
+      <label class="f"><span>品牌</span><input type="text" list="brandDL9" value="${esc(QA.brand||'')}" oninput="QA.brand=this.value">${brandDL('brandDL9')}</label></div>
+    <label class="f"><span>購買管道</span><input type="text" value="${esc(QA.shop||'')}" oninput="QA.shop=this.value"></label>
+    <div class="split"><label class="f"><span>購入日期</span><input type="date" value="${esc(QA.buy||'')}" max="${today()}" onchange="QA.buy=this.value"></label>
+      <label class="f"><span>到貨日期</span><input type="date" value="${esc(QA.home||'')}" max="${today()}" onchange="QA.home=this.value"></label></div>
+    <label class="f"><span>價格</span><div class="swap" style="margin:0 0 6px">${[[false,'每件'],[true,`總價平分 ${n} 件`]].map(([k,l])=>`<button type="button" class="${!!QA.split===k?'on':''}" onclick="QA.split=${k};renderQueue()">${l}</button>`).join('')}</div>
+      <input type="number" inputmode="decimal" value="${esc(QA.price||'')}" placeholder="${QA.split?'例如 包色總價 900':'例如 300'}" oninput="QA.price=this.value"></label>
+    <p class="hint" style="margin:-4px 0 10px">尺寸會全部換掉；其他欄位只會填進還空著的，已經填好的不會被蓋掉。套裝算一件。</p>
+    <button class="btn wide" onclick="applyQueueAll()">套用到 ${n} 件</button></details>`;
+}
+function applyQueueAll(){
+  const n=UI.queue.length,ps=+QA.price>0?(QA.split?splitPrice(QA.price,n):UI.queue.map(()=>String(+QA.price))):null;
+  let c=0;
+  UI.queue.forEach((q,k)=>{
+    if(QA.size){q.sizes=[QA.size];UI.lastSizes=[QA.size]}
+    [['series','series'],['brand','brand'],['shop','shop'],['buy','buyDate'],['home','homeDate']].forEach(([a,f])=>{const v=(QA[a]||'').trim();if(v&&!String(q[f]||'').trim())q[f]=v});
+    if(ps&&!(+q.price>0))q.price=ps[k];
+    c++;
+  });
+  UI.qaOpen=false;renderQueue();toast(`已套用到 ${c} 件`);
 }
 function toggleQSize(n,z){
   const q=UI.queue[n];q.sizes=q.sizes||[];
@@ -5488,11 +5602,13 @@ async function commitQueue(){
   const miss=UI.queue.filter(q=>q.isSet&&q.parts.length&&q.parts.some(p=>!p.img));
   if(miss.length&&!confirm('有套裝還沒逐件做貼圖，拆出來的單品會沒有自己的圖。要繼續嗎？')) return;
   for(const q of UI.queue)await setCover(q);
+  // 沒填名稱的：用「主色＋類型」自動取名，標記起來，衣櫃「待補資料」找得到
+  for(const q of UI.queue)if(!String(q.name||'').trim()){q.name=autoName(q.colors,q.isSet?'套裝':q.category);q.autoName=true}
   let n=0;
   for(const q of UI.queue){
     const base={price:q.price||'',photo:q.photo,cutout:q.cutout,cutSrc:q.cutSrc||null,cutMask:q.cutMask||null,colors:q.colors,styles:q.styles,motifs:q.motifs,
       season:q.season,holiday:q.holiday||'',material:q.material,sizes:(q.sizes||[]).slice(),series:q.series||'',brand:q.brand||'',shop:q.shop||'',origin:q.origin||'',buyDate:q.buyDate||'',homeDate:q.homeDate||'',note:'',
-      keepsake:false,keepsakeReason:'',createdAt:Date.now()};
+      keepsake:false,keepsakeReason:'',createdAt:Date.now(),...(q.autoName?{autoName:true}:{})};
     if(q.isSet){
       const sid=uid('s'),nm=q.name||'未命名套裝';
       S.sets.push({id:sid,name:nm,createdAt:Date.now()});
@@ -7978,11 +8094,11 @@ function mcap(el){
 const HELP=[
   // ── 衣櫃
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
+    ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」，之後在衣櫃「待補資料」補。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
     ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
-    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、系列、品牌、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。']],
+    ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、系列、品牌、價格（包色可以總價平分）、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','事後要補資料的，衣櫃上方選「待補資料」：缺顏色、價格、日期，或名稱是自動取的都會列出來，卡片下面寫缺什麼，全選後批次補。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
     ['到貨 60 天沒穿、或 180 天沒穿會自動進壓箱底（節日服是 13 個月），也能手動放；標記「紀念品」的不會進去。','弄髒、發黃、裝飾掉了、下水清洗都可以記在單品頁，出售時會自動帶入。','出售貼文可以選要不要寫品牌、系列、作品、購買管道、產地，還有無菸、無寵物環境。','賣掉後移到回憶箱，會記下賣了多少錢，洞察頁會算「賣出回血」。回血只算娃衣，娃娃離開不算在裡面。']],
   // ── 穿搭
