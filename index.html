@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=40"></script>
+<script src="i18n/i18n.js?v=41"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2210,7 +2210,7 @@ async function aiChat(task,content){
       r=await fetch(backendURL()+'/ai',{method:'POST',headers:h,body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
     if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
-    try{return JSON.parse(await r.text())}catch(e){throw new Error('AI 服務回傳的內容看不懂，請再試一次')}
+    return readAIReply(await r.text());
   }
   const c=cfg();
   if(!c.endpoint)throw new Error(aiMissing());
@@ -2220,7 +2220,23 @@ async function aiChat(task,content){
     body:JSON.stringify({model:c.model,max_tokens:task==='test'?1024:8192,messages:[{role:'user',content}]})
   });
   if(!r.ok){const t=await r.text();throw new Error(r.status+' '+t.slice(0,160))}
-  return r.json();
+  return readAIReply(await r.text());
+}
+// 讀 AI 的回應：一般是一整包 JSON；有些中轉站就算沒要求也會用「一段一段傳」（data: 開頭）的格式回，這裡拼回一整包
+function readAIReply(t){
+  t=String(t||'').replace(/^\uFEFF/,'').trim();
+  try{return JSON.parse(t)}catch(e){}
+  if(/^data:/m.test(t)){
+    let txt='',ok=false;
+    for(const line of t.split('\n')){
+      const m=line.match(/^data:\s*(.*)$/);if(!m||m[1]==='[DONE]')continue;
+      try{const j=JSON.parse(m[1]),c=j.choices&&j.choices[0];if(!c)continue;ok=true;
+        const d=c.delta||c.message||{};txt+=typeof d.content==='string'?d.content:(d.content||[]).map(x=>x.text||'').join('')}catch(e){}
+    }
+    if(ok)return {choices:[{message:{content:txt}}]};
+  }
+  // 開發者模式：把回應的開頭秀出來，方便看是哪裡設定錯（例如網址填到網站首頁，回來的是網頁）
+  throw new Error('AI 服務回傳的內容看不懂，請再試一次'+(devMode()?'｜'+t.slice(0,120):''));
 }
 const aiText=j=>{const m=j.choices?.[0]?.message;return (typeof m?.content==='string'?m.content:(m?.content||[]).map(x=>x.text||'').join(''))||''};
 // 填 base（.../v1）就好，路徑自動補
@@ -2766,7 +2782,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-64';
+const APP_VER='2026.10.01-65';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;

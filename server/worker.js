@@ -120,6 +120,11 @@ export default {
       // 上游錯誤細節只在 DEBUG=1 時回傳，平常不讓使用者看到上游是誰
       return json({ error: msg, status: up.status, ...(env.DEBUG === '1' ? { detail: t.slice(0, 300) } : {}) }, up.status === 429 ? 429 : 502, cors);
     }
+    // 中轉站回了網頁（不是 AI 的回應）：通常是 API_BASE 填錯，沒有填到 /v1
+    if (/text\/html/i.test(up.headers.get('content-type') || '')) {
+      const t = await up.text().catch(() => '');
+      return json({ error: 'AI 服務設定有誤（網址，API_BASE 要填到 /v1）', ...(env.DEBUG === '1' ? { detail: t.slice(0, 300) } : {}) }, 502, cors);
+    }
     return new Response(up.body, { status: 200, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' } });
   }
 };

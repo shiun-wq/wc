@@ -783,5 +783,6 @@
 "套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。": "For a set, tap “AI analyze” to split it into pieces, or set the type to “Set” and pick the pieces yourself (free), then tap “Sticker each piece”.",
 "是套裝！剛剛的貼圖是當單件做的，已拿掉，按「逐件做貼圖」每件各自做": "It's a set! The sticker was made as a single piece, so it was removed. Tap “Sticker each piece” to make each one",
 "次數用完也可以用點數：建檔分析、穿搭辨識、搭配建議 1 點，買前檢查 3 點（會員限定）。": "When you run out, you can use points: add-item analysis, outfit recognition and outfit ideas cost 1 point, pre-purchase check costs 3 points (members only).",
-"AI 服務回傳的內容看不懂，請再試一次": "Couldn't read the AI service's reply. Please try again"
+"AI 服務回傳的內容看不懂，請再試一次": "Couldn't read the AI service's reply. Please try again",
+"AI 服務設定有誤（網址，API_BASE 要填到 /v1）": "AI service setup error (address — API_BASE should end with /v1)"
 }
