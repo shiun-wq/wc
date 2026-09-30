@@ -816,5 +816,10 @@
 "拍一張娃衣照片就能建檔": "Take a photo of it to add it to the wardrobe",
 "原價 {0}": "Original price {0}",
 "「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。": "“Considering” works like a shopping cart: tap “＋ Add to Considering” to add items one by one (pick a currency; foreign prices are converted). Members can also use “📸 Import from screenshots” with a cart or product-page screenshot to add several at once. Tap “Check again” to compare with your wardrobe.",
-"決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的直接去建檔；名稱、價格、店家、商品圖都會帶過去。": "Decided to buy? Tap “Bought”: pre-orders and in-stock items still shipping go to “On order”; if you already have it, it goes straight to adding. The name, price, shop and product image come along."
+"決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的直接去建檔；名稱、價格、店家、商品圖都會帶過去。": "Decided to buy? Tap “Bought”: pre-orders and in-stock items still shipping go to “On order”; if you already have it, it goes straight to adding. The name, price, shop and product image come along.",
+"要買給哪個尺寸？": "Which size is it for?",
+"其他尺寸有很像的": "Similar ones in other sizes",
+"不是 {0} 的，所以沒有算進上面。只用名稱和標籤找，還沒看圖確認。": "These aren't {0}, so they're not counted above. Found by name and tags only — not checked against the images.",
+"開始檢查": "Start check",
+"開始前先選「要買給哪個尺寸」（會記住上次選的），只跟同尺寸的娃衣比；別的尺寸有很像的會另外列出來，適合的娃娃也只推薦這個尺寸的。": "First pick “Which size is it for?” (your last choice is remembered). It only compares with clothes in that size; similar ones in other sizes are listed separately, and only dolls of that size are suggested."
 }
