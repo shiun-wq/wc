@@ -640,5 +640,10 @@
 "星期日": "Sunday",
 "星期一": "Monday",
 "娃娃履歷的月曆、排班的月曆都會照這個排。": "Used by the doll profile calendar and the shift calendar.",
-"娃娃履歷裡有月曆：每天蓋一個章（🎂 紀念日、🚶 出門、🌙 加班、🏢 陪上班、🏠 在家），一天有好幾筆會多一個小點；點日期會在下面列出那天記了什麼。一週從星期日或星期一開始，可以到 設定 → 外觀 改。": "The doll profile has a calendar: each day gets a stamp (🎂 anniversary, 🚶 outing, 🌙 overtime, 🏢 work, 🏠 home), with a small dot when there are several records; tap a date to list what was logged below. Change whether weeks start on Sunday or Monday in Settings → Appearance."
+"娃娃履歷裡有月曆：每天蓋一個章（🎂 紀念日、🚶 出門、🌙 加班、🏢 陪上班、🏠 在家），一天有好幾筆會多一個小點；點日期會在下面列出那天記了什麼。一週從星期日或星期一開始，可以到 設定 → 外觀 改。": "The doll profile has a calendar: each day gets a stamp (🎂 anniversary, 🚶 outing, 🌙 overtime, 🏢 work, 🏠 home), with a small dot when there are several records; tap a date to list what was logged below. Change whether weeks start on Sunday or Monday in Settings → Appearance.",
+"📦 這是訂單上的商品圖，拍一張實物照去背會更乾淨": "📦 This is the product image from the order — a photo of the real item cuts out much more cleanly",
+"📷 換照片": "📷 Change photo",
+"換照片": "Change photo",
+"照片換好了，再按「做成貼圖」": "Photo changed — now tap “Make sticker”",
+"購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。": "When ordered clothes arrive, the top of the add page reminds you; “Add all” brings them in together with the arrival date filled in. Order product images are hard to cut out — tap the thumbnail or “📷 Change photo” to take a photo of the real item; name, colors and price are kept."
 }

@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=27"></script>
+<script src="i18n/i18n.js?v=28"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1095,6 +1095,8 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .letter .sign{text-align:right;margin:16px 0 0;color:var(--ink-2)}
 .letter .sign small{display:block;font-family:var(--sans);font-size:12px;color:var(--muted)}
 .fbtype{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.qth{position:relative;cursor:pointer}.qth i{position:absolute;right:4px;bottom:4px;font-style:normal;font-size:13px;line-height:1;padding:4px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.qfrom{font-size:12.5px;line-height:1.6;color:var(--ink-2);background:var(--paper-2);border-radius:12px;padding:8px 10px;margin:0 0 8px}.qfrom .btn{margin-top:6px;display:flex}
 .otcheer{padding:8px 4px 4px}.otmoon{font-size:56px;line-height:1;margin:6px 0 10px;animation:otfloat 2.4s ease-in-out infinite}
 @keyframes otfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @media (prefers-reduced-motion:reduce){.otmoon{animation:none}}
@@ -2750,7 +2752,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-48';
+const APP_VER='2026.10.01-49';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4172,7 +4174,7 @@ async function batchOrderIntake(){
   const os=OBT.ids.map(id=>S.orders.find(o=>o.id===id)).filter(o=>o&&o.kind!=='doll'&&o.stage==='已到貨');
   const ok=os.filter(o=>o.photo),no=os.length-ok.length;
   ok.forEach(o=>{o.filed=true;UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false})});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken})});
   UI.osel=new Set();UI.omulti=false;await save();closeSheet();
   if(ok.length){go('intake');toast(`${ok.length} 筆加入建檔${no?`，另外 ${no} 筆沒有照片，要拍照後再建檔`:''}`)}
   else{renderWish();toast('這幾筆都還沒有照片，按「拿去建檔」會請你拍一張')}
@@ -4296,12 +4298,12 @@ function orderToIntake(id){
   const o=S.orders.find(x=>x.id===id);if(!o)return;
   if(!o.photo){
     const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
-    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;o.photo=await compress(f);orderToIntake(id)};
+    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;o.photo=await compress(f);o.photoTaken=true;orderToIntake(id)};
     toast('到貨了！拍一張娃衣照片就能建檔');inp.click();return;
   }
   o.filed=true;save();
   UI.queue.push({qid:uid('q'),photo:o.photo,buyDate:orderDate(o),homeDate:o.arrived||today(),cutout:null,name:o.name,category:o.category||'其他',isSet:o.category==='套裝',parts:[],sizes:o.size?[o.size]:defaultSizes().slice(0,1),
-    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false});
+    colors:(o.colors||[]).slice(),styles:(o.styles||[]).slice(),motifs:(o.motifs||[]).slice(),season:'',holiday:'',material:'',price:o.price||'',series:o.series||'',brand:o.brand||'',shop:o.shop||'',origin:o.origin||'',analyzing:false,fromOrder:!o.photoTaken});
   go('intake');toast('已加入建檔，選好尺寸、做成貼圖就完成了');
 }
 async function setWish(id,st){const w=S.wish.find(x=>x.id===id);w.status=st;w.decidedAt=st==='wait'?null:Date.now();await save();renderWish()}
@@ -5178,8 +5180,9 @@ function renderQueue(){
   const el=document.getElementById('queue');
   el.innerHTML=UI.queue.map((q,n)=>`
     <div class="qcard">
-      <div class="th">${q.cutout||q.photo?`<img src="${q.cutout||q.photo}" alt="">`:''}</div>
+      <div class="th qth" onclick="qPhoto(${n})" role="button" title="換照片">${q.cutout||q.photo?`<img src="${q.cutout||q.photo}" alt="">`:''}<i>📷</i></div>
       <div class="bd">
+        ${q.fromOrder?`<div class="qfrom">📦 這是訂單上的商品圖，拍一張實物照去背會更乾淨 <button class="btn sm" onclick="qPhoto(${n})">📷 換照片</button></div>`:''}
         <input type="text" placeholder="名稱（可留給 AI 填）" value="${esc(q.name)}" oninput="UI.queue[${n}].name=this.value">
         <div class="split" style="margin-top:6px">
           <select onchange="UI.queue[${n}].category=this.value;UI.queue[${n}].isSet=(this.value==='套裝');UI.queue[${n}].kindOk=true;if(UI.queue[${n}].isSet)dropOneCut(UI.queue[${n}]);renderQueue()">
@@ -5202,6 +5205,7 @@ function renderQueue(){
           <div class="hint" style="margin-top:5px">拆成「${esc(q.name||'套裝名')}－單品」各自建檔，每件都有自己的貼圖</div>`:''}
         <div class="row" style="margin-top:7px">
           <button class="btn sm ghost" onclick="cutQ(${n})">做成貼圖</button>
+          ${q.fromOrder?'':`<button class="btn sm ghost" onclick="qPhoto(${n})">📷 換照片</button>`}
           <button class="btn sm ghost" onclick="UI.queue.splice(${n},1);renderQueue()">移除</button>
           <span class="grow"></span>
           <span class="hint">${(q.styles||[]).map(s=>s.name).join('・')}</span>
@@ -5411,6 +5415,16 @@ async function analyze(n){
     if(q.isSet)dropOneCut(q);
   }catch(e){toast('分析失敗：'+e.message)}
   q.analyzing=false;renderQueue();return true;
+}
+// 建檔清單：換一張照片（例如購買中到貨，用實物照取代訂單截圖的小圖）。貼圖要重做，名稱、顏色、風格、價格都留著
+function qPhoto(n){
+  const q=UI.queue[n];if(!q)return;
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+    q.photo=await compress(f);q.cutout=null;q.cutSrc=null;q.cutMask=null;q.cutKind='';q.cutPaid=false;q.fromOrder=false;
+    if(q.parts)q.parts=q.parts.map(x=>({name:x.name,box:null}));
+    renderQueue();toast('照片換好了，再按「做成貼圖」');};
+  inp.click();
 }
 function dropOneCut(q){
   if(!q.cutout||q.cutKind!=='one')return;
@@ -7898,7 +7912,7 @@ function mcap(el){
 const HELP=[
   // ── 衣櫃
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
-    ['可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。']],
+    ['可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
     ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
