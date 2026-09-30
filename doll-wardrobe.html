@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=31"></script>
+<script src="i18n/i18n.js?v=32"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2756,7 +2756,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-52';
+const APP_VER='2026.10.01-53';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5737,17 +5737,19 @@ function openSubInfo(){openSheet(`<h3>訂閱說明</h3>
 function matchStats(){
   const items=S.items.filter(i=>i.category!=='套裝'),ok=new Set(items.map(i=>i.id));
   const partners={},wearN={},pair={},sid={};items.forEach(i=>{if(i.setId)sid[i.id]=i.setId});
+  // 同一套的單品合成一組：跟套裝一起穿只算搭了「一套」，套裝本身也只列一次
+  const gk=id=>sid[id]?'set:'+sid[id]:id;
   S.wears.forEach(w=>{
-    const ids=[...new Set(w.itemIds)].filter(i=>ok.has(i));
-    // 同一套的零件本來就一起穿，不算「搭過」，也不算「總是一起出場」
-    const same=(a,b)=>{const x=sid[a],y=sid[b];return x&&x===y};
-    ids.forEach(a=>{wearN[a]=(wearN[a]||0)+1;partners[a]=partners[a]||new Set();ids.forEach(b=>{if(a!==b&&!same(a,b))partners[a].add(b)})});
-    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){if(same(ids[i],ids[j]))continue;const k=[ids[i],ids[j]].sort().join('|');pair[k]=(pair[k]||0)+1}
+    const gs=[...new Set([...new Set(w.itemIds)].filter(i=>ok.has(i)).map(gk))];
+    gs.forEach(a=>{wearN[a]=(wearN[a]||0)+1;partners[a]=partners[a]||new Set();gs.forEach(b=>{if(a!==b)partners[a].add(b)})});
+    for(let i=0;i<gs.length;i++)for(let j=i+1;j<gs.length;j++){const k=[gs[i],gs[j]].sort().join('|');pair[k]=(pair[k]||0)+1}
   });
   const byId=id=>S.items.find(x=>x.id===id);
+  // 一組要顯示成哪一件：套裝有「套裝」那筆就用它，沒有就用第一件單品
+  const rep=k=>{if(!k.startsWith('set:'))return byId(k);const s0=k.slice(4);return S.items.find(x=>x.setId===s0&&x.category==='套裝')||S.items.find(x=>x.setId===s0)};
   const looks=S.looks.map(l=>({l,n:S.wears.filter(w=>w.lookId===l.id).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n).slice(0,3);
-  const versatile=Object.entries(partners).map(([id,s])=>({it:byId(id),n:s.size,w:wearN[id]})).filter(x=>x.it&&x.n).sort((a,b)=>b.n-a.n||b.w-a.w).slice(0,5);
-  const combos=Object.entries(pair).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,n])=>({ids:k.split('|'),n}));
+  const versatile=Object.entries(partners).map(([k,s])=>({it:rep(k),n:s.size,w:wearN[k],set:k.startsWith('set:')})).filter(x=>x.it&&x.n).sort((a,b)=>b.n-a.n||b.w-a.w).slice(0,5);
+  const combos=Object.entries(pair).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,n])=>({ids:k.split('|').map(x=>(rep(x)||{}).id).filter(Boolean),n}));
   const fav=S.dolls.map(d=>{
     const ws=dollWears(d),cnt={};
     ws.forEach(w=>w.itemIds.forEach(i=>{if(ok.has(i))cnt[i]=(cnt[i]||0)+1}));
@@ -5778,7 +5780,7 @@ function matchSection(){
   const m=matchStats(),th=it=>`<div class="th">${it&&img(it)?`<img src="${img(it)}" alt="">`:''}</div>`;
   const row=(it,b,s,on)=>`<div class="rowitem" ${on?`onclick="${on}"`:''}>${th(it)}<div class="tx"><b>${b}</b><span>${s}</span></div>${on?'<div class="rt">›</div>':''}</div>`;
   let h=head;
-  if(m.versatile.length)h+=`<p class="mh">最萬搭的單品</p><div class="blist">${m.versatile.map((x,i)=>row(x.it,`${i===0?'👑 ':''}${esc(x.it.name)}`,`跟 ${x.n} 件不同單品搭過・穿了 ${x.w} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
+  if(m.versatile.length)h+=`<p class="mh">最萬搭的單品</p><div class="blist">${m.versatile.map((x,i)=>row(x.it,`${i===0?'👑 ':''}${esc(x.it.name)}`,`${x.set?'整套・':''}跟 ${x.n} 件（套）不同的搭過・穿了 ${x.w} 次`,`openItem('${x.it.id}')`)).join('')}</div>`;
   if(m.looks.length)h+=`<p class="mh">最常穿的 Look</p><div class="blist">${m.looks.map(x=>{const d=lookDoll(x.l);return row(S.items.find(i=>i.id===x.l.itemIds[0]),esc(x.l.name),`穿了 ${x.n} 次${d?`・${esc(d.name)}`:''}`,`loadLook('${x.l.id}')`)}).join('')}</div>`;
   if(m.combos.length)h+=`<p class="mh">總是一起出場</p><div class="blist">${m.combos.map(x=>{
     const [a,b]=x.ids.map(i=>S.items.find(it=>it.id===i));if(!a||!b)return '';
