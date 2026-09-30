@@ -654,5 +654,11 @@
 "收起": "Close",
 "想寫幾句的話，按最下面「存入」左邊的 ✏️（選填，不寫也沒關係）；寫過的小記事會出現在紀錄和娃娃月曆裡，做小卡時也會自動帶進「一句話」。": "Want to write a few lines? Tap ✏️ left of “Save” at the bottom (optional). Notes show in your records and the doll calendar, and are filled into the card’s line automatically.",
 "整套・跟 {0} 件（套）不同的搭過・穿了 {1} 次": "Whole set · worn with {0} different items (sets) · worn {1} times",
-"跟 {0} 件（套）不同的搭過・穿了 {1} 次": "Worn with {0} different items (sets) · worn {1} times"
+"跟 {0} 件（套）不同的搭過・穿了 {1} 次": "Worn with {0} different items (sets) · worn {1} times",
+"穿搭次數": "Outfits",
+"整套・": "Whole set · ",
+"到貨 {0} 天還沒穿": "Not worn {0} days since arrival",
+"跟壓箱底同一套規則：到貨 60 天還沒穿、或 180 天沒穿（節日服 13 個月）。標記為紀念品的不會出現在這裡。": "Same rule as “Stashed away”: not worn 60 days after arrival, or not worn for 180 days (13 months for holiday outfits). Items marked as keepsakes never appear here.",
+"{0}　共 {1} 件，其中 {2} 件在壓箱底（很久沒穿）。想再買同類型之前，也許先翻翻這些。": "{0}: {1} items, {2} of them stashed away (not worn in a long time). Before buying more of this type, maybe look through these first.",
+"娃衣花費・{0} 筆有價格（套裝算一筆）": "Clothes spending · {0} priced (a set counts once)"
 }

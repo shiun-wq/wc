@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=32"></script>
+<script src="i18n/i18n.js?v=33"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2540,7 +2540,7 @@ function renderHome(){
   const el=document.getElementById('home'),d=mainDoll();
   // 首頁跟著主角娃娃：只算這個尺寸的娃衣、這隻娃娃的穿搭（全部的在洞察頁）
   const ms=d&&d.size,items=S.items.filter(i=>i.category!=='套裝'&&(!ms||(i.sizes||[]).includes(ms)));
-  const month=today().slice(0,7),mw=(d?dollWears(d):S.wears).filter(w=>(w.date||'').startsWith(month)).length;
+  const month=today().slice(0,7),mw=(d?dollWears(d):S.wears).filter(w=>isOutfit(w)&&(w.date||'').startsWith(month)).length;
   // 使用率綁娃娃：這隻娃娃穿過的合身娃衣 ÷ 合身娃衣
   const dw=new Set((d?dollWears(d):S.wears).flatMap(w=>w.itemIds||[]));
   const used=items.length?Math.round(items.filter(i=>dw.has(i.id)).length/items.length*100):0;
@@ -2756,7 +2756,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-53';
+const APP_VER='2026.10.01-54';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4673,6 +4673,20 @@ async function delMemory(id){
    6. 衣櫃
    ============================================================ */
 // 這筆穿搭有沒有穿到這件：直接勾了它；或它是套裝，而這筆把套裝裡的單品全部都勾了
+// 一套的價格只算一次：拆出來的單品建檔時都複製了套裝的價格，統計時只認「套裝」那一筆（沒有套裝那筆就認第一件）
+function priceOf(i){
+  if(!i||!i.setId)return money(i&&i.price);
+  const all=[...S.items,...S.memory].filter(x=>x.setId===i.setId),par=all.find(x=>x.category==='套裝');
+  return (par?par===i:all[0]===i)?money(i.price):0;
+}
+// 算「穿搭」的紀錄：陪伴日常沒選衣服、也沒照片的，只算陪伴，不算換裝
+const isOutfit=w=>!(isWork(w)&&!(w.itemIds||[]).length&&!w.photo);
+const outfitWears=list=>(list||S.wears).filter(isOutfit);
+// 同一套的單品合成一組；一組要顯示成哪一件（有「套裝」那筆就用它）
+const grpKey=it=>it&&it.setId?'set:'+it.setId:it&&it.id;
+function grpRep(k){if(!String(k).startsWith('set:'))return anyItem(k);const sid=k.slice(4),all=[...S.items,...S.memory].filter(x=>x.setId===sid);return all.find(x=>x.category==='套裝')||all[0]}
+// 每一組被穿了幾次（一次穿搭穿到其中任何一件就算一次）
+function grpWearCount(list){const c={};(list||outfitWears()).forEach(w=>new Set((w.itemIds||[]).map(id=>grpKey(anyItem(id))).filter(Boolean)).forEach(k=>c[k]=(c[k]||0)+1));return c}
 function setPieceIds(id){const it=anyItem(id);if(!it||it.category!=='套裝'||!it.setId)return null;
   const ps=[...S.items,...S.memory].filter(x=>x.setId===it.setId&&x.category!=='套裝').map(x=>x.id);return ps.length?ps:null}
 function wornIn(w,id,ps){const ids=w.itemIds||[];if(ids.includes(id))return true;ps=ps===undefined?setPieceIds(id):ps;return !!ps&&ps.every(x=>ids.includes(x))}
@@ -6939,23 +6953,24 @@ async function scMag(x,T,W,H,P,serif,num,sans){
 /* ---- 會員：年度回顧「娃娃的一年」----
    一年裡穿了幾次、出門幾次、去過哪裡、新來的娃衣和娃娃、最愛的娃衣、出場最多的娃娃，做成可以分享的小卡 */
 function yearStats(y){
-  y=String(y);const ws=S.wears.filter(w=>(w.date||'').startsWith(y));
+  y=String(y);const wsAll=S.wears.filter(w=>(w.date||'').startsWith(y)),ws=wsAll.filter(isOutfit);
   const fp=footprints().filter(f=>f.date.startsWith(y)),places=new Set(fp.map(f=>spKey(f.sp)).filter(Boolean));
   const items=S.items.filter(i=>i.category!=='套裝'&&(i.homeDate||i.buyDate||ymd(i.createdAt||0)).startsWith(y));
   const dolls=S.dolls.filter(d=>(d.home||'').startsWith(y));
   const ic={},dc={},mc={},grp={};
   // 同一套的零件合成一筆（一次穿搭只算一次）
   ws.forEach(w=>{new Set((w.itemIds||[]).map(id=>{const it=anyItem(id);if(!it)return null;const k=it.setId?'set:'+it.setId:id;if(!grp[k])grp[k]=it;return k}).filter(Boolean)).forEach(k=>ic[k]=(ic[k]||0)+1);
-    if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1;const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
+    const m=+w.date.slice(5,7);mc[m]=(mc[m]||0)+1});
+  wsAll.forEach(w=>{if(w.dollId)dc[w.dollId]=(dc[w.dollId]||0)+1});
   const fav=Object.entries(ic).map(([k,n])=>{let it=grp[k],name=it&&it.name;
       if(k.startsWith('set:')){const sid=k.slice(4),par=S.items.find(i=>i.setId===sid&&i.category==='套裝');name=setName(sid)||(par&&par.name)||name;if(par&&img(par))it=par}
       return {it,n,name}}).filter(x=>x.it&&!(x.it.category==='套裝'&&!x.name)).sort((a,b)=>b.n-a.n).slice(0,3);
   const mvp=Object.entries(dc).map(([id,n])=>({d:S.dolls.find(d=>d.id===id),n})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
   const busy=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
-  const spend=items.reduce((a,i)=>a+money(i.price),0);
+  const spend=[...S.items,...S.memory].filter(i=>(i.homeDate||i.buyDate||ymd(i.createdAt||0)).startsWith(y)).reduce((a,i)=>a+priceOf(i),0);
   // 陪上班：這一年一起去了幾天、最佳同事
   // 每個日常各自算（天數多的在前）
-  const works=routines().map(rt=>{const wk=ws.filter(w=>isWork(w)&&rOf(w).id===rt.id),wkc={};
+  const works=routines().map(rt=>{const wk=wsAll.filter(w=>isWork(w)&&rOf(w).id===rt.id),wkc={};
     wk.forEach(w=>{if(w.dollId)(wkc[w.dollId]=wkc[w.dollId]||new Set()).add(w.date)});
     const mate=Object.entries(wkc).map(([id,st])=>({d:S.dolls.find(d=>d.id===id),n:st.size})).filter(x=>x.d).sort((a,b)=>b.n-a.n)[0]||null;
     const oc={};wk.filter(isOT).forEach(w=>{if(w.dollId)(oc[w.dollId]=oc[w.dollId]||new Set()).add(w.date)});
@@ -7242,14 +7257,15 @@ function renderInsight(){
   const buyTop=Object.entries(buyGroup).sort((a,b)=>b[1]-a[1]);
   const wearTop=Object.entries(wearGroup).sort((a,b)=>b[1]-a[1]);
   const never=items.filter(i=>wearCount(i.id)===0);
-  const cold=items.filter(i=>{const l=lastWear(i.id);return !i.keepsake&&(!l||days(l)>180)});
-  const totalWears=S.wears.length;
+  // 被冷落：跟壓箱底同一套規則（從到貨日算、新衣服 60 天、穿過的 180 天、節日服 13 個月），剛到的新衣服不會被算進來
+  const cold=items.filter(isPressed);
+  const totalWears=outfitWears().length;
 
   // 飽和度：同類型 >=4 件且半年未用比例 >=60%
   const sat=buyTop.filter(([k,n])=>{
     if(n<4)return false;
     const g=items.filter(i=>i.category===k);
-    const idle=g.filter(i=>{const l=lastWear(i.id);return !l||days(l)>180}).length;
+    const idle=g.filter(isPressed).length;
     return idle/n>=.6;
   });
   // 真正的偏好：最常穿的前 5 件的共同標籤
@@ -7265,7 +7281,7 @@ function renderInsight(){
   <div class="stat">
     <div><b>${S.sets.length}</b><span>套裝</span></div>
     <div><b>${items.length}</b><span>單品</span></div>
-    <div><b>${totalWears}</b><span>穿搭紀錄</span></div>
+    <div><b>${totalWears}</b><span>穿搭次數</span></div>
     <div><b>${items.length?Math.round((items.length-never.length)/items.length*100):0}%</b><span>衣櫃使用率</span></div>
   </div>`;
 
@@ -7286,12 +7302,12 @@ function renderInsight(){
       <div class="track"><i class="worn" style="width:${x.n/dm*100}%"></i></div></div>`).join('');
   }
   // 最常穿的單品
-  const topWorn=items.map(i=>({i,c:wearCount(i.id)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,8);
+  const gw=grpWearCount(),topWorn=Object.entries(gw).map(([k,c])=>({i:grpRep(k),c,set:k.startsWith('set:')})).filter(x=>x.i&&S.items.includes(x.i)).sort((a,b)=>b.c-a.c).slice(0,8);
   if(topWorn.length){
     h+=`<h2 class="sec">最常穿的娃衣</h2>
     <div class="hscroll">${topWorn.map((x,k)=>`<button class="piece" onclick="openItem('${x.i.id}')">
       <div class="sw"><img src="${img(x.i)}" alt=""><span class="tag">${k===0?'👑 ':''}${x.c} 次</span></div>
-      <div class="nm">${esc(x.i.name)}</div></button>`).join('')}</div>`;
+      <div class="nm">${x.set?'整套・':''}${esc(x.set?(setName(x.i.setId)||x.i.name):x.i.name)}</div></button>`).join('')}</div>`;
   }
   // 衣櫃色彩
   const fam={};
@@ -7316,20 +7332,20 @@ function renderInsight(){
     h+=`<h2 class="sec">已經很飽和的類型</h2>`;
     sat.forEach(([k,n])=>{
       const g=items.filter(i=>i.category===k);
-      const idle=g.filter(i=>{const l=lastWear(i.id);return !l||days(l)>180}).length;
-      h+=`<div class="note"><strong>${esc(k)}</strong>　共 ${n} 件，其中 ${idle} 件半年以上沒穿。想再買同類型之前，也許先翻翻這些。</div>`;
+      const idle=g.filter(isPressed).length;
+      h+=`<div class="note"><strong>${esc(k)}</strong>　共 ${n} 件，其中 ${idle} 件在壓箱底（很久沒穿）。想再買同類型之前，也許先翻翻這些。</div>`;
     });
   }
 
   if(cold.length){
     h+=`<h2 class="sec">最近被冷落的 ${cold.length} 件</h2>
-      <div class="hint" style="margin-bottom:8px">標記為收藏／紀念品的不會出現在這裡。</div>`;
+      <div class="hint" style="margin-bottom:8px">跟壓箱底同一套規則：到貨 60 天還沒穿、或 180 天沒穿（節日服 13 個月）。標記為紀念品的不會出現在這裡。</div>`;
     h+=cold.slice(0,12).map(i=>{
       const l=lastWear(i.id);
       return `<div class="rowitem" onclick="openItem('${i.id}')">
         <div class="th"><img src="${img(i)}" alt=""></div>
         <div class="tx"><b>${esc(i.name)}</b><span>${esc(i.category)}</span></div>
-        <div class="rt">${l?days(l)+' 天沒穿':'從未穿過'}</div></div>`;
+        <div class="rt">${l?days(l)+' 天沒穿':`到貨 ${Math.floor((Date.now()-pressStart(i))/864e5)} 天還沒穿`}</div></div>`;
     }).join('');
   }
 
@@ -7354,13 +7370,14 @@ const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','
 // 每隻娃娃的穿搭輪廓：穿過哪些類型、風格、顏色（用穿搭紀錄算）
 function dollProfile(d){
   const ws=dollWears(d),cat={},sty={},fam={},seen=new Set();
-  ws.forEach(w=>w.itemIds.forEach(id=>{
-    const i=anyItem(id);if(!i||i.category==='套裝')return;
+  ws.filter(isOutfit).forEach(w=>{const g=new Set();w.itemIds.forEach(id=>{
+    const i0=anyItem(id);if(!i0)return;const k=grpKey(i0);if(g.has(k))return;g.add(k);
+    const i=k.startsWith('set:')?grpRep(k):i0;if(!i)return;
     cat[i.category]=(cat[i.category]||0)+1;
     (i.styles||[]).forEach(x=>sty[x.name]=(sty[x.name]||0)+1);
     new Set((i.colors||[]).map(colorFam)).forEach(f=>{if(famLabel[f])fam[f]=(fam[f]||0)+1});
     seen.add(id);
-  }));
+  })});
   const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]);
   return {d,wears:ws.length,outs:outCount(d),items:seen.size,cats:top(cat),styles:top(sty),fams:top(fam),total:Object.values(cat).reduce((a,b)=>a+b,0)};
 }
@@ -7498,14 +7515,14 @@ function habitSection(items){
     <div class="lk-cover"><b>你是週末派還是每天換裝派？</b>
       <span>換裝的星期分佈、每月穿搭趨勢、最近買的風格跟以前有什麼不同</span>
       <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
-  if(S.wears.length<3)return head+'<div class="hint">記錄 3 次以上穿搭，這裡就會開始出現。</div>';
+  const OW=outfitWears();if(OW.length<3)return head+'<div class="hint">記錄 3 次以上穿搭，這裡就會開始出現。</div>';
   const WK=['日','一','二','三','四','五','六'],wd=[0,0,0,0,0,0,0];
-  S.wears.forEach(w=>{const d=new Date(w.date+'T12:00:00');if(!isNaN(d))wd[d.getDay()]++});
-  const wmax=Math.max(...wd,1),top=wd.indexOf(Math.max(...wd)),wkend=Math.round((wd[0]+wd[6])/S.wears.length*100);
+  OW.forEach(w=>{const d=new Date(w.date+'T12:00:00');if(!isNaN(d))wd[d.getDay()]++});
+  const wmax=Math.max(...wd,1),top=wd.indexOf(Math.max(...wd)),wkend=Math.round((wd[0]+wd[6])/OW.length*100);
   let h=head+`<p class="mh">最常在星期${WK[top]}換裝・週末佔 ${wkend}%</p>
     <div class="wkbars">${wd.map((n,i)=>`<div><b><em>${n||''}</em><i style="height:${n?Math.max(6,n/wmax*100):0}%"></i></b><span>${WK[i]}</span></div>`).join('')}</div>`;
   const now=new Date(),mon=[];
-  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mon.push({m:d.getMonth()+1,n:S.wears.filter(w=>w.date.startsWith(key)).length})}
+  for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');mon.push({m:d.getMonth()+1,n:OW.filter(w=>w.date.startsWith(key)).length})}
   const mmax=Math.max(...mon.map(x=>x.n),1),diff=mon[5].n-mon[4].n;
   h+=`<p class="mh">最近 6 個月・這個月${diff>0?`比上個月多 ${diff} 次`:diff<0?`比上個月少 ${-diff} 次`:'跟上個月一樣'}</p>
     <div class="wkbars">${mon.map(x=>`<div><b><em>${x.n||''}</em><i style="height:${x.n?Math.max(6,x.n/mmax*100):0}%"></i></b><span>${x.m}月</span></div>`).join('')}</div>`;
@@ -7854,8 +7871,9 @@ function buyToIntake(){
 const money=v=>+String(v??'').replace(/[^\d.]/g,'')||0;
 const fmt$=n=>'$'+Math.round(n).toLocaleString();
 function spendStats(){
-  const pi=S.items.filter(i=>money(i.price)>0);
-  const clothes=pi.reduce((a,i)=>a+money(i.price),0);
+  // 花費：衣櫃裡的＋回憶箱裡的（錢已經花了）；一套只算一次
+  const all=[...S.items,...S.memory],pi=all.filter(i=>priceOf(i)>0);
+  const clothes=pi.reduce((a,i)=>a+priceOf(i),0);
   const dolls=S.dolls.reduce((a,d)=>a+money(d.price),0);
   const saved=S.wish.filter(w=>w.status==='skip').reduce((a,w)=>a+money(w.price),0);
   // 最近 12 個月，娃衣看購入日期（沒填就用建檔日），娃娃看到家日
@@ -7863,12 +7881,14 @@ function spendStats(){
   for(let k=11;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,m:d.getMonth()+1,v:0})}
   const add=(date,v)=>{const b=months.find(x=>x.key===(date||'').slice(0,7));if(b)b.v+=v};
   const ds=t=>t?new Date(t).toISOString().slice(0,10):'';
-  pi.forEach(i=>add(i.buyDate||ds(i.createdAt),money(i.price)));
+  pi.forEach(i=>add(i.buyDate||ds(i.createdAt),priceOf(i)));
   S.dolls.forEach(d=>{if(money(d.price))add(d.home||ds(d.createdAt),money(d.price))});
-  // 平均每穿一次的成本（套裝本身不算，穿搭紀錄記的是單品）
-  const cpw=pi.filter(i=>i.category!=='套裝').map(i=>{const w=wearCount(i.id);return {it:i,p:money(i.price),w,c:money(i.price)/Math.max(w,1)}});
+  // 每穿一次的成本：衣櫃裡的，以「組」算（套裝整套一個價格，穿到其中任何一件就算穿了一次）
+  const gw=grpWearCount(),seen=new Set(),cpw=[];
+  S.items.filter(i=>priceOf(i)>0).forEach(i=>{const k=grpKey(i);if(seen.has(k))return;seen.add(k);
+    const it=grpRep(k)||i,w=gw[k]||0,p=priceOf(i);cpw.push({it,p,w,c:p/Math.max(w,1),set:k.startsWith('set:')})});
   const worn=cpw.filter(x=>x.w>0),wornSum=worn.reduce((a,x)=>a+x.p,0),wornN=worn.reduce((a,x)=>a+x.w,0);
-  const byCat={};pi.filter(i=>i.category!=='套裝').forEach(i=>byCat[i.category]=(byCat[i.category]||0)+money(i.price));
+  const byCat={};pi.forEach(i=>{const c=i.category;byCat[c]=(byCat[c]||0)+priceOf(i)});
   return {clothes,dolls,saved,months,priced:pi.length,
     avg:wornN?wornSum/wornN:0,
     best:worn.sort((a,b)=>a.c-b.c).slice(0,3),
@@ -7879,9 +7899,9 @@ function spendStats(){
 function soldStats(){
   const sold=S.memory.filter(i=>i.reason==='賣掉了'&&!i.groupOf);
   const back=sold.reduce((a,i)=>a+money(i.soldPrice),0);
-  const withBoth=sold.filter(i=>money(i.price)>0&&money(i.soldPrice)>0);
-  const cost=withBoth.reduce((a,i)=>a+money(i.price),0),got=withBoth.reduce((a,i)=>a+money(i.soldPrice),0);
-  const spentAll=[...S.items,...S.memory].filter(i=>!i.groupOf).reduce((a,i)=>a+money(i.price),0);
+  const withBoth=sold.filter(i=>priceOf(i)>0&&money(i.soldPrice)>0);
+  const cost=withBoth.reduce((a,i)=>a+priceOf(i),0),got=withBoth.reduce((a,i)=>a+money(i.soldPrice),0);
+  const spentAll=[...S.items,...S.memory].reduce((a,i)=>a+priceOf(i),0);
   const y=today().slice(0,4),yearBack=sold.filter(i=>(i.archivedAt||'').startsWith(y)).reduce((a,i)=>a+money(i.soldPrice),0);
   return {n:sold.length,back,yearBack,rate:cost?got/cost:0,spentAll,net:spentAll-back,
     list:sold.filter(i=>money(i.soldPrice)>0).sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||'')).slice(0,5)};
@@ -7895,7 +7915,7 @@ function soldSection(){
     <div><b>${r.rate?Math.round(r.rate*100)+'%':'—'}</b><span>平均回收買價</span></div>
     <div><b>${fmt$(r.yearBack)}</b><span>今年回收</span></div>
     <div><b>${fmt$(Math.max(0,r.net))}</b><span>扣掉回血的淨花費</span></div></div>
-  ${r.list.length?`<div class="blist">${r.list.map(i=>{const p=money(i.price),sp=money(i.soldPrice);return `<div class="rowitem" onclick="go('memory')">${th(i)}
+  ${r.list.length?`<div class="blist">${r.list.map(i=>{const p=priceOf(i),sp=money(i.soldPrice);return `<div class="rowitem" onclick="go('memory')">${th(i)}
     <div class="tx"><b>${esc(i.name)}</b><span>${p?`買 ${fmt$(p)} → `:''}賣 ${fmt$(sp)}${p?`・回收 ${Math.round(sp/p*100)}%`:''}・${esc(i.archivedAt||'')}</span></div><div class="rt">›</div></div>`}).join('')}</div>`:''}`;
 }
 function spendSection(){
@@ -7913,7 +7933,7 @@ function spendSection(){
   if(!s.priced&&!s.dolls&&!soldStats().n)return head+`<div class="hint">在單品的「編輯」填上價格，或在娃娃資料填金額，這裡就會開始計算。</div>`;
   const peak=s.months.reduce((a,m)=>m.v>a.v?m:a,s.months[0]);
   let h=head+`<div class="stat">
-    <div><b>${fmt$(s.clothes)}</b><span>娃衣花費・${s.priced} 件有價格</span></div>
+    <div><b>${fmt$(s.clothes)}</b><span>娃衣花費・${s.priced} 筆有價格（套裝算一筆）</span></div>
     <div><b>${fmt$(s.dolls)}</b><span>娃娃花費</span></div>
     <div><b>${s.avg?fmt$(s.avg):'—'}</b><span>平均每穿一次</span></div>
     <div><b>${fmt$(s.saved)}</b><span>忍住沒買省下</span></div></div>
