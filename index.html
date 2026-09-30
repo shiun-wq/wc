@@ -2750,7 +2750,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-47';
+const APP_VER='2026.10.01-48';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3502,7 +3502,7 @@ async function dollOut(){
   if(UI.tab==='dolls')renderDolls();
 }
 /* ---- 娃娃履歷的月曆：把穿搭紀錄蓋成章，一天一個圖示（照特別程度挑），點日期在下面展開那天的紀錄 ---- */
-const weekStart=()=>S.settings.weekStart===1?1:0;
+const weekStart=()=>S.settings.weekStart===0?0:1;   // 預設星期一開始，設定 → 外觀可以改成星期日
 const weekHead=()=>{const w='日一二三四五六',s0=weekStart();return Array.from({length:7},(_,i)=>w[(i+s0)%7])};
 // 這天是不是紀念日：到家週年、到家那天、自己加的紀念日
 function dayAnns(d,t){
