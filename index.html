@@ -1084,10 +1084,14 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .notice.warn{background:var(--berry-soft);border-color:rgba(162,77,102,.18)}
 .notice>b{display:block;font-size:14.5px;margin-bottom:3px}
 .notice>span{display:block;font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-bottom:10px}
-.wkouts{margin-bottom:8px}
-.wkouts .btn{display:flex;align-items:center;gap:2px;padding:4px 10px 4px 6px}
-.wkouts img{width:30px;height:30px;object-fit:contain}
-.wkouts small{margin-left:4px;font-size:12px}
+.wkdone>span{margin-bottom:6px}
+.wkrow{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:0 2px}
+.wkrow::-webkit-scrollbar{display:none}
+.wkrow .btn{flex:0 0 auto;white-space:nowrap}
+.wkrow .wko{display:flex;align-items:center;gap:2px;padding:4px 10px 4px 6px}
+.wkrow .wko img{width:26px;height:26px;object-fit:contain}
+.wkrow .wko small{margin-left:4px;font-size:12px}
+.wkrow .wklbl{flex:0 0 auto;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
 .welcome{text-align:center}
 .welcome img{border-radius:18px;margin:4px auto 10px;box-shadow:var(--sh-2)}
 .welcome h3{margin:0 0 4px}
@@ -2547,12 +2551,11 @@ function workDoneCard(r,recs,hideJs){
   const outs=nd?recentOutfits(nd,3):[];
   const th=ids=>{const its=ids.map(anyItem).filter(i=>i&&img(i)&&i.category!=='套裝').slice(0,3);return its.map(i=>`<img src="${img(i)}" alt="">`).join('')};
   if(!need&&!others.length)return '';
-  return `<section class="notice"><button class="x" onclick="${hideJs}" aria-label="隱藏">×</button>
+  return `<section class="notice wkdone"><button class="x" onclick="${hideJs}" aria-label="隱藏">×</button>
     <b>✓ ${names} 今天陪你${esc(workLbl(r))} ${workIcon(r)}</b>
-    ${need?`<span>${esc(need.dollName||'')} 今天穿什麼？點一下就補上${outs.length?'，最近穿過的：':''}</span>
-      ${outs.length?`<div class="row wkouts" style="flex-wrap:wrap">${outs.map((o,k)=>`<button class="btn sm ghost" onclick="workSetClothes('${need.id}',${k})">${th(o.ids)}<small>${k===0?'跟上次一樣':o.ids.length+' 件'}</small></button>`).join('')}</div>`:''}
-      <div class="row" style="flex-wrap:wrap"><button class="btn sm" onclick="openWearEdit('${need.id}')">選衣服</button></div>`:''}
-    ${others.length?`<span style="margin-top:6px">還有誰一起？</span><div class="row" style="flex-wrap:wrap">${others.map(x=>`<button class="btn sm ghost" onclick="workToday('${x.id}','${r.id}')">＋ ${esc(x.name)}</button>`).join('')}</div>`:''}
+    ${need?`<span>${esc(need.dollName||'')} 今天穿什麼？</span>
+      <div class="wkrow">${outs.map((o,k)=>`<button class="btn sm ghost wko" onclick="workSetClothes('${need.id}',${k})">${th(o.ids)}<small>${k===0?'跟上次一樣':o.ids.length+' 件'}</small></button>`).join('')}<button class="btn sm" onclick="openWearEdit('${need.id}')">選衣服</button></div>`:''}
+    ${others.length?`<div class="wkrow" style="margin-top:8px"><span class="wklbl">還有誰一起？</span>${others.map(x=>`<button class="btn sm ghost" onclick="workToday('${x.id}','${r.id}')">＋ ${esc(x.name)}</button>`).join('')}</div>`:''}
   </section>`;
 }
 async function workSetClothes(wid,k){
