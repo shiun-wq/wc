@@ -857,5 +857,13 @@
 "套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。建檔清單裡每一件都可以按 ✕ 拿掉、點名字改名，「＋ 加一件」可以加任何類型，同一種也能加好幾件。": "For a set, tap “AI analyze” to split it into pieces, or set the type to “Set” and pick the pieces yourself (free), then tap “Sticker each piece”. In the add list, tap ✕ to remove a piece, tap its name to rename it, and use “＋ Add a piece” for any type — even several of the same.",
 "編輯這套": "Edit set",
 "否（單品全部壓箱底就算）": "No (counts when every piece is in storage)",
-"📦 是（單品全部壓箱底就算）": "📦 Yes (every piece is in storage)"
+"📦 是（單品全部壓箱底就算）": "📦 Yes (every piece is in storage)",
+"點一下就記好，接著可以一鍵補上穿了什麼。": "Tap once to log it, then add what they wore in one tap.",
+"✓ {0} 今天陪你{1} {2}": "✓ {0} went to {1} with you today {2}",
+"{0} 今天穿什麼？點一下就補上，最近穿過的：": "What is {0} wearing today? Tap to fill it in — recent outfits:",
+"{0} 今天穿什麼？點一下就補上": "What is {0} wearing today? Tap to fill it in",
+"跟上次一樣": "Same as last time",
+"還有誰一起？": "Who else came along?",
+"補好了：{0} 今天穿 {1} 件": "Done: {0} is wearing {1} items today",
+"打卡後同一張卡片會問「今天穿什麼？」：點最近穿過的那套（「跟上次一樣」）就補好，或按「選衣服」自己挑；一隻娃娃打卡後別隻就不會再問，要一起去的按「還有誰一起？」加上。": "After checking in, the same card asks “What are they wearing today?”: tap a recent outfit (“Same as last time”) to fill it in, or “Pick clothes” to choose. Once one doll is checked in, the others aren't asked again — tap “Who else came along?” to add them."
 }
