@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=21"></script>
+<script src="i18n/i18n.js?v=22"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2381,6 +2381,33 @@ const AWAY_SVG=`<svg class="awaycar" viewBox="0 0 220 130" aria-hidden="true"><g
   <circle cx="196" cy="76" r="5" fill="#FFE8A8"/></g><path class="road" d="M4 118 H216" stroke="var(--line-2)" stroke-width="3" stroke-dasharray="12 10"/></svg>`;
 const liveDolls=()=>S.dolls.filter(isLive);
 function mainDoll(){const L=liveDolls();return L.find(d=>d.id===S.settings.mainDoll)||L[0]||null}
+function workCard(){
+  const st=S.settings,d=mainDoll();
+  if(st.workAsk===false||!d||!isLive(d)||isAway(d)||!S.wears.some(isWork))return '';
+  const k='work:'+today();
+  if(st.annHide&&st.annHide[k])return '';
+  if(!workDays().includes(new Date(today()+'T12:00:00').getDay()))return '';
+  if(dollWears(d).some(w=>w.date===today()))return '';
+  const nm=esc(d.name),l=esc(workLbl());
+  return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="今天沒有">×</button>
+    <b>💼 今天 ${nm} 也一起${l}嗎？</b>
+    <span>點一下就記好；想記穿了什麼，也可以選衣服。</span>
+    <div class="row"><button class="btn sm" onclick="workToday('${d.id}')">一起${l} 🏢</button><button class="btn sm ghost" onclick="openWear();WEAR.place='上班';drawWearSheet()">選衣服</button></div></section>`;
+}
+async function toggleWorkDay(n){const a=workDays().slice(),i=a.indexOf(n);if(i<0)a.push(n);else a.splice(i,1);S.settings.workDays=a;await save();openSettings('notify')}
+async function workToday(id){
+  const d=S.dolls.find(x=>x.id===id);if(!d)return;
+  S.wears.push({id:uid('w'),date:today(),dollName:d.name,dollId:d.id,itemIds:[],lookId:null,photo:null,note:'',place:'上班',spot:null});
+  await save();renderHome();toast(`已記錄：${d.name} 今天陪你${workLbl()} 💼`);
+}
+/* ---- 陪上班：帶娃娃去公司（或上學）。存的值一律是「上班」，畫面上的名字可以在設定改 ---- */
+const workLbl=()=>(S.settings.workLabel||'上班').trim()||'上班';
+const workDays=()=>S.settings.workDays||[1,2,3,4,5];
+const isWork=w=>w.place==='上班';
+const isHomeW=w=>w.place!=='出門'&&w.place!=='上班';
+const placeTag=w=>w.place==='出門'?'🚶 '+(w.spot&&(w.spot.c||w.spot.r)?esc(spotText(w.spot))+'・':''):isWork(w)?`🏢 陪${esc(workLbl())}${(w.itemIds||[]).length?'・':''}`:'🏠 ';
+const workWears=d=>(d?dollWears(d):S.wears).filter(isWork);
+const workCount=d=>new Set(workWears(d).map(w=>w.date)).size;
 function dollWears(d){return S.wears.filter(w=>w.dollId===d.id||(!w.dollId&&w.dollName&&w.dollName===d.name))}
 const DOLL_SVG=`<svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round">
   <circle cx="60" cy="50" r="36"/><circle cx="30" cy="22" r="10"/><circle cx="90" cy="22" r="10"/>
@@ -2429,7 +2456,7 @@ function renderHome(){
 
   ${d?`<div class="qa qa2">
     <button onclick="openDollFoot('${d.id}')"><i><b>${outCount(d)}</b></i>📍 出門</button>
-    <button onclick="openWearsOf('${d.id}','在家')"><i><b>${dollWears(d).filter(w=>w.place!=='出門').length}</b></i>🏠 在家</button>
+    <button onclick="openWearsOf('${d.id}','在家')"><i><b>${dollWears(d).filter(isHomeW).length}</b></i>🏠 在家</button>
     <button onclick="openWearsOf('${d.id}')"><i><b>${dollWears(d).length}</b></i>👗 穿搭紀錄</button>
     <button onclick="openAlbum('${d.id}')"><i><b>${wearPhotos(d).length}</b></i>📷 相簿</button>
   </div>`:''}
@@ -2606,7 +2633,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-40';
+const APP_VER='2026.10.01-41';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -2691,6 +2718,8 @@ function homeCards(){
       <b>${a.length?`🎁 ${a.length} 件娃衣到貨了，還沒建檔`:`📦 ${sn.length} 件娃衣快到貨了`}</b>
       <span>${(a.length?a:sn).slice(0,3).map(o=>esc(o.name||'未命名')).join('、')}${(a.length?a:sn).length>3?' 等':''}${a.length?'。到建檔頁一起建檔吧。':'。'+orderEta(sn[0])+'。'}</span>
       <div class="row"><button class="btn sm" onclick="go('intake')">${a.length?'去建檔':'看看'}</button></div></section>`)}
+  // 0a. 陪上班：用過「上班」的人，上班日早上問一下，一鍵記錄
+  const wc=workCard();if(wc)h.push(wc);
   // 0b. 很久沒換裝（出門或在家記錄穿搭都算；最多顯示一張，列出其他隻）
   const sleepy=sleepyDolls().filter(x=>!st.annHide['arch:'+x.d.id+':'+x.last]);
   if(sleepy.length){const x=sleepy[0],nm=esc(x.d.name);
@@ -3402,6 +3431,8 @@ function drawDollPage(d){
     ${d.home&&homeDays(d)>=0&&isLive(d)?`<span class="dhome">🏡 來家裡第 ${homeDays(d)+1} 天　<a href="javascript:void 0" onclick="openAnnCard('days:${d.id}')">做紀念小卡</a></span>`
       :!d.home?`<span class="dhome" style="color:var(--muted)">按「編輯」填上到家日，就會記住 ${esc(d.name)} 來家裡幾天、每年慶祝</span>`:''}
     ${isLive(d)||starsOf(d).length?(()=>{const st=starsOf(d),rd=readyStars(d).length;return `<span class="dhome djar">⭐ ${st.length?`星星罐 ${st.length} 顆${rd?`・<b>🌟 ${rd} 顆可以打開</b>`:''}　`:''}<a href="javascript:void 0" onclick="openJar('${d.id}')">${rd?'打開星星罐':st.length?'再寫一句話':'寫一句話給 '+esc(d.name)}</a></span>`})():''}
+    ${workCount(d)?(()=>{const n=workCount(d),m=new Set(workWears(d).filter(w=>w.date.startsWith(today().slice(0,7))).map(w=>w.date)).size;
+      return `<span class="dhome">💼 工作紀錄：陪你${esc(workLbl())} ${n} 天${m?`（本月 ${m} 天）`:''}　<a href="javascript:void 0" onclick="closeSheet();openWearsOf('${d.id}','上班')">看紀錄</a></span>`})():''}
     <div class="dlinks">
       <button onclick="openDollFoot('${d.id}')"><b>${outCount(d)}</b><span>📍 足跡 ›</span></button>
       <button onclick="closeSheet();openWearsOf('${d.id}')"><b>${dollWears(d).length}</b><span>👗 穿搭紀錄 ›</span></button>
@@ -5588,6 +5619,7 @@ const MEMBER_ONLY=[
   ['🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色'],
   ['🎄','季節・節日・配色','季節服、節日服穿過幾件，還有你最常用的配色'],
   ['📅','穿搭習慣','換裝的星期分佈、每月穿搭趨勢、最近喜歡的風格有沒有改變'],
+  ['💼','誰最常陪你上班','每隻娃娃陪你上班幾天、這個月的出勤、上班都穿什麼'],
   ['📸','截圖匯入購買中','丟購物 App 的訂單截圖，AI 讀出品名、價格、進度，剪下商品小圖；外幣照當天匯率加海外手續費換算'],
   ['🎯','適合給哪隻娃娃','買前檢查時，依每隻娃娃平常穿的風格推薦買給誰'],
   ['💰','花費分析','每月花多少、每穿一次的成本、最划算和買了還沒穿的、賣掉回血多少']
@@ -5655,6 +5687,7 @@ function openMemberHub(){
       ${go('🧸','每隻娃娃的穿搭','每隻娃娃常穿的類型、風格和顏色',"goVip('doll')")}
       ${go('🎄','季節・節日・配色','季節服、節日服穿過幾件，你最常用的配色',"goVip('use')")}
       ${go('📅','穿搭習慣','換裝的星期分佈、每月趨勢、風格變化',"goVip('habit')")}
+      ${S.wears.some(isWork)?go('💼',`誰最常陪你${esc(workLbl())}`,'最佳同事、這個月的出勤、上班都穿什麼',"goVip('work')"):''}
       ${go('💰','花費分析','每月花費、每穿一次的成本、賣掉回血多少',"goVip('spend')")}
     </div>
     <div class="mfoot"><button class="btn ghost" onclick="closeSheet();go('wallet')">💰 錢包・${wallet().points} 點</button><button class="btn ghost" onclick="openMember()">📋 方案比較</button></div>`);
@@ -6082,7 +6115,7 @@ const shortRegion=(r,c)=>c==='台灣'?(/^(新竹|嘉義)/.test(r)?r:r.replace(/[
 function firstVisits(fp){const first={};fp.slice().reverse().forEach(f=>{const k=spKey(f.sp);if(k&&!first[k])first[k]=f});return first}
 // 洞察頁的足跡
 function footSection(){
-  const fp=footprints(),home=S.wears.filter(w=>w.place==='在家').length;
+  const fp=footprints(),home=S.wears.filter(isHomeW).length;
   if(!fp.length&&!home)return '';
   const hc=homeCountry(),all=regionsOf(hc),cnt={};
   fp.forEach(f=>{const k=spKey(f.sp);if(k)cnt[k]=(cnt[k]||0)+1});
@@ -6128,7 +6161,7 @@ function openWearEdit(id){
   const w=S.wears.find(x=>x.id===id);if(!w)return;
   const sp=spNorm(w.spot);
   WEAR={editId:id,date:w.date,doll:w.dollName||'',dollId:w.dollId||null,photo:w.photo||null,picked:(w.itemIds||[]).slice(),cands:null,
-    place:w.place==='出門'?'出門':'在家',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||''};
+    place:w.place==='出門'||w.place==='上班'?w.place:'在家',sp:sp?{...sp}:{c:'',r:'',n:''},cat:'全部',sort:WEAR.sort||'new',q:'',fit:true,note:w.note||''};
   drawWearSheet();
 }
 function drawWearSheet(){
@@ -6141,7 +6174,8 @@ function drawWearSheet(){
       <label class="f"><span>日期</span><input type="date" id="w_date" value="${WEAR.date}" onchange="WEAR.date=this.value"></label>
       <label class="f"><span>哪一隻娃</span><input type="text" id="w_doll" value="${esc(WEAR.doll)}" placeholder="小白" oninput="WEAR.doll=this.value"></label>
     </div>`}
-    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門']].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';document.querySelectorAll('#w_place button').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'));document.getElementById('w_where').style.display='${k}'==='出門'?'':'none'">${l}</button>`).join('')}</div></label>
+    <label class="f"><span>今天在哪</span><div class="swap" id="w_place" style="margin:0">${[['在家','🏠 在家'],['出門','🚶 出門'],['上班','🏢 '+esc(workLbl())]].map(([k,l])=>`<button type="button" data-k="${k}" class="${WEAR.place===k?'on':''}" onclick="WEAR.place='${k}';drawWearSheet()">${l}</button>`).join('')}</div></label>
+    ${WEAR.place==='上班'?`<p class="hint" style="margin:-6px 0 12px">💼 謝謝他陪你${esc(workLbl())}！衣服可以不選，只記今天一起${esc(workLbl())}也可以。</p>`:''}
     <div class="f" id="w_where" style="${WEAR.place==='出門'?'':'display:none'}"><span>去了哪裡（選填）</span><div id="pp_WEAR">${placePickerHTML('WEAR')}</div></div>
     ${WEAR.place!=='出門'&&WEAR.gps?`<p class="hint" style="margin:-6px 0 10px">📍 這張照片是在 ${esc(spotText(WEAR.gps))} 拍的，出門的話按「出門」就能選。</p>`:''}
     ${WEAR.photoDate&&WEAR.photoDate!==WEAR.date?`<div class="notice" style="margin:0 0 12px"><b>📅 這張照片是 ${WEAR.photoDate.replace(/-/g,'/')} 拍的</b><div class="row" style="margin-top:8px"><button class="btn sm" onclick="WEAR.date=WEAR.photoDate;drawWearSheet()">改成那天</button><button class="btn sm ghost" onclick="WEAR.photoDate=null;drawWearSheet()">不用</button></div></div>`:''}
@@ -6153,7 +6187,7 @@ function drawWearSheet(){
     <input type="file" id="wphoto" accept="image/*" hidden onchange="onWearPhoto(event)">
     ${WEAR.cands?renderCands():''}
     <div id="wpick">${wearPickHTML()}</div>
-    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
+    <div class="stickybar"><button class="btn wide" id="wsave" onclick="commitWear()">${WEAR.editId?'儲存修改':!WEAR.picked.length&&WEAR.place==='上班'?`記下今天一起${esc(workLbl())}`:'存入穿著紀錄'}${WEAR.picked.length?`（${WEAR.picked.length} 件）`:''}</button></div>
   `);
   document.querySelector('#sheet .panel').classList.add('full');
 }
@@ -6288,7 +6322,7 @@ function unlinkOuting(dollId,date,exceptId){
   d.outs=(d.outs||[]).filter(t=>t!==date);if(d.outPlaces)delete d.outPlaces[date];
 }
 async function commitWear(){
-  if(!WEAR.picked.length){toast('至少選一件');return}
+  if(!WEAR.picked.length&&WEAR.place!=='上班'){toast('至少選一件');return}
   const sp=WEAR.place==='出門'?spSave(WEAR.sp):null;
   if(WEAR.editId){
     const w=S.wears.find(x=>x.id===WEAR.editId);if(!w)return;
@@ -6306,6 +6340,7 @@ async function commitWear(){
   if(WEAR.place==='出門'&&WEAR.dollId){const d=S.dolls.find(x=>x.id===WEAR.dollId);if(d){d.outs=d.outs||[];if(!d.outs.includes(WEAR.date))d.outs.push(WEAR.date);if(sp){d.outPlaces=d.outPlaces||{};d.outPlaces[WEAR.date]=sp}}}
   const wid=S.wears[S.wears.length-1].id;
   await save();if(UI.tab==='home')renderHome();else renderWears();
+  if(WEAR.place==='上班'&&!WEAR.picked.length&&!WEAR.photo){closeSheet();toast(`已記錄：今天一起${workLbl()} 💼`);return}
   openShare('wear',wid);toast('已記錄！要不要做成小卡分享？');
 }
 // 全部穿搭紀錄：可以依娃娃、在家／出門篩選，依月份分組；點一筆看詳細
@@ -6319,17 +6354,17 @@ function renderWears(){
   const dl=S.dolls.filter(d=>dollWears(d).length),wd=UI.wearDoll||'',wp=UI.wearPlace||'';
   if(wd&&!UI.wearLock&&!dl.some(d=>d.id===wd))UI.wearDoll='';
   const doll=S.dolls.find(d=>d.id===UI.wearDoll);
-  let list=(doll?dollWears(doll):S.wears).filter(w=>!wp||w.place===wp||(wp==='在家'&&!w.place)).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  let list=(doll?dollWears(doll):S.wears).filter(w=>!wp||w.place===wp||(wp==='在家'&&isHomeW(w))).slice().sort((a,b)=>b.date.localeCompare(a.date));
   const month=today().slice(0,7),mn=list.filter(w=>(w.date||'').startsWith(month)).length;
   const chips=`${!UI.wearLock&&dl.length>1?`<div class="chips">${[['','全部娃娃'],...dl.map(d=>[d.id,d.name])].map(([k,n])=>`<button class="chip ${(UI.wearDoll||'')===k?'on':''}" onclick="UI.wearDoll='${k}';renderWears()">${esc(n)}</button>`).join('')}</div>`:''}
-    <div class="swap" style="margin-bottom:12px">${[['','全部'],['在家','🏠 在家'],['出門','🚶 出門']].map(([k,n])=>`<button class="${wp===k?'on':''}" onclick="UI.wearPlace='${k}';renderWears()">${n}</button>`).join('')}</div>
+    <div class="swap" style="margin-bottom:12px">${[['','全部'],['在家','🏠 在家'],['出門','🚶 出門'],...((doll?dollWears(doll):S.wears).some(isWork)||wp==='上班'?[['上班','🏢 '+esc(workLbl())]]:[])].map(([k,n])=>`<button class="${wp===k?'on':''}" onclick="UI.wearPlace='${k}';renderWears()">${n}</button>`).join('')}</div>
     <p class="hint" style="margin:-4px 0 10px">本月 ${mn} 筆・全部 ${list.length} 筆${list.filter(w=>w.photo).length?`・${list.filter(w=>w.photo).length} 張照片`:''}</p>`;
   if(!list.length){el.innerHTML=chips+(UI.wearLock&&doll&&!wp?`<div class="empty"><strong>${esc(doll.name)} 還沒有穿搭紀錄</strong>幫 ${esc(doll.name)} 換好衣服後，按上面的「記錄今天穿了什麼」</div>`:'<div class="empty"><strong>沒有符合的紀錄</strong>換個篩選看看</div>');return}
   el.innerHTML=chips+(mn?'':`<p class="mh">本月</p><p class="hint" style="margin:0 0 14px">這個月還沒有紀錄。</p>`)+byMonth(list).map(([m,ws])=>`<p class="mh">${m===month?'本月':m?`${m.slice(0,4)} 年 ${+m.slice(5)} 月`:'沒有日期'}・${ws.length} 筆</p>
     <div class="blist" style="margin-bottom:14px">${ws.map(w=>`<div class="rowitem" onclick="openWearDetail('${w.id}')">
       ${wearThumb(w)}
       <div class="tx"><b>${w.date.slice(5).replace('-','/')}${w.dollName?'　'+esc(w.dollName):''}</b>
-        <span>${w.place==='出門'?'🚶 '+(w.spot&&(w.spot.c||w.spot.r)?esc(spotText(w.spot))+'・':''):'🏠 '}${(w.itemIds||[]).map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')||'沒有勾選衣服'}</span></div>
+        <span>${placeTag(w)}${(w.itemIds||[]).map(i=>esc((anyItem(i)||{}).name||'')).filter(Boolean).join('・')||(isWork(w)?'':'沒有勾選衣服')}</span></div>
       <div class="rt">›</div></div>`).join('')}</div>`).join('');
 }
 // 一筆穿搭的詳細：照片、娃娃、地點、穿了哪些（點了看單品）
@@ -6337,7 +6372,7 @@ function openWearDetail(id){
   const w=S.wears.find(x=>x.id===id);if(!w)return;
   const its=(w.itemIds||[]).map(anyItem).filter(Boolean);
   openSheet(`<h3>${esc(w.date.replace(/-/g,'/'))}${w.dollName?'・'+esc(w.dollName):''}</h3>
-    <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:'🏠 在家'}</p>
+    <p class="hint" style="margin:-6px 0 12px">${w.place==='出門'?`🚶 出門${w.spot&&(w.spot.c||w.spot.r)?'・'+esc(spotText(w.spot)):''}`:isWork(w)?`🏢 陪你${esc(workLbl())}`:'🏠 在家'}</p>
     ${w.photo?`<div class="hero" style="aspect-ratio:4/5;cursor:zoom-in" onclick="openPhoto('${w.id}')"><img src="${w.photo}" alt="" style="object-fit:cover;padding:0"></div>`:''}
     ${its.length?`<p class="mh">穿了 ${its.length} 件</p><div class="hscroll">${its.map(i=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}</div></button>`).join('')}</div>`:'<p class="hint">這筆沒有勾選衣服。</p>'}
     <div class="row" style="margin-top:14px"><button class="btn ghost grow" onclick="openWearEdit('${w.id}')">✏️ 編輯</button><button class="btn grow" onclick="closeSheet();openShare('wear','${w.id}')">做成小卡</button>${w.photo?`<button class="btn ghost" onclick="savePhotos(['${w.id}'])">⬇️ 存到手機</button>`:''}</div>
@@ -7064,7 +7099,7 @@ function renderInsight(){
   }
   const it=UI.insTab||'base';
   const tabs=`<div class="swap dtabs">${[['base','📊 一般分析'],['vip','👑 會員分析']].map(([k,l])=>`<button class="${it===k?'on':''}" onclick="insTab('${k}')">${l}</button>`).join('')}</div>`;
-  el.innerHTML=top+tabs+(it==='vip'?yearSection()+matchSection()+setSection()+dollStyleSection()+useSection(items)+habitSection(items)+spendSection():h);
+  el.innerHTML=top+tabs+(it==='vip'?yearSection()+matchSection()+setSection()+dollStyleSection()+useSection(items)+habitSection(items)+workSection()+spendSection():h);
   const c=document.getElementById('mcap');if(c)c.dataset.d=c.innerHTML;
 }
 const FAM_HEX={'粉':'#F2A7BC','紅':'#D9534F','橘':'#F0A04B','黃':'#F2D14B','綠':'#7FB77E','藍':'#6C9BD2','紫':'#A98BC9','米':'#E8D8BE','棕':'#9C7456','白':'#FFFFFF','黑':'#2B2B2B','灰':'#A7A7A7'};
@@ -7104,6 +7139,27 @@ function dollStyleSection(){
         <span>最常穿：${p.cats.slice(0,3).map(([k,n])=>`${esc(k)} ${pc(n)}%`).join('、')||'—'}</span>
         ${sty.length||fam.length?`<span style="color:var(--berry-deep)">適合：${[...sty.map(esc),...fam.map(f=>f+'系')].join('・')}</span>`:''}
       </div></div>`}).join('')}</div>`;
+}
+// 會員：陪上班（誰最常陪你上班、上班都穿什麼）
+function workSection(){
+  if(!S.wears.some(isWork))return '';
+  const l=esc(workLbl()),head=`<h2 class="sec" data-sec="work">誰最常陪你${l} <span class="vip">會員</span></h2>`;
+  if(!isMember())return head+`<div class="locked">
+    <div class="lk-blur"><div class="rowitem"><div class="th"></div><div class="tx"><b>最佳同事：小白</b><span>陪你${l} 38 天</span></div></div>
+      <div class="rowitem"><div class="th"></div><div class="tx"><b>這個月一起${l} 12 天</b><span>最常在星期一</span></div></div></div>
+    <div class="lk-cover"><b>誰是你的最佳同事？</b><span>每隻娃娃陪你${l}幾天、這個月的出勤、${l}都穿什麼</span>
+      <button class="btn" onclick="openMember()">了解會員</button></div></div>`;
+  const mk=today().slice(0,7),days=new Set(S.wears.filter(isWork).map(w=>w.date)),mdays=[...days].filter(x=>x.startsWith(mk)).length;
+  const by=S.dolls.map(d=>({d,n:workCount(d),m:new Set(workWears(d).filter(w=>w.date.startsWith(mk)).map(w=>w.date)).size})).filter(x=>x.n).sort((a,b)=>b.n-a.n);
+  const WK=['日','一','二','三','四','五','六'],wd=[0,0,0,0,0,0,0];[...days].forEach(x=>{const t=new Date(x+'T12:00:00');if(!isNaN(t))wd[t.getDay()]++});
+  const top=wd.indexOf(Math.max(...wd)),mx=by.length?by[0].n:1;
+  const cnt={};S.wears.filter(isWork).forEach(w=>(w.itemIds||[]).forEach(i=>cnt[i]=(cnt[i]||0)+1));
+  const tops=Object.entries(cnt).map(([i,n])=>[anyItem(i),n]).filter(([i])=>i&&i.category!=='套裝').sort((a,b)=>b[1]-a[1]).slice(0,5);
+  let h=head+`<p class="mh">一起${l} ${days.size} 天・這個月 ${mdays} 天${days.size>2&&wd.filter(n=>n===wd[top]).length===1?`・最常在星期${WK[top]}`:''}</p>`;
+  if(by.length)h+=`<div class="note">🏆 最佳同事：${esc(by[0].d.name)}，陪你${l} ${by[0].n} 天${by[0].m?`，這個月 ${by[0].m} 天`:''}</div>`;
+  h+=by.map(x=>`<div class="bar"><div class="lb"><span>${esc(x.d.name)}</span><em>${x.n} 天${x.m?`・本月 ${x.m}`:''}</em></div><div class="track"><i class="worn" style="width:${x.n/mx*100}%"></i></div></div>`).join('');
+  if(tops.length)h+=`<p class="mh">${l}最常穿</p><div class="hscroll">${tops.map(([i,n])=>`<button class="piece" onclick="openItem('${i.id}')"><div class="sw">${img(i)?`<img src="${img(i)}" alt="">`:''}</div><div class="nm">${esc(i.name)}・${n} 次</div></button>`).join('')}</div>`;
+  return h;
 }
 // 會員：穿搭習慣（星期幾、每月趨勢、最近的風格變化）
 // 會員：套裝排行——整套穿出場幾次、哪些套裝常常只拿一部分出來搭
@@ -7647,8 +7703,8 @@ const HELP=[
   // ── 穿搭
   ['👗','搭配：幫娃娃試穿',[['➕','加入娃衣'],['🤏','拖曳、縮放、旋轉'],['💾','存成 Look'],['🖼️','做成小卡']],
     ['按住衣服拖曳，兩指可以縮放；右上角的圓點可以旋轉。在娃娃櫃放上娃娃的去背照，娃娃也能上畫布。','不知道穿什麼？按「幫我搭一套」，可以選在家、睡覺前或節日，隨機抽免費，AI 建議用額度。','推薦會優先挑娃娃「適合的風格」（在首頁點「穿過的比例」可以設定），也會看顏色：白黑灰米棕百搭、同色系安全，避開撞色和風格差太多的組合，你常用的配色也會加分。','「有套裝就整套」開著時，有合身的套裝偶爾會整套推薦；喜歡混搭就關掉（首頁「今天穿這套」右上也能切換）。']],
-  ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門'],['📷','放照片'],['☑️','勾選衣服']],
-    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
+  ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門／上班'],['📷','放照片'],['☑️','勾選衣服']],
+    ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好。娃娃履歷會有「工作紀錄」，會員分析可以看誰是你的最佳同事。「上班」可以在 設定 → 提醒與通知 改成上學、上課，也能選哪幾天。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
     ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
@@ -7830,8 +7886,14 @@ function openSettings(page){
     </div>
     <div class="card">
       <b style="font-size:14px">🌿 好久沒幫娃娃換裝</b>
-      <div class="hint" style="margin:2px 0 10px">超過這麼多天沒記錄穿搭就提醒（在家換裝也算，不一定要出門）</div>
+      <div class="hint" style="margin:2px 0 10px">超過這麼多天沒記錄穿搭就提醒（在家換裝、陪上班也算，不一定要出門）</div>
       <div class="swap" style="margin:0">${[[0,'不提醒'],[15,'15 天'],[30,'30 天']].map(([v,l])=>`<button class="${outRemind()===v?'on':''}" onclick="S.settings.outRemind=${v};save().then(()=>openSettings('notify'))">${l}</button>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="grow"><b style="font-size:14px">🏢 陪${esc(workLbl())}</b><div class="hint">上班日早上首頁問「今天也一起${esc(workLbl())}嗎？」，點一下就記好<br>記過一次「${esc(workLbl())}」之後才會開始問</div></span>
+        <button class="btn sm ${st.workAsk!==false?'ghost':''}" onclick="S.settings.workAsk=${st.workAsk===false};save().then(()=>openSettings('notify'))">${st.workAsk!==false?'關閉':'開啟'}</button></div>
+      <label class="f" style="margin:12px 0 8px"><span>叫它什麼</span><div class="parts" style="margin:0">${['上班','上學','上課','去工作室'].map(x=>`<button type="button" class="${workLbl()===x?'on':''}" onclick="S.settings.workLabel='${x}';save().then(()=>openSettings('notify'))">${x}</button>`).join('')}</div></label>
+      <div class="f" style="margin:0"><span>哪幾天要${esc(workLbl())}</span><div class="parts" style="margin:0">${[1,2,3,4,5,6,0].map(n=>`<button type="button" class="${workDays().includes(n)?'on':''}" onclick="toggleWorkDay(${n})">${'日一二三四五六'[n]}</button>`).join('')}</div></div>
     </div>
     <div class="card">
       <div class="row"><span class="grow"><b style="font-size:14px">🌙 很久沒出場的娃娃</b><div class="hint">${ARCH_DAYS} 天沒出門、沒記錄穿搭，首頁會問要不要先收進封存櫃</div></span>
