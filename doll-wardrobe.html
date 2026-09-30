@@ -1473,6 +1473,9 @@ async function load(){
   if(S.settings.stickerMode==='ai')S.settings.stickerMode='auto';
   // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
   if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
+  // 2026.10.01-69：之前加進套裝的單件名字沒有套裝名（改套裝名稱時不會跟著改），補上一次
+  if(!S.settings.setNameV){S.settings.setNameV=1;(S.items||[]).filter(x=>x.category==='套裝'&&x.setId&&x.name).forEach(par=>
+    (S.items||[]).forEach(m=>{if(m.setId===par.setId&&m.category!=='套裝'&&m.name&&!m.name.includes('－')){m.joinName=m.name;m.name=par.name+'－'+m.name}}))}
   S.dolls=S.dolls||[];migrateLetters();guessCountry();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
@@ -2788,7 +2791,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-68';
+const APP_VER='2026.10.01-69';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5310,6 +5313,7 @@ async function setOut(id,back){
   const i=S.items.find(x=>x.id===id);if(!i||!i.setId)return;
   const sid=i.setId,own=money(i.ownPrice);
   i.setId=null;i.price=own?String(own):'';delete i.ownPrice;
+  if(i.joinName){i.name=i.joinName;delete i.joinName}
   if(own){const par=setParent(sid);setPriceAll(sid,Math.max(0,money(par&&par.price)-own))}
   await save();renderCloset();
   toast(`「${nameOf(i)}」移出了，變成單件${own?'':'（錢算在套裝裡，這件的價格清空）'}`);
@@ -5347,7 +5351,9 @@ async function setJoin(ids,pid,back){
   const par=S.items.find(x=>x.id===pid);if(!par||!ids.length)return;
   const sid=par.setId;let add=0;
   ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i||i.setId)return;
-    const own=money(i.price);if(own){i.ownPrice=String(own);add+=own}i.setId=sid});
+    const own=money(i.price);if(own){i.ownPrice=String(own);add+=own}i.setId=sid;
+    // 名字跟著套裝：「套裝名－襪子」，之後改套裝名稱也會一起改；移出時換回原本的名字
+    const nm=par.name||setName(sid);if(nm&&!i.name.startsWith(nm+'－')){i.joinName=i.name;i.name=nm+'－'+i.name}});
   const total=money(par.price)+add;
   if(total>0)setPriceAll(sid,total);
   await save();renderCloset();
@@ -5531,7 +5537,9 @@ function renameMates(i,oldName){
   const common=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
   const olds=new Set([oldName,setName(i.setId),common].filter(Boolean));
   let n=0;
-  mates.forEach(m=>{const p=pre(m);if(p&&p!==i.name&&olds.has(p)){m.name=i.name+m.name.slice(p.length);n++}});
+  mates.forEach(m=>{const p=pre(m);if(p&&p!==i.name&&olds.has(p)){m.name=i.name+m.name.slice(p.length);n++}
+    // 後來才加進來、名字沒有套裝名的（例如只叫「襪子」）：補上
+    else if(!p&&m.category!=='套裝'){m.name=i.name+'－'+m.name;n++}});
   return n;
 }
 async function saveEdit(id){
