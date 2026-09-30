@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=36"></script>
+<script src="i18n/i18n.js?v=37"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2767,7 +2767,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-58';
+const APP_VER='2026.10.01-59';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5150,10 +5150,11 @@ function openItem(id){
       <button class="${UI.detailImg==='photo'?'on':''}" onclick="UI.detailImg='photo';openItem('${id}')">原始照片</button>
       <button onclick="recut('${id}')">重做貼圖</button>
     </div>
-    ${i.cutout?`<div class="row" style="margin:-6px 0 14px">
-      <button class="btn quiet sm grow" onclick="editSticker('${id}')">修補貼圖</button>
-      <button class="btn ghost sm grow" onclick="dlSticker('${id}')">下載 PNG</button>
-    </div>`:''}
+    <div class="row" style="margin:-6px 0 14px">
+      <button class="btn ghost sm grow" onclick="rephoto('${id}')">📷 換照片</button>
+      ${i.cutout?`<button class="btn quiet sm grow" onclick="editSticker('${id}')">修補貼圖</button>
+      <button class="btn ghost sm grow" onclick="dlSticker('${id}')">下載 PNG</button>`:''}
+    </div>
     <div class="tagline">
       ${(i.styles||[]).map(s=>`<span class="tg st">${esc(s.name)} ${s.score||''}</span>`).join('')}
       ${(i.colors||[]).map(c=>`<span class="tg">${esc(c)}</span>`).join('')}
@@ -5201,6 +5202,16 @@ function dlSticker(id){
   const i=S.items.find(x=>x.id===id);
   if(!i||!i.cutout){toast('這件還沒有貼圖，先按重做貼圖');return}
   fetch(i.cutout).then(r=>r.blob()).then(b=>saveFiles([new File([b],(i.name||'sticker').replace(/[\\/:*?"<>|]/g,'')+'.png',{type:'image/png'})])).then(ok=>{if(ok&&!isApp())toast('已下載')});
+}
+// 已建檔的娃衣重拍：只換照片和貼圖，名稱、價格、穿搭紀錄都留著
+function rephoto(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+    i.photo=await compress(f);i.cutout=null;i.cutSrc=null;i.cutMask=null;
+    await save();renderCloset();UI.detailImg='cutout';openItem(id);
+    toast('照片換好了，接著做新貼圖');recut(id);};
+  inp.click();
 }
 async function recut(id){
   const i=S.items.find(x=>x.id===id);if(!i||!i.photo)return;
@@ -8138,7 +8149,7 @@ const HELP=[
   ['📸','建檔：把娃衣放進衣櫃',[['📷','拍照或選照片'],['📏','選一個尺寸'],['✨','AI 分析（選用）'],['✂️','做成貼圖'],['✅','建檔']],
     ['一次建很多件：清單上方「📋 套用到全部」填一次尺寸、品牌、系列、購買管道、日期、價格就好（包色可以選「總價平分」）。顏色點色票就好，特殊色寫在名稱裡；名稱留白會自動取「顏色＋類型」。同一款不同顏色，名稱填一樣、各自點顏色，衣櫃會顯示成「名稱・粉」「名稱・藍」。','可以一次選很多張照片。放在素色、跟衣服顏色差很多的背景上拍，去背會最乾淨。','尺寸一定要選，一件選一個；之後的推薦、買前檢查、合身娃衣都會用到。','套裝先按「AI 分析」拆成單品，或把類型選「套裝」自己點有哪幾件（免費），再「逐件做貼圖」。「AI 整套一張」幾件都只扣 1 次。','購買中的娃衣到貨了，建檔頁最上面會提醒，按「全部拿來建檔」會一次帶進來，到貨日也會自動填好。訂單上的商品圖很難去背，點縮圖或按「📷 換照片」拍一張實物照，名稱、顏色、價格都會留著。']],
   ['✂️','貼圖怎麼做',[['👆','點選去背'],['🖌️','筆刷修補'],['🤖','AI 出圖']],
-    ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。']],
+    ['「點選去背」免費：點一下衣服就圈出來，什麼背景都可以。','漏掉的用「留下」塗回來，多的用「去掉」擦掉；兩指可以放大，細的地方比較好塗。','「AI 出圖」會把手和雜物一起清掉，用額度或點數；做不出來不會扣。','想重拍？到單品頁按「📷 換照片」，拍好會接著做新貼圖；名稱、價格、穿搭紀錄都會留著。']],
   ['🗂️','整理衣櫃',[['☑️','多選'],['✏️','批次修改'],['🏷️','標籤篩選']],
     ['衣櫃上方可以用類別、狀態、尺寸、標籤篩選；上面的件數分開算單件和套裝。','右上角「多選」可以一次改標籤、節日、類型、尺寸、顏色、名稱、系列、品牌、價格（包色可以總價平分）、購買管道、產地、購入日期、到貨日期。','也可以一次放進壓箱底、做出售貼文、移到回憶箱或刪除；這些會一步一步確認，刪除要輸入「刪除」才會執行。','編輯單品時，欄位標題後面的「!」點一下會跳出說明。同一個品牌推出的系列，可以填在品牌上面的「系列」（選填），搜尋也找得到；作品、活動（例如 戀與深空）用「標籤」最方便。','改套裝時，拆出來的單品也會一起改。','想事後補資料的話，衣櫃篩選最後面的「可以補充」會列出還沒填顏色、價格、日期的娃衣，有空再補就好。']],
   ['📦','壓箱底・出售・回憶箱',[['📦','壓箱底'],['⚠️','記錄狀況'],['🏷️','做出售貼文'],['💌','移到回憶箱']],
