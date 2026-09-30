@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=20"></script>
+<script src="i18n/i18n.js?v=21"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2606,7 +2606,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-39';
+const APP_VER='2026.10.01-40';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -2768,7 +2768,7 @@ function openLetter(first){
     <button class="btn wide" onclick="closeSheet()">${first?'開始整理衣櫃':'收好這封信'}</button>`);
 }
 /* ---- 意見回饋：寫好後用手機的寄信 App 寄出 ---- */
-const FEEDBACK_EMAIL='';   // 客服信箱，由使用者提供
+const FEEDBACK_EMAIL='sssayhi07@gmail.com',FEEDBACK_IG='shiun_07';   // 客服信箱、IG（使用者提供）
 const FB_TYPES=['想要的功能','用起來有問題','其他想說的'];
 let FB={type:FB_TYPES[0],text:'',info:true};
 function feedbackInfo(){
@@ -2782,6 +2782,7 @@ function sendFeedback(){
   const body=t+(FB.info?`\n\n——\n${feedbackInfo()}`:'');
   location.href=`mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('【哇娃衣櫃】'+FB.type)}&body=${encodeURIComponent(body)}`;
 }
+function openIG(){const u='https://instagram.com/'+FEEDBACK_IG;if(isApp())location.href=u;else window.open(u,'_blank','noopener')}
 async function copyFeedbackMail(){try{await navigator.clipboard.writeText(FEEDBACK_EMAIL);toast('已複製信箱')}catch(e){toast(FEEDBACK_EMAIL)}}
 // 好久沒換裝的提醒：按叉叉後選 2 週後再提醒，或不再提醒（days=0）
 async function idleSnooze(id,days){
@@ -7808,7 +7809,8 @@ function openSettings(page){
     <label class="f"><span>想說的話</span><textarea rows="7" maxlength="2000" placeholder="例如：希望衣櫃可以依顏色排序／建檔時按了 AI 分析沒有反應…" oninput="FB.text=this.value">${esc(FB.text)}</textarea></label>
     <label class="remember" style="margin:0 0 12px"><input type="checkbox" ${FB.info?'checked':''} onchange="FB.info=this.checked"> 附上版本和手機型號（遇到問題時比較好找原因）</label>
     <button class="btn wide" onclick="sendFeedback()">寄出</button>
-    ${FEEDBACK_EMAIL?`<div class="row" style="margin-top:12px;align-items:center"><span class="grow hint" style="margin:0">打不開寄信 App？直接寄到 <b translate="no">${esc(FEEDBACK_EMAIL)}</b></span><button class="btn sm ghost" onclick="copyFeedbackMail()">複製</button></div>`:''}`;
+    ${FEEDBACK_EMAIL?`<div class="row" style="margin-top:12px;align-items:center"><span class="grow hint" style="margin:0">打不開寄信 App？直接寄到 <b translate="no">${esc(FEEDBACK_EMAIL)}</b></span><button class="btn sm ghost" onclick="copyFeedbackMail()">複製</button></div>`:''}
+    ${FEEDBACK_IG?`<div class="row" style="margin-top:8px;align-items:center"><span class="grow hint" style="margin:0">也可以到 Instagram 私訊 <b translate="no">@${esc(FEEDBACK_IG)}</b></span><button class="btn sm ghost" onclick="openIG()">打開</button></div>`:''}`;
   if(page==='notify'){
     const on=notifyReady();
     body=`
