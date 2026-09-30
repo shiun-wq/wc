@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=44"></script>
+<script src="i18n/i18n.js?v=45"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1084,6 +1084,14 @@ textarea{width:100%;font:inherit;padding:10px 12px;border-radius:var(--r-sm);bor
 .notice.warn{background:var(--berry-soft);border-color:rgba(162,77,102,.18)}
 .notice>b{display:block;font-size:14.5px;margin-bottom:3px}
 .notice>span{display:block;font-size:12.5px;color:var(--ink-2);line-height:1.65;margin-bottom:10px}
+.wkdone>span{margin-bottom:6px}
+.wkrow{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:0 2px}
+.wkrow::-webkit-scrollbar{display:none}
+.wkrow .btn{flex:0 0 auto;white-space:nowrap}
+.wkrow .wko{display:flex;align-items:center;gap:2px;padding:4px 10px 4px 6px}
+.wkrow .wko img{width:26px;height:26px;object-fit:contain}
+.wkrow .wko small{margin-left:4px;font-size:12px}
+.wkrow .wklbl{flex:0 0 auto;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
 .welcome{text-align:center}
 .welcome img{border-radius:18px;margin:4px auto 10px;box-shadow:var(--sh-2)}
 .welcome h3{margin:0 0 4px}
@@ -1473,6 +1481,9 @@ async function load(){
   if(S.settings.stickerMode==='ai')S.settings.stickerMode='auto';
   // 改版：AI 改走後台；之前自己填過 API 的人自動打開開發者模式，照舊能用
   if(S.settings.devMode===undefined)S.settings.devMode=S.settings.presets.some(p=>p.endpoint);
+  // 2026.10.01-69：之前加進套裝的單件名字沒有套裝名（改套裝名稱時不會跟著改），補上一次
+  if(!S.settings.setNameV){S.settings.setNameV=1;(S.items||[]).filter(x=>x.category==='套裝'&&x.setId&&x.name).forEach(par=>
+    (S.items||[]).forEach(m=>{if(m.setId===par.setId&&m.category!=='套裝'&&m.name&&!m.name.includes('－')){m.joinName=m.name;m.name=par.name+'－'+m.name}}))}
   S.dolls=S.dolls||[];migrateLetters();guessCountry();S.wish=S.wish||[];S.memory=S.memory||[];S.orders=S.orders||[];
   if(!Array.isArray(S.settings.sizes)){
     // 舊版尺寸名稱換成新的；舊資料裡用過的其他尺寸保留下來
@@ -2505,18 +2516,52 @@ const workWears=(d,r)=>(d?dollWears(d):S.wears).filter(w=>isWork(w)&&(!r||rOf(w)
 const workCount=(d,r)=>new Set(workWears(d,r).map(w=>w.date)).size;
 // 首頁：今天有排到、這隻娃娃還沒記的日常，一鍵記錄（早上上班、晚上讀書可以各記一次）
 function workCard(){
-  const st=S.settings,d=mainDoll();
+  const st=S.settings,d=mainDoll(),t=today();
   if(!d||!isLive(d)||isAway(d)||!S.wears.some(isWork))return '';
-  const k='work:'+today();
+  const hide=k=>`S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()`;
+  const rs=routines().filter(r=>r.ask!==false&&isWorkDay(t,r));
+  const recsOf=r=>S.wears.filter(w=>w.date===t&&isWork(w)&&rOf(w).id===r.id);
+  // 已經有娃娃打卡了：不再問別隻，改成「穿什麼？」「還有誰一起？」
+  const done=rs.find(r=>recsOf(r).length&&!(st.annHide&&st.annHide['workdone:'+r.id+':'+t]));
+  if(done)return workDoneCard(done,recsOf(done),hide('workdone:'+done.id+':'+t));
+  const k='work:'+t;
   if(st.annHide&&st.annHide[k])return '';
-  const todo=routines().filter(r=>r.ask!==false&&isWorkDay(today(),r)&&!dollWears(d).some(w=>w.date===today()&&isWork(w)&&rOf(w).id===r.id));
+  const todo=rs.filter(r=>!recsOf(r).length);
   if(!todo.length)return '';
   // 在家、出門的穿搭跟陪伴日常是分開的：今天記過在家也照樣問
   const nm=esc(d.name),one=todo.length===1?todo[0]:null;
-  return `<section class="notice"><button class="x" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome()" aria-label="今天沒有">×</button>
+  return `<section class="notice"><button class="x" onclick="${hide(k)}" aria-label="今天沒有">×</button>
     <b>${one?`${workIcon(one)} 今天 ${nm} 也一起${esc(workLbl(one))}嗎？`:`💼 今天 ${nm} 也一起去嗎？`}</b>
-    <span>點一下就記好；想記穿了什麼，也可以選衣服。</span>
-    <div class="row" style="flex-wrap:wrap">${todo.map(r=>`<button class="btn sm" onclick="workToday('${d.id}','${r.id}')">${one?'一起'+esc(workLbl(r))+' '+workIcon(r):workIcon(r)+' '+esc(workLbl(r))}</button>`).join('')}<button class="btn sm ghost" onclick="openWear();WEAR.place='上班';WEAR.rid='${todo[0].id}';drawWearSheet()">選衣服</button><button class="btn sm ghost" onclick="S.settings.annHide=S.settings.annHide||{};S.settings.annHide['${k}']=1;save();renderHome();toast('好好休息 🌴')">今天放假 🌴</button></div></section>`;
+    <span>點一下就記好，接著可以一鍵補上穿了什麼。</span>
+    <div class="row" style="flex-wrap:wrap">${todo.map(r=>`<button class="btn sm" onclick="workToday('${d.id}','${r.id}')">${one?'一起'+esc(workLbl(r))+' '+workIcon(r):workIcon(r)+' '+esc(workLbl(r))}</button>`).join('')}<button class="btn sm ghost" onclick="${hide(k)};toast('好好休息 🌴')">今天放假 🌴</button></div></section>`;
+}
+// 這隻娃娃最近穿過的幾套（不重複），拿來一鍵套用
+function recentOutfits(d,n){
+  const seen=new Set(),out=[];
+  dollWears(d).filter(w=>(w.itemIds||[]).length).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(w=>{
+    const ids=w.itemIds.filter(id=>S.items.some(i=>i.id===id));if(!ids.length)return;
+    const key=ids.slice().sort().join();if(seen.has(key)||out.length>=n)return;seen.add(key);out.push({ids,w})});
+  return out;
+}
+// 打卡之後：還沒選衣服的那筆可以一鍵套用最近穿過的，或打開選衣服；別隻娃娃也可以一起加
+function workDoneCard(r,recs,hideJs){
+  const need=recs.find(w=>!(w.itemIds||[]).length),names=recs.map(w=>esc(w.dollName||'')).join('、');
+  const others=liveDolls().filter(x=>!isAway(x)&&!recs.some(w=>w.dollId===x.id));
+  const nd=need&&S.dolls.find(x=>x.id===need.dollId);
+  const outs=nd?recentOutfits(nd,3):[];
+  const th=ids=>{const its=ids.map(anyItem).filter(i=>i&&img(i)&&i.category!=='套裝').slice(0,3);return its.map(i=>`<img src="${img(i)}" alt="">`).join('')};
+  if(!need&&!others.length)return '';
+  return `<section class="notice wkdone"><button class="x" onclick="${hideJs}" aria-label="隱藏">×</button>
+    <b>✓ ${names} 今天陪你${esc(workLbl(r))} ${workIcon(r)}</b>
+    ${need?`<span>${esc(need.dollName||'')} 今天穿什麼？</span>
+      <div class="wkrow">${outs.map((o,k)=>`<button class="btn sm ghost wko" onclick="workSetClothes('${need.id}',${k})">${th(o.ids)}<small>${k===0?'跟上次一樣':o.ids.length+' 件'}</small></button>`).join('')}<button class="btn sm" onclick="openWearEdit('${need.id}')">選衣服</button></div>`:''}
+    ${others.length?`<div class="wkrow" style="margin-top:8px"><span class="wklbl">還有誰一起？</span>${others.map(x=>`<button class="btn sm ghost" onclick="workToday('${x.id}','${r.id}')">＋ ${esc(x.name)}</button>`).join('')}</div>`:''}
+  </section>`;
+}
+async function workSetClothes(wid,k){
+  const w=S.wears.find(x=>x.id===wid),d=w&&S.dolls.find(x=>x.id===w.dollId);if(!w||!d)return;
+  const o=recentOutfits(d,3)[k];if(!o)return;
+  w.itemIds=o.ids.slice();await save();renderHome();toast(`補好了：${w.dollName} 今天穿 ${o.ids.length} 件`);
 }
 // 排班：這個月還沒排，或月底了下個月還沒排，首頁提醒一下
 function shiftCard(){
@@ -2788,7 +2833,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-68';
+const APP_VER='2026.10.01-70';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5310,6 +5355,10 @@ async function setOut(id,back){
   const i=S.items.find(x=>x.id===id);if(!i||!i.setId)return;
   const sid=i.setId,own=money(i.ownPrice);
   i.setId=null;i.price=own?String(own):'';delete i.ownPrice;
+  // 名字拿掉套裝名：後來加進來的換回原本的名字，原本就在套裝裡的「套裝名－領結」變「領結」
+  const sn=(setParent(sid)||{}).name||setName(sid);
+  if(i.joinName){i.name=i.joinName;delete i.joinName}
+  else if(sn&&i.name.startsWith(sn+'－')&&i.name.length>sn.length+1)i.name=i.name.slice(sn.length+1);
   if(own){const par=setParent(sid);setPriceAll(sid,Math.max(0,money(par&&par.price)-own))}
   await save();renderCloset();
   toast(`「${nameOf(i)}」移出了，變成單件${own?'':'（錢算在套裝裡，這件的價格清空）'}`);
@@ -5347,7 +5396,9 @@ async function setJoin(ids,pid,back){
   const par=S.items.find(x=>x.id===pid);if(!par||!ids.length)return;
   const sid=par.setId;let add=0;
   ids.forEach(id=>{const i=S.items.find(x=>x.id===id);if(!i||i.setId)return;
-    const own=money(i.price);if(own){i.ownPrice=String(own);add+=own}i.setId=sid});
+    const own=money(i.price);if(own){i.ownPrice=String(own);add+=own}i.setId=sid;
+    // 名字跟著套裝：「套裝名－襪子」，之後改套裝名稱也會一起改；移出時換回原本的名字
+    const nm=par.name||setName(sid);if(nm&&!i.name.startsWith(nm+'－')){i.joinName=i.name;i.name=nm+'－'+i.name}});
   const total=money(par.price)+add;
   if(total>0)setPriceAll(sid,total);
   await save();renderCloset();
@@ -5531,7 +5582,9 @@ function renameMates(i,oldName){
   const common=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
   const olds=new Set([oldName,setName(i.setId),common].filter(Boolean));
   let n=0;
-  mates.forEach(m=>{const p=pre(m);if(p&&p!==i.name&&olds.has(p)){m.name=i.name+m.name.slice(p.length);n++}});
+  mates.forEach(m=>{const p=pre(m);if(p&&p!==i.name&&olds.has(p)){m.name=i.name+m.name.slice(p.length);n++}
+    // 後來才加進來、名字沒有套裝名的（例如只叫「襪子」）：補上
+    else if(!p&&m.category!=='套裝'){m.name=i.name+'－'+m.name;n++}});
   return n;
 }
 async function saveEdit(id){
@@ -8347,7 +8400,7 @@ const HELP=[
   ['📝','記錄今天的穿搭',[['🧸','選娃娃'],['🏠','在家／出門／上班'],['📷','放照片'],['☑️','勾選衣服']],
     ['在家換裝也算，不一定要出門；選「出門」可以記去了哪個縣市或國家，會一起記進足跡。','帶娃娃去公司或學校，選「🏢 上班」，衣服可以不選（詳細看「陪伴日常：陪上班、上學」）。','照片有拍攝日期和定位的話，會建議改成那天、那個地點。','可以用 AI 辨識照片穿了哪幾件；認出來的大部分是同一套時，會把那套其他單品也列出來，可以整套一起加入。','衣服很多時不用滑到底，「存入穿著紀錄」一直固定在最下面。','存錯了也沒關係：點開那筆紀錄按「✏️ 編輯」，日期、娃娃、在家／出門、照片和衣服都可以改。','想寫幾句的話，按最下面「存入」左邊的 ✏️（選填，不寫也沒關係）；寫過的小記事會出現在紀錄和娃娃月曆裡，做小卡時也會自動帶進「一句話」。','穿套裝時把裡面的單品全部勾起來，套裝本身也會算穿過一次（只勾一部分的話，只有勾到的單品算）。']],
   ['💼','陪伴日常：陪上班、上學',[['🏢','記穿搭選「上班」'],['📅','設定上班日或排班'],['🌙','加班有鼓勵'],['🏆','最佳夥伴']],
-    ['帶娃娃去公司或學校，記穿搭時選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。','記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好；國定假日或請假，按「今天放假」就好。','到 設定 → 陪上班，可以選固定星期幾上班；排班制的話，在月曆上一天一天點。','不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，也可以順手到星星罐寫一句謝謝。','早上上班、晚上讀書，可以按「＋ 新增日常」分開記（最多 3 個）；名字可以改成上學、讀書、打工…或自己取。只想要一個也沒問題。','娃娃履歷會寫他陪你幾天；會員分析和年度回顧可以看誰是你的最佳同事、加班夥伴，名字會跟著變成最佳同學、讀書夥伴。']],
+    ['帶娃娃去公司或學校，記穿搭時選「🏢 上班」：衣服可以不選，只記今天一起上班；不算進出門和足跡。','記過一次之後，上班日早上首頁會問「今天也一起上班嗎？」，點一下就記好；國定假日或請假，按「今天放假」就好。','打卡後同一張卡片會問「今天穿什麼？」：點最近穿過的那套（「跟上次一樣」）就補好，或按「選衣服」自己挑；一隻娃娃打卡後別隻就不會再問，要一起去的按「還有誰一起？」加上。','到 設定 → 陪上班，可以選固定星期幾上班；排班制的話，在月曆上一天一天點。','不是上班日也帶娃娃去了，會記成「🌙 加班」（上學、上課叫補課），會跳出鼓勵，也可以順手到星星罐寫一句謝謝。','早上上班、晚上讀書，可以按「＋ 新增日常」分開記（最多 3 個）；名字可以改成上學、讀書、打工…或自己取。只想要一個也沒問題。','娃娃履歷會寫他陪你幾天；會員分析和年度回顧可以看誰是你的最佳同事、加班夥伴，名字會跟著變成最佳同學、讀書夥伴。']],
   ['🎉','分享小卡',[['👗','穿搭小卡'],['🎂','紀念小卡'],['🗺️','足跡小卡'],['🏠','歡迎回家']],
     ['每種小卡都可以選奶油、玫瑰、夜色三種顏色，貼文 4:5 或限動 9:16，也可以寫一句話（太長會自動換行，最多 3 行）。','穿搭小卡有經典、拍立得、雜誌三種樣式；有照片的話，在預覽上拖曳可以調整照片的位置。','不想讓人知道穿了哪幾件，勾「隱藏娃衣名稱」：有照片的小卡會整個拿掉娃衣區。','紀念小卡可以放上來家裡幾天、換裝幾次、出門幾次，也可以隱藏；足跡小卡在娃娃的足跡頁按「分享足跡」。','娃娃暫時離家回來，按「回家了」會做一張歡迎回家小卡。','會員還有 4 種專屬配色（薄荷、薰衣草、奶茶、晴空）和蕾絲、星星、格紋、緞帶 4 種邊框，做小卡時在顏色下面選。']],
   // ── 娃娃
