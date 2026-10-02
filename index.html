@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=48"></script>
+<script src="i18n/i18n.js?v=49"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2858,7 +2858,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-73';
+const APP_VER='2026.10.01-74';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -5682,12 +5682,39 @@ async function saveEdit(id){
   }
   await save();closeSheet();renderCloset();toast(n?`已儲存，也同步到這套的 ${n} 件單品`:'已儲存');
 }
-async function delItem(id){
+// 刪除：套裝要問單品怎麼辦（一起刪，或留下來變單件）
+function delItem(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  const mates=i.category==='套裝'?setMates(i):[];
+  if(mates.length){
+    openSheet(`<h3>刪除「${esc(nameOf(i))}」</h3><p class="hint" style="margin:-6px 0 12px">這套還有 ${mates.length} 件單品，要怎麼處理？穿著紀錄中的關聯也會移除。</p>
+      <button class="cutopt" onclick="delItemsNow(${JSON.stringify([id,...mates.map(m=>m.id)]).replace(/"/g,"'")})"><div><b>全部刪除</b><span>套裝和 ${mates.length} 件單品一起刪掉</span></div></button>
+      <button class="cutopt" onclick="delSetOnly('${id}')"><div><b>只刪套裝這一筆</b><span>${mates.length} 件單品留在衣櫃，變成單件</span></div></button>
+      <button class="btn ghost wide" style="margin-top:6px" onclick="openItem('${id}')">取消</button>`);
+    return;
+  }
   if(!confirm('刪除這件娃衣？穿著紀錄中的關聯也會移除。'))return;
-  S.items=S.items.filter(x=>x.id!==id);
-  S.wears.forEach(w=>w.itemIds=w.itemIds.filter(x=>x!==id));
-  S.looks.forEach(l=>{l.itemIds=l.itemIds.filter(x=>x!==id);l.layout=(l.layout||[]).filter(p=>p.itemId!==id)});
-  await save();closeSheet();renderCloset();toast('已刪除');
+  delItemsNow([id]);
+}
+async function delItemsNow(ids){
+  const set=new Set(ids),sids=new Set(S.items.filter(x=>set.has(x.id)&&x.setId).map(x=>x.setId));
+  S.items=S.items.filter(x=>!set.has(x.id));
+  S.wears.forEach(w=>w.itemIds=w.itemIds.filter(x=>!set.has(x)));
+  S.looks.forEach(l=>{l.itemIds=l.itemIds.filter(x=>!set.has(x));l.layout=(l.layout||[]).filter(p=>!set.has(p.itemId))});
+  // 整套都刪光了，套裝名稱的紀錄也拿掉
+  S.sets=S.sets.filter(st=>!sids.has(st.id)||S.items.some(x=>x.setId===st.id)||S.memory.some(x=>x.setId===st.id));
+  await save();closeSheet();renderCloset();toast(ids.length>1?`已刪除 ${ids.length} 件`:'已刪除');
+}
+// 只刪套裝那一筆：單品變單件，名字拿掉套裝名；錢原本算在套裝裡，所以價格清空（後來加進來、有自己價格的換回原價）
+async function delSetOnly(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  const sn=i.name||setName(i.setId);
+  setMates(i).forEach(m=>{
+    const own=money(m.ownPrice);m.setId=null;m.price=own?String(own):'';delete m.ownPrice;
+    if(m.joinName){m.name=m.joinName;delete m.joinName}
+    else if(sn&&m.name.startsWith(sn+'－')&&m.name.length>sn.length+1)m.name=m.name.slice(sn.length+1);
+  });
+  await delItemsNow([id]);
 }
 
 /* ============================================================

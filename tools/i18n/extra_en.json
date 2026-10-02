@@ -912,5 +912,11 @@
 "這是會員功能": "This is a member feature",
 "缺少裝置代碼": "Missing device code",
 "今天的 AI 次數用完了，明天再試": "You've used today's AI limit. Try again tomorrow",
-"今天大家用得太兇，AI 休息一下，明天再來": "Everyone's used a lot of AI today — it's resting. Please come back tomorrow"
+"今天大家用得太兇，AI 休息一下，明天再來": "Everyone's used a lot of AI today — it's resting. Please come back tomorrow",
+"這套還有 {0} 件單品，要怎麼處理？穿著紀錄中的關聯也會移除。": "This set still has {0} pieces. What should happen to them? They'll also be removed from outfit records.",
+"全部刪除": "Delete all",
+"套裝和 {0} 件單品一起刪掉": "Delete the set and its {0} pieces",
+"只刪套裝這一筆": "Delete only the set",
+"{0} 件單品留在衣櫃，變成單件": "Keep the {0} pieces in your wardrobe as single items",
+"已刪除 {0} 件": "Deleted {0} items"
 }
