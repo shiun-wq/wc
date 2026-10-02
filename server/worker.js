@@ -1,35 +1,52 @@
 /* 哇娃衣櫃 AI 後台（Cloudflare Worker）
    ------------------------------------------------------------
-   網頁／App 不再直接連 API，而是把要做的事丟到這裡，由這裡帶上密鑰去問 AI。
-   密鑰只存在 Cloudflare 的設定裡，使用者看不到，也不會出現在網頁原始碼。
+   App 不直接連 AI，而是把要做的事丟到這裡，由這裡帶上密鑰去問 AI。
+   密鑰只存在 Cloudflare 的設定裡，使用者看不到，也不會出現在 App 裡。
+   綁了 D1 資料庫之後，這裡也負責記帳：每台手機這個月用了幾次 AI、還有幾點、是不是會員。
 
    在 Cloudflare 後台 → 這個 Worker → Settings → Variables and Secrets 設定：
-     API_BASE            API 地址，例如 https://api.example.com/v1           （Text）
+     API_BASE            API 地址，例如 https://api.example.com/v1（只填網域會自動補 /v1）（Text）
      API_KEY             API 密鑰                                          （Secret，一定要選 Secret）
-     MODEL_TEXT          文字／看圖分析用的模型                               （Text）
-     MODEL_IMAGE         AI 出圖（貼圖）用的模型，留空 = 不開放 AI 出圖          （Text）
-     IMAGE_API_BASE      出圖用的 API 地址，出圖在另一個地方才要填，留空 = 同上     （Text，選填）
-     IMAGE_API_KEY       出圖用的 API 密鑰，留空 = 同上                        （Secret，選填）
-     IMAGE_API_STYLE     出圖服務的格式：chat（對話格式）、task（ToAPIs 那種先上傳再送任務）、
-                         studio（1route Studio）。留空 = 依地址自動判斷          （Text，選填）
-     IMAGE_QUALITY       GPT Image 的品質：low / medium / high，留空 = 服務預設    （Text，選填）
+     MODEL_TEXT          看圖分析用的模型                                     （Text）
      ALLOWED_ORIGINS     允許使用的網址，逗號分隔                               （Text）
                          例：https://shiun-wq.github.io,capacitor://localhost,https://localhost
      REASONING           AI 回答前「想多少」：low（預設，省錢）/ medium / high，
                          填 off = 不送這個設定（中轉站不支援時會自動改回不送）      （Text，選填）
-     DAILY_LIMIT         每台裝置每天最多幾次，預設 30（需要綁 KV 才會生效）      （Text，選填）
-     GLOBAL_DAILY_LIMIT  全部人加起來每天最多幾次，預設 300（需要綁 KV）         （Text，選填）
-   選填的 KV 綁定：變數名稱 QUOTA → 用來記每天用了幾次，防止被刷爆帳單。
+     REDEEM_CODES        兌換碼，逗號分隔「代碼:點數」，例：DOLL2026:20,WELCOME:10   （Text，選填）
+                         每台手機每個代碼只能用一次
+     TEST_DEVICES        測試用：這些裝置代碼直接當會員，逗號分隔                  （Text，選填）
+                         裝置代碼在 App 的 設定 → 開發者模式 可以看到
+     DAILY_LIMIT         每台裝置每天最多幾次，預設 30                           （Text，選填）
+     GLOBAL_DAILY_LIMIT  全部人加起來每天最多幾次，預設 300                       （Text，選填）
+     DEBUG               填 1 = 錯誤訊息附上中轉站的原因（查完記得刪掉）            （Text，選填）
+   綁定（Settings → Bindings）：
+     DB                  D1 資料庫（記帳用；沒綁的話不記帳，App 會用自己手機裡的紀錄）
+     QUOTA               KV（選填，舊版的每日次數限制；有綁 DB 時改用 DB 記）
 
    路徑：
-     GET  /health  看設定有沒有填好（不會顯示密鑰）
-     POST /ai      { task, messages }  task 是 tag / buy / wearid / idea / img / test
+     GET  /health   看設定有沒有填好（不會顯示密鑰）
+     GET  /account  這台手機的帳：方案、本月次數、點數、紀錄（標頭 x-device）
+     POST /trial    開始免費試用（每台手機一次）
+     POST /redeem   { code } 兌換點數
+     POST /ai       { task, messages }  task 是 tag / buy / wearid / idea / test
+                    標頭 x-op：同一次操作（例如買前檢查會問兩次）只扣一次
+                    標頭 x-points: 1：額度用完時同意改用點數
 */
 
-const TASKS = ['tag', 'buy', 'wearid', 'idea', 'img', 'test'];
+const TASKS = ['tag', 'buy', 'wearid', 'idea', 'test'];
 const MAX_BODY = 12 * 1024 * 1024; // 12MB，照片都已經先壓過，正常遠低於這個
 const MAX_IMAGES = 10;
 const MAX_TOKENS = 8192;
+
+// 每月 AI 次數和點數價格（App 畫面上的數字從 /account 拿，改這裡就好）
+const QUOTA = {
+  tag: { free: 10, member: 150, trial: 20 },
+  buy: { free: 0, member: 30, trial: 5, memberOnly: true },
+  wearid: { free: 3, member: 50, trial: 10 },
+  idea: { free: 3, member: 50, trial: 10 }
+};
+const POINT_COST = { tag: 1, wearid: 1, buy: 3, idea: 1 };
+const TRIAL_DAYS = 3;
 
 export default {
   async fetch(req, env) {
@@ -43,23 +60,46 @@ export default {
     if (url.pathname === '/health' && req.method === 'GET') {
       return json({
         ok: !!(env.API_BASE && env.API_KEY && env.MODEL_TEXT),
-        api: !!env.API_BASE, key: !!env.API_KEY,
-        text: !!env.MODEL_TEXT, image: !!env.MODEL_IMAGE,
-        imageApi: !!env.IMAGE_API_BASE, imageKey: !!env.IMAGE_API_KEY,
-        imageStyle: imageStyle(env),
-        limit: !!env.QUOTA, origins: !!(env.ALLOWED_ORIGINS || '').trim()
+        api: !!env.API_BASE, key: !!env.API_KEY, text: !!env.MODEL_TEXT,
+        db: !!env.DB, limit: !!(env.DB || env.QUOTA), origins: !!(env.ALLOWED_ORIGINS || '').trim(),
+        codes: codeList(env).length
       }, 200, cors);
     }
 
-    // 查詢出圖進度（網頁切到背景再回來也能接著拿結果）
-    const jm = url.pathname.match(/^\/job\/([A-Za-z0-9_-]{4,100})$/);
-    if (jm && req.method === 'GET') {
-      if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
-      return imageStyle(env) === 'studio' ? studioStatus(jm[1], env, cors) : jobStatus(jm[1], env, cors);
+    if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
+    const device = deviceOf(req);
+
+    // ---- 帳戶 ----
+    if (url.pathname === '/account' && req.method === 'GET') {
+      if (!env.DB) return json({ error: '後台還沒綁資料庫' }, 404, cors);
+      if (!device) return json({ error: '缺少裝置代碼' }, 400, cors);
+      const a = await getAcct(env, device);
+      return json({ ...view(env, a), log: await ledger(env, device) }, 200, cors);
+    }
+    if (url.pathname === '/trial' && req.method === 'POST') {
+      if (!env.DB) return json({ error: '後台還沒綁資料庫' }, 404, cors);
+      if (!device) return json({ error: '缺少裝置代碼' }, 400, cors);
+      const a = await getAcct(env, device);
+      if (a.trial_start) return json({ error: '免費試用已經用過了', ...view(env, a) }, 409, cors);
+      a.trial_start = Date.now();
+      await env.DB.prepare('UPDATE accounts SET trial_start=? WHERE device=?').bind(a.trial_start, device).run();
+      return json(view(env, a), 200, cors);
+    }
+    if (url.pathname === '/redeem' && req.method === 'POST') {
+      if (!env.DB) return json({ error: '後台還沒綁資料庫' }, 404, cors);
+      if (!device) return json({ error: '缺少裝置代碼' }, 400, cors);
+      let code = '';
+      try { code = String((await req.json()).code || '').trim().toUpperCase().slice(0, 40); } catch (e) {}
+      const hit = codeList(env).find(c => c.code === code);
+      if (!hit) return json({ error: '兌換碼不正確' }, 404, cors);
+      const a = await getAcct(env, device);
+      if (a.codes.includes(code)) return json({ error: '這個兌換碼已經用過了' }, 409, cors);
+      a.codes.push(code);
+      await addPoints(env, a, hit.pts, `兌換碼 ${code}`, true);
+      return json({ ...view(env, a), added: hit.pts, log: await ledger(env, device) }, 200, cors);
     }
 
     if (url.pathname !== '/ai' || req.method !== 'POST') return json({ error: '找不到這個功能' }, 404, cors);
-    if (!allowed) return json({ error: '這個網址沒有被允許使用 AI' }, 403, cors);
     if (!env.API_BASE || !env.API_KEY || !env.MODEL_TEXT) return json({ error: 'AI 服務還沒設定好' }, 503, cors);
 
     const len = +req.headers.get('content-length') || 0;
@@ -78,16 +118,35 @@ export default {
     if (task === 'test' && (messages[0].content.length !== 1 || messages[0].content[0].type !== 'text' || messages[0].content[0].text.length > 100))
       return json({ error: '格式錯誤' }, 400, cors);
 
-    const model = task === 'img' ? env.MODEL_IMAGE : env.MODEL_TEXT;
-    if (!model) return json({ error: '目前沒有開放 AI 出圖' }, 503, cors);
-
-    // 次數限制（有綁 KV 才會啟用）
-    if (env.QUOTA && task !== 'test') {
-      const device = (req.headers.get('x-device') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'anon';
-      const day = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); // 台灣時間換日
+    // ---- 查帳：這次要用額度、用點數，還是不給問 ----
+    let a = null, pay = '', op = '';
+    if (env.DB) {
+      if (!device) return json({ error: '缺少裝置代碼' }, 400, cors);
+      a = await getAcct(env, device);
+      const day = today8();
+      if (a.day !== day) { a.day = day; a.day_n = 0; }
       const perDevice = +env.DAILY_LIMIT || 30, global = +env.GLOBAL_DAILY_LIMIT || 300;
-      const dKey = `d:${day}:${device}`, gKey = `g:${day}`;
-      const [dUsed, gUsed] = await Promise.all([env.QUOTA.get(dKey), env.QUOTA.get(gKey)]).then(a => a.map(v => +v || 0));
+      if (task !== 'test') {
+        const g = await env.DB.prepare('SELECT n FROM stats WHERE day=?').bind(day).first();
+        if (g && g.n >= global) return json({ error: '今天大家用得太兇，AI 休息一下，明天再來' }, 429, cors);
+        if (a.day_n >= perDevice && tierOf(env, a, device) !== 'member') return json({ error: '今天的 AI 次數用完了，明天再試' }, 429, cors);
+        op = String(req.headers.get('x-op') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+        const done = op && await env.DB.prepare('SELECT 1 FROM ops WHERE device=? AND op=?').bind(device, op).first();
+        if (!done) {
+          const tier = tierOf(env, a, device), q = QUOTA[task];
+          if (q.memberOnly && tier === 'free') return json({ error: '這是會員功能', code: 'member', ...view(env, a) }, 403, cors);
+          const left = (q[tier] || 0) - (a.used[task] || 0);
+          if (left > 0) pay = 'quota';
+          else if (req.headers.get('x-points') === '1' && a.points >= POINT_COST[task]) pay = 'points';
+          else return json({ error: `本月的次數用完了`, code: a.points >= POINT_COST[task] ? 'points' : 'quota', ...view(env, a) }, 402, cors);
+        }
+      }
+    } else if (env.QUOTA && task !== 'test') {
+      // 舊版：只有 KV 的話，只做每天的次數限制
+      const dev = device || 'anon', day = today8();
+      const perDevice = +env.DAILY_LIMIT || 30, global = +env.GLOBAL_DAILY_LIMIT || 300;
+      const dKey = `d:${day}:${dev}`, gKey = `g:${day}`;
+      const [dUsed, gUsed] = await Promise.all([env.QUOTA.get(dKey), env.QUOTA.get(gKey)]).then(r => r.map(v => +v || 0));
       if (gUsed >= global) return json({ error: '今天大家用得太兇，AI 休息一下，明天再來' }, 429, cors);
       if (dUsed >= perDevice) return json({ error: '今天的 AI 次數用完了，明天再試' }, 429, cors);
       await Promise.all([
@@ -96,19 +155,13 @@ export default {
       ]);
     }
 
-    // 出圖可以用另一組地址／密鑰
-    const isImg = task === 'img';
-    const base = (isImg && env.IMAGE_API_BASE) || env.API_BASE;
-    const key = (isImg && env.IMAGE_API_KEY) || env.API_KEY;
-    if (isImg && imageStyle(env) === 'studio') return studioImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
-    if (isImg && imageStyle(env) === 'task') return taskImage(base, key, model, messages, env, cors, req.headers.get('x-async') === '1');
     // 會思考的模型（Gemini 3 等）先「想」再回答，想的字也算錢；App 要的只是一小段整理好的資料，叫它少想一點
     const effort = String(env.REASONING || 'low').trim().toLowerCase();
-    const ask = withEffort => fetch(apiURL(base, '/chat/completions'), {
+    const ask = withEffort => fetch(apiURL(env.API_BASE, '/chat/completions'), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.API_KEY },
       // 測試也給多一點字數：會思考的模型先想一下才回答，太少會回空的
-      body: JSON.stringify({ model, max_tokens: task === 'test' ? 1024 : MAX_TOKENS, stream: false, messages,
+      body: JSON.stringify({ model: env.MODEL_TEXT, max_tokens: task === 'test' ? 1024 : MAX_TOKENS, stream: false, messages,
         ...(withEffort ? { reasoning_effort: effort } : {}) })
     });
     let up;
@@ -134,211 +187,92 @@ export default {
       const t = await up.text().catch(() => '');
       return json({ error: 'AI 服務設定有誤（網址，API_BASE 要填到 /v1）', ...(env.DEBUG === '1' ? { detail: t.slice(0, 300) } : {}) }, 502, cors);
     }
-    return new Response(up.body, { status: 200, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' } });
+    const out = await up.text();
+
+    // ---- 問成功了才記帳 ----
+    const h = { ...cors, 'content-type': 'application/json; charset=utf-8' };
+    if (a) {
+      if (task !== 'test') {
+        a.day_n++;
+        if (pay === 'quota') a.used[task] = (a.used[task] || 0) + 1;
+        if (pay === 'points') await addPoints(env, a, -POINT_COST[task], NAMES[task], false);
+        await env.DB.batch([
+          env.DB.prepare('UPDATE accounts SET used=?, month=?, points=?, day=?, day_n=? WHERE device=?')
+            .bind(JSON.stringify(a.used), a.month, a.points, a.day, a.day_n, device),
+          env.DB.prepare('INSERT INTO stats(day,n) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET n=n+1').bind(a.day),
+          ...(op && pay ? [env.DB.prepare('INSERT OR IGNORE INTO ops(device,op,t) VALUES(?,?,?)').bind(device, op, Date.now())] : [])
+        ]);
+      }
+      h['x-acct'] = encodeURIComponent(JSON.stringify(view(env, a)));
+    }
+    return new Response(out, { status: 200, headers: h });
   }
 };
 
-function imageStyle(env) {
-  const s = (env.IMAGE_API_STYLE || '').trim().toLowerCase();
-  if (s === 'task' || s === 'chat' || s === 'studio') return s;
-  const b = env.IMAGE_API_BASE || env.API_BASE || '';
-  return /1route\./i.test(b) ? 'studio' : /toapis\./i.test(b) ? 'task' : 'chat';
+const NAMES = { tag: 'AI 建檔分析', buy: '買前檢查', wearid: '穿搭照辨識', idea: 'AI 搭配建議' };
+
+// ---- 記帳用的小工具 ----
+let dbReady = false;
+async function dbInit(env) {
+  if (dbReady) return;
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS accounts (device TEXT PRIMARY KEY, points INTEGER NOT NULL DEFAULT 0,
+      month TEXT, used TEXT, trial_start INTEGER, codes TEXT, member_until INTEGER, day TEXT, day_n INTEGER DEFAULT 0, created INTEGER)`),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, device TEXT, t INTEGER, n INTEGER, why TEXT)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS ledger_dev ON ledger(device, t)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS ops (device TEXT, op TEXT, t INTEGER, PRIMARY KEY(device, op))'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS stats (day TEXT PRIMARY KEY, n INTEGER)')
+  ]);
+  dbReady = true;
 }
+// 台灣時間（UTC+8）的今天、這個月
+const today8 = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const month8 = () => today8().slice(0, 7);
 
-// 任務式出圖（ToAPIs 這類）：上傳照片拿網址 → 送出任務 → 每 2 秒查一次 → 把完成的圖直接轉給網頁
-/* ---- 1route Studio：POST /api/v1/images/edits/jobs → GET /api/v1/images/jobs/{id} → GET .../result ---- */
-const studioRoot = base => { try { return new URL(String(base).trim()).origin; } catch (e) { return 'https://api.1route.dev'; } };
-function studioModel(m) {
-  m = String(m || '').trim();
-  if (m.includes('/')) return m;
-  return (/^gemini|banana/i.test(m) ? 'google/' : 'openai/') + m;
+function deviceOf(req) {
+  const d = String(req.headers.get('x-device') || '');
+  return /^[a-zA-Z0-9_-]{8,64}$/.test(d) ? d : '';
 }
-
-async function studioImage(base, key, model, messages, env, cors, async) {
-  const fail = (msg, detail, status = 502) =>
-    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
-  const parts = messages[0].content;
-  const images = parts.filter(p => p.type === 'image_url').map(p => ({ dataUrl: p.image_url.url }));
-  const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n');
-  if (!images.length) return fail('沒有收到照片', '', 400);
-  const m = studioModel(model);
-  const body = { model: m, prompt, images };
-  if (m.startsWith('google/')) { body.resolution = '1K'; body.aspect_ratio = '1:1'; }
-  else { body.size = '1K'; if (env.IMAGE_QUALITY) body.quality = env.IMAGE_QUALITY; }
-  let j, r;
-  try {
-    r = await fetch(studioRoot(base) + '/api/v1/images/edits/jobs', {
-      method: 'POST',
-      headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-      body: JSON.stringify(body)
-    });
-    j = await r.json().catch(() => ({}));
-  } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
-  if (!r.ok || !j.jobId) {
-    const d = 'submit ' + r.status + ' ' + JSON.stringify(j);
-    if (r.status === 401) return fail('AI 服務設定有誤（密鑰）', d);
-    if (r.status === 429) return fail('AI 服務忙碌中，稍後再試', d, 429);
-    if (r.status === 413) return fail('照片太大了', d, 413);
-    return fail('AI 服務設定有誤（模型或格式）', d);
+async function getAcct(env, device) {
+  await dbInit(env);
+  let r = await env.DB.prepare('SELECT * FROM accounts WHERE device=?').bind(device).first();
+  if (!r) {
+    r = { device, points: 0, month: month8(), used: '{}', trial_start: null, codes: '[]', member_until: null, day: '', day_n: 0, created: Date.now() };
+    await env.DB.prepare('INSERT OR IGNORE INTO accounts(device,points,month,used,codes,day,day_n,created) VALUES(?,?,?,?,?,?,?,?)')
+      .bind(device, 0, r.month, '{}', '[]', '', 0, r.created).run();
   }
-  if (async) return json({ job: j.jobId }, 200, cors);
-  for (let i = 0; i < 100; i++) {
-    await new Promise(ok => setTimeout(ok, 2500));
-    const res = await studioStatus(j.jobId, env, cors);
-    if ((res.headers.get('content-type') || '').includes('json')) {
-      const x = await res.clone().json().catch(() => ({}));
-      if (x.pending) continue;
-    }
-    return res;
-  }
-  return fail('出圖太久了，稍後再試', 'timeout ' + j.jobId, 504);
+  const a = { ...r, used: safeJSON(r.used, {}), codes: safeJSON(r.codes, []) };
+  // 每月 1 號（台灣時間）重置次數
+  if (a.month !== month8()) { a.month = month8(); a.used = {}; }
+  return a;
 }
-
-async function studioStatus(id, env, cors) {
-  const fail = (msg, detail, status = 502) =>
-    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
-  const base = env.IMAGE_API_BASE || env.API_BASE, key = env.IMAGE_API_KEY || env.API_KEY;
-  if (!base || !key) return fail('AI 服務還沒設定好', '', 503);
-  const root = studioRoot(base), auth = { authorization: 'Bearer ' + key };
-  let j;
-  try {
-    const r = await fetch(root + '/api/v1/images/jobs/' + encodeURIComponent(id), { headers: auth });
-    j = await r.json().catch(() => ({}));
-    if (r.status === 404) return fail('找不到這個出圖任務', JSON.stringify(j), 404);
-    if (!r.ok) return json({ pending: true }, 200, cors); // 查詢本身暫時失敗就下一輪再問
-  } catch (e) { return json({ pending: true }, 200, cors); }
-  if (j.phase === 'queued' || j.phase === 'running') return json({ pending: true, phase: j.phase, queue: j.queuePosition || 0 }, 200, cors);
-  if (j.phase === 'failed' || j.phase === 'cancelled') {
-    const e = j.error || {};
-    return fail(e.code === 'cancelled' ? '出圖已取消' : '出圖失敗，換張照片或稍後再試', JSON.stringify(e));
-  }
-  if (j.phase !== 'completed') return json({ pending: true }, 200, cors);
-  let res;
-  try {
-    const r = await fetch(root + '/api/v1/images/jobs/' + encodeURIComponent(id) + '/result', { headers: auth });
-    if (r.status === 410) return fail('圖片已經過期了', '', 410);
-    res = await r.json();
-  } catch (e) { return json({ pending: true }, 200, cors); }
-  const img = res && res.images && res.images[0];
-  if (!img) return fail('出圖完成但沒拿到圖片', JSON.stringify(res));
-  // 有 base64 就直接包成對話格式回給網頁；網頁本來就會從裡面找 data:image
-  if (img.base64) return json({ choices: [{ message: { content: 'data:' + (img.mimeType || 'image/png') + ';base64,' + img.base64 } }] }, 200, cors);
-  if (img.url) {
-    const same = img.url.startsWith(root);
-    const r = await fetch(img.url, same ? { headers: auth } : {}).catch(() => null);
-    if (r && r.ok) return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': r.headers.get('content-type') || img.mimeType || 'image/png' } });
-  }
-  return fail('圖片下載失敗', JSON.stringify(img).slice(0, 200));
+const safeJSON = (s, d) => { try { return JSON.parse(s) || d; } catch (e) { return d; } };
+function tierOf(env, a, device) {
+  const test = String(env.TEST_DEVICES || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (test.includes(device || a.device) || (a.member_until && a.member_until > Date.now())) return 'member';
+  if (a.trial_start && Date.now() < a.trial_start + TRIAL_DAYS * 864e5) return 'trial';
+  return 'free';
 }
-
-function imageRoot(base) {
-  let root = String(base).trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-  if (!/\/v\d+$/.test(root)) root += '/v1'; // 地址忘了加 /v1 也能用
-  return root;
+function view(env, a) {
+  const tier = tierOf(env, a);
+  const limits = Object.fromEntries(Object.entries(QUOTA).map(([k, q]) => [k, q[tier] || 0]));
+  return { tier, month: a.month, used: a.used, limits, points: a.points, cost: POINT_COST,
+    trialUsed: !!a.trial_start, trialEnd: a.trial_start ? a.trial_start + TRIAL_DAYS * 864e5 : null, memberUntil: a.member_until || null };
 }
-
-async function jobStatus(id, env, cors) {
-  const fail = (msg, detail, status = 502) =>
-    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
-  const base = env.IMAGE_API_BASE || env.API_BASE, key = env.IMAGE_API_KEY || env.API_KEY;
-  if (!base || !key) return fail('AI 服務還沒設定好', '', 503);
-  let j;
-  try {
-    const r = await fetch(imageRoot(base) + '/images/generations/' + encodeURIComponent(id), { headers: { authorization: 'Bearer ' + key } });
-    j = await r.json().catch(() => ({}));
-    if (r.status === 404) return fail('找不到這個出圖任務', JSON.stringify(j), 404);
-  } catch (e) { return json({ pending: true }, 200, cors); }
-  const st = j.status || (j.data && j.data.status);
-  if (st === 'failed') return fail('出圖失敗，換張照片或稍後再試', JSON.stringify(j.error || j.fail_reason || j));
-  if (st !== 'completed') return json({ pending: true, progress: j.progress || 0 }, 200, cors);
-  const outUrl = findUrl(j.result) || findUrl(j);
-  if (!outUrl) return fail('出圖完成但沒拿到圖片', JSON.stringify(j));
-  const r = await fetch(outUrl).catch(() => null);
-  if (!r || !r.ok) return fail('圖片下載失敗', outUrl);
-  const type = r.headers.get('content-type') || 'image/png';
-  return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': type.startsWith('image/') ? type : 'image/png' } });
+async function addPoints(env, a, n, why, save) {
+  a.points = Math.max(0, a.points + n);
+  const st = [env.DB.prepare('INSERT INTO ledger(device,t,n,why) VALUES(?,?,?,?)').bind(a.device, Date.now(), n, why)];
+  if (save) st.push(env.DB.prepare('UPDATE accounts SET points=?, codes=? WHERE device=?').bind(a.points, JSON.stringify(a.codes), a.device));
+  await env.DB.batch(st);
 }
-
-async function taskImage(base, key, model, messages, env, cors, async) {
-  const fail = (msg, detail, status = 502) =>
-    json({ error: msg, ...(env.DEBUG === '1' && detail ? { detail: String(detail).slice(0, 300) } : {}) }, status, cors);
-  const parts = messages[0].content;
-  const img = parts.find(p => p.type === 'image_url');
-  const prompt = parts.filter(p => p.type === 'text').map(p => p.text).join('\n').slice(0, 1000);
-  if (!img) return fail('沒有收到照片', '', 400);
-  const auth = { authorization: 'Bearer ' + key };
-  const root = imageRoot(base);
-
-  // 1. 上傳照片
-  const m = img.image_url.url.match(/^data:(image\/[a-z+]+);base64,(.*)$/i);
-  if (!m) return fail('照片格式不支援', '', 400);
-  const bin = atob(m[2]), bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const ext = m[1].split('/')[1].replace('jpeg', 'jpg');
-  const form = new FormData();
-  form.append('file', new Blob([bytes], { type: m[1] }), 'photo.' + ext);
-  let photoUrl;
-  try {
-    const r = await fetch(root + '/uploads/images', { method: 'POST', headers: auth, body: form });
-    const j = await r.json().catch(() => ({}));
-    photoUrl = j && j.data && j.data.url;
-    if (!r.ok || !photoUrl) return fail(r.status === 401 || r.status === 403 ? 'AI 服務設定有誤（密鑰）' : '照片上傳失敗（' + r.status + (j.message ? '，' + j.message : '') + '）', 'upload ' + r.status + ' ' + JSON.stringify(j));
-  } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
-
-  // 2. 送出任務（文件有兩種 image_urls 寫法，第一種被拒就換第二種）
-  let taskId, last = '';
-  for (const urls of [[{ url: photoUrl }], [photoUrl]]) {
-    try {
-      const r = await fetch(root + '/images/generations', {
-        method: 'POST', headers: { ...auth, 'content-type': 'application/json' },
-        body: JSON.stringify({ model, prompt, n: 1, size: '1:1', image_urls: urls })
-      });
-      const j = await r.json().catch(() => ({}));
-      taskId = j.id || j.task_id || (j.data && (j.data.id || j.data.task_id));
-      if (r.ok && taskId) break;
-      last = 'create ' + r.status + ' ' + JSON.stringify(j);
-      taskId = null;
-      if (r.status === 401 || r.status === 403) return fail('AI 服務設定有誤（密鑰）', last);
-      if (r.status === 429) return fail('AI 服務忙碌中，稍後再試', last, 429);
-      if (r.status !== 400 && r.status !== 422) break;
-    } catch (e) { return fail('AI 服務連不上，稍後再試', e.message); }
-  }
-  if (!taskId) return fail('AI 服務設定有誤（模型或格式）', last);
-  // 網頁要自己來查進度：直接回任務編號，這樣使用者切到別的 App 也不會斷
-  if (async) return json({ job: taskId }, 200, cors);
-
-  // 3. 等結果，最多約 2 分鐘
-  let outUrl;
-  for (let i = 0; i < 60 && !outUrl; i++) {
-    await new Promise(r => setTimeout(r, 2000));
-    try {
-      const r = await fetch(root + '/images/generations/' + encodeURIComponent(taskId), { headers: auth });
-      const j = await r.json().catch(() => ({}));
-      const st = j.status || (j.data && j.data.status);
-      if (st === 'failed') return fail('出圖失敗，換張照片或稍後再試', JSON.stringify(j.error || j.fail_reason || j));
-      if (st === 'completed') {
-        outUrl = findUrl(j.result) || findUrl(j);
-        if (!outUrl) return fail('出圖完成但沒拿到圖片', JSON.stringify(j));
-      }
-    } catch (e) { /* 網路抖一下就下一輪再查 */ }
-  }
-  if (!outUrl) return fail('出圖太久了，稍後再試', 'timeout ' + taskId, 504);
-
-  // 4. 把圖轉給網頁（直接串流，不在這裡轉 base64，省運算時間）
-  const r = await fetch(outUrl).catch(() => null);
-  if (!r || !r.ok) return fail('圖片下載失敗', outUrl);
-  const type = r.headers.get('content-type') || 'image/png';
-  return new Response(r.body, { status: 200, headers: { ...cors, 'content-type': type.startsWith('image/') ? type : 'image/png' } });
+async function ledger(env, device) {
+  const r = await env.DB.prepare('SELECT t,n,why FROM ledger WHERE device=? ORDER BY t DESC LIMIT 40').bind(device).all();
+  return r.results || [];
 }
-
-function findUrl(o) {
-  if (!o) return null;
-  if (typeof o === 'string') return /^https?:\/\//.test(o) ? o : null;
-  if (Array.isArray(o)) { for (const x of o) { const u = findUrl(x); if (u) return u; } return null; }
-  if (typeof o === 'object') {
-    for (const k of ['data', 'url', 'image_url', 'images', 'output', 'urls']) if (k in o) { const u = findUrl(o[k]); if (u) return u; }
-  }
-  return null;
+function codeList(env) {
+  return String(env.REDEEM_CODES || '').split(',').map(s => s.trim()).filter(Boolean).map(s => {
+    const [c, p] = s.split(':'); return { code: String(c || '').trim().toUpperCase(), pts: Math.max(0, parseInt(p) || 0) };
+  }).filter(c => c.code && c.pts);
 }
 
 function originAllowed(origin, env) {
@@ -351,7 +285,8 @@ function originAllowed(origin, env) {
 function corsHeaders(origin) {
   const h = {
     'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-device, x-async',
+    'access-control-allow-headers': 'content-type, x-device, x-op, x-points',
+    'access-control-expose-headers': 'x-acct',
     'access-control-max-age': '86400',
     vary: 'origin'
   };

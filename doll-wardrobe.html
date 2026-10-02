@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=47"></script>
+<script src="i18n/i18n.js?v=48"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2055,12 +2055,32 @@ const QUOTA={
   wearid:{name:'穿搭照辨識',free:3,member:50,trial:10},
   idea:{name:'AI 搭配建議',free:3,member:50,trial:10}
 };
-function usage(){const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
+/* ---- 後台記帳 ----
+   有接後台、後台也綁了資料庫時，次數、點數、會員、試用都以後台為準：S.acct 是最近一次從後台拿到的帳
+   （每次問 AI 的回應標頭 x-acct 也會帶最新的帳）。開發者直連 API、或後台還沒綁資料庫時，照舊記在手機裡。 */
+const acctOn=()=>viaBackend()&&!!(S.acct&&S.acct.tier);
+function acctSet(j){if(!j||!j.tier)return;const log=j.log||(S.acct&&S.acct.log)||[];S.acct={...j,log};save();updateWalletChip()}
+async function acctReq(path,body){
+  const r=await fetch(backendURL()+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-device':deviceId()},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===404&&/資料庫/.test(j.error||'')){S.acct=null;save();return {ok:false,nodb:true,j}}
+  if(j&&j.tier)acctSet(j);
+  return {ok:r.ok,j};
+}
+async function acctLoad(){if(!viaBackend())return;try{await acctReq('/account')}catch(e){}}
+// 同一次操作（例如買前檢查要問兩次 AI）只扣一次：開始時給一個號碼，問完清掉
+let AI_OP='';
+// 這個月額度用完後，同意改用點數（每個月問一次）
+const ptsOk=()=>S.settings.ptsMonth===today().slice(0,7);
+function usage(){
+  if(acctOn())return S.acct.used||{};
+  const m=today().slice(0,7);if(!S.usage||S.usage.month!==m)S.usage={month:m};return S.usage}
 // 試用期間：分析全部打開，但 AI 次數比正式會員少，避免三天內把整個衣櫃都跑完
-const quotaMax=k=>S.settings.member?QUOTA[k].member:trialOn()?QUOTA[k].trial:QUOTA[k].free;
+const quotaMax=k=>acctOn()?(S.acct.limits||{})[k]||0:S.settings.member?QUOTA[k].member:trialOn()?QUOTA[k].trial:QUOTA[k].free;
 const quotaLeft=k=>Math.max(0,quotaMax(k)-(usage()[k]||0));
 // 先用額度，額度用完才扣點數
 function spendQuota(k){
+  if(acctOn()){updateWalletChip();return} // 後台問成功時已經扣好了
   const u=usage();
   if(quotaLeft(k)>0){u[k]=(u[k]||0)+1;save()}
   else addPoints(-POINT_COST[k],QUOTA[k].name);
@@ -2069,7 +2089,7 @@ function spendQuota(k){
 function needQuota(k){
   if(QUOTA[k].memberOnly&&!isMember()){memberOnly(k);return false}
   if(quotaLeft(k)>0)return true;
-  if(wallet().points>=POINT_COST[k]){if(usage().pts)return true;askPoints(k);return false}
+  if(wallet().points>=POINT_COST[k]){if(ptsOk())return true;askPoints(k);return false}
   quotaBlocked(k);return false;
 }
 // 會員限定的功能：不給免費額度，也不能用點數
@@ -2100,8 +2120,8 @@ const PACKS=[{pts:30,price:30,usd:.99},{pts:100,price:90,usd:2.99,tag:'熱門'},
 // 價格：台灣用台幣，其他國家一律用美金
 const twPrice=()=>homeCountry()==='台灣';
 const priceText=(twd,usd)=>twPrice()?`NT$${twd}`:`US$${usd}`;
-const TEST_CODES={DOLL2026:20,WELCOME:10};   // 網頁版測試用兌換碼，上架後改由伺服器驗證
-function wallet(){return S.wallet=S.wallet||{points:0,log:[],codes:[]}}
+// 兌換碼放在後台（Cloudflare 的 REDEEM_CODES），程式裡不放
+function wallet(){if(acctOn())return {points:S.acct.points||0,log:S.acct.log||[],codes:[]};return S.wallet=S.wallet||{points:0,log:[],codes:[]}}
 const canPay=k=>quotaLeft(k)>0||wallet().points>=POINT_COST[k];
 function addPoints(n,why){
   const w=wallet();w.points=Math.max(0,w.points+n);
@@ -2110,7 +2130,7 @@ function addPoints(n,why){
 }
 function updateWalletChip(){
   const c=document.getElementById('wchip');if(!c)return;
-  c.innerHTML=S.settings.member?'<i>♛</i>會員':trialOn()?'<i>♛</i>試用':`<i>✦</i>${wallet().points}`;
+  c.innerHTML=isPaid()?'<i>♛</i>會員':trialOn()?'<i>♛</i>試用':`<i>✦</i>${wallet().points}`;
 }
 // 會員每月額度，換算成點數大概值多少
 const memberValue=()=>Object.entries(QUOTA).reduce((a,[k,q])=>a+(q.member-q.free)*POINT_COST[k],0);
@@ -2121,7 +2141,7 @@ function askPoints(k){
     <p class="hint" style="margin-top:10px">同意後，這個月額度用完時會自動改用點數，不會再問。</p>
     <div class="row" style="margin-top:14px">
       <button class="btn ghost grow" onclick="closeSheet()">先不要</button>
-      <button class="btn grow" onclick="usage().pts=1;save();closeSheet();toast('好了，再按一次就會用點數')">用點數繼續</button>
+      <button class="btn grow" onclick="S.settings.ptsMonth=today().slice(0,7);save();closeSheet();toast('好了，再按一次就會用點數')">用點數繼續</button>
     </div>`);
 }
 function renderWallet(){
@@ -2154,7 +2174,7 @@ function renderWallet(){
   <h2 class="sec" id="packs">儲值點數</h2>
   <div class="packs">${PACKS.map((p,i)=>`<button class="pack" onclick="buyPack(${i})">
     ${p.tag?`<em>${p.tag}</em>`:''}<b>${p.pts}<small> 點</small></b><span>${priceText(p.price,p.usd)}</span><small class="per">每點 $${((twPrice()?p.price:p.usd)/p.pts).toFixed(twPrice()?2:3)}</small></button>`).join('')}</div>
-  <p class="hint" style="margin-top:8px">網頁版是測試模式，按了會直接加點數，不會真的付款。</p>
+  <p class="hint" style="margin-top:8px">上架成 App 後開放儲值。</p>
 
   <h2 class="sec">兌換碼</h2>
   <div class="row"><input type="text" id="code" class="grow" placeholder="輸入兌換碼" autocapitalize="characters" onkeydown="if(event.key==='Enter')redeem()">
@@ -2164,17 +2184,18 @@ function renderWallet(){
   ${w.log.length?`<div class="blist">${w.log.slice(0,20).map(l=>`<div class="lrow"><span>${esc(l.why)}<small>${new Date(l.t).toLocaleDateString()}</small></span><b class="${l.n>0?'plus':''}">${l.n>0?'+':''}${l.n}</b></div>`).join('')}</div>`
     :`<p class="hint">還沒有紀錄。</p>`}`;
 }
-async function buyPack(i){
-  const p=PACKS[i];
-  if(!confirm(`測試模式：直接加 ${p.pts} 點（正式版會是 ${priceText(p.price,p.usd)} 的購買流程）`))return;
-  addPoints(p.pts,`儲值 ${p.pts} 點`);renderWallet();toast(`已加 ${p.pts} 點`);
-}
-function redeem(){
-  const el=document.getElementById('code'),c=el.value.trim().toUpperCase(),w=wallet();
+// 儲值：上架成 App 後接 Google Play／App Store（RevenueCat）
+function buyPack(i){const p=PACKS[i];toast(`上架成 App 後就可以儲值 ${p.pts} 點`)}
+async function redeem(){
+  const el=document.getElementById('code'),c=el.value.trim().toUpperCase();
   if(!c)return;
-  if(w.codes.includes(c)){toast('這個兌換碼已經用過了');return}
-  const n=TEST_CODES[c];if(!n){toast('兌換碼不正確');return}
-  w.codes.push(c);addPoints(n,`兌換碼 ${c}`);el.value='';renderWallet();toast(`兌換成功，加 ${n} 點`);
+  if(!viaBackend()){toast('兌換碼要連上 AI 後台才能用');return}
+  try{
+    const r=await acctReq('/redeem',{code:c});
+    if(r.nodb){toast('兌換碼要等後台更新後才能用');return}
+    if(!r.ok){toast(r.j.error||'兌換失敗，稍後再試');return}
+    el.value='';renderWallet();toast(`兌換成功，加 ${r.j.added} 點`);
+  }catch(e){toast('連不上後台，檢查一下網路')}
 }
 
 /* ---- 去背方式：每次讓使用者自己選（或記住選擇）---- */
@@ -2222,9 +2243,13 @@ async function aiChat(task,content){
   if(viaBackend()){
     try{
       const h={'content-type':'application/json','x-device':deviceId()};
+      if(AI_OP)h['x-op']=AI_OP;
+      if(ptsOk())h['x-points']='1';
       r=await fetch(backendURL()+'/ai',{method:'POST',headers:h,body:JSON.stringify({task,messages:[{role:'user',content}]})});
     }catch(e){throw new Error('連不上 AI 服務，檢查一下網路')}
-    if(!r.ok){let m='';try{const j=await r.json();m=(j.error||'')+(j.status?' #'+j.status:'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
+    // 後台記帳：回應裡帶著扣完之後的帳
+    try{const a=r.headers.get('x-acct');if(a)acctSet(JSON.parse(decodeURIComponent(a)))}catch(e){}
+    if(!r.ok){let m='';try{const j=await r.json();if(j.tier)acctSet(j);m=(j.error||'')+(j.status?' #'+j.status:'')+(j.detail?'｜'+j.detail.slice(0,160):'')}catch(e){}throw new Error(m||'AI 服務暫時有問題（'+r.status+'）')}
     return readAIReply(await r.text());
   }
   const c=cfg();
@@ -2833,7 +2858,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-72';
+const APP_VER='2026.10.01-73';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -3012,6 +3037,7 @@ function sendFeedback(){
   location.href=`mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent('【哇娃衣櫃】'+FB.type)}&body=${encodeURIComponent(body)}`;
 }
 function openIG(){const u='https://instagram.com/'+FEEDBACK_IG;if(isApp())location.href=u;else window.open(u,'_blank','noopener')}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('已複製')}catch(e){prompt('長按複製',t)}}
 async function copyFeedbackMail(){try{await navigator.clipboard.writeText(FEEDBACK_EMAIL);toast('已複製信箱')}catch(e){toast(FEEDBACK_EMAIL)}}
 // 好久沒換裝的提醒：按叉叉後選 2 週後再提醒，或不再提醒（days=0）
 async function idleSnooze(id,days){
@@ -4517,7 +4543,7 @@ async function recheckWish(id,go){
   const z=w.size||(go?BUY.size:'')||buyDefSize();
   openBuyCheck();
   BUY.photo=w.photo;BUY.wishId=id;BUY.size=z;if(!w.size)w.size=z;
-  BUY.busy=true;
+  BUY.busy=true;BUY.op=AI_OP=uid('op');
   try{
     if(!w.summary||!w.t||!(w.t.styles||[]).length){
       buyStep('分析這件娃衣…');
@@ -4527,8 +4553,8 @@ async function recheckWish(id,go){
     }
     BUY.t=w.t;
     if(await buyCompare()){spendQuota('buy');const v=BUY.verdict||[],n=l=>v.filter(x=>x.level===l).length;w.summary={same:n('same'),recolor:n('recolor'),similar:n('similar')};await save();if(UI.tab==='wish')renderWish()}
-    else toast('圖片比對沒有成功，這次不扣次數');
-  }catch(e){toast(e.message)}finally{BUY.busy=false}
+    else toast(cmpFailMsg());
+  }catch(e){toast(e.message)}finally{BUY.busy=false;AI_OP=''}
 }
 /* ---- 考慮中：自己加一筆（像購物車） ---- */
 let WD={};
@@ -6190,20 +6216,31 @@ async function delLook(id){
    8b. 搭配分析（會員功能）
    用穿著紀錄算：最常穿的 Look、最萬搭的單品、固定組合、每隻娃娃的最愛。
    ============================================================ */
-const isMember=()=>!!S.settings.member||trialOn();
+const isMember=()=>acctOn()?S.acct.tier!=='free':!!S.settings.member||trialOn();
+// 正式會員（不含試用）
+const isPaid=()=>acctOn()?S.acct.tier==='member':!!S.settings.member;
+const trialUsed=()=>acctOn()?!!S.acct.trialUsed:!!S.settings.trial;
 /* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
 const PLANS=[{id:'month',name:'月訂',price:90,usd:3,per:'月'},{id:'year',name:'年訂',price:900,usd:30,per:'年',tag:'最划算'}];
 const TRIAL_DAYS=3;
-const trialOn=()=>{const t=S.settings.trial;return !!(t&&Date.now()<t.end)};
-const trialLeft=()=>{const t=S.settings.trial;return t?Math.max(0,Math.ceil((t.end-Date.now())/864e5)):0};
-const trialEndText=()=>{const d=new Date(S.settings.trial.end);return `${d.getMonth()+1}/${d.getDate()}`};
+const trialEndAt=()=>acctOn()?S.acct.trialEnd||0:(S.settings.trial||{}).end||0;
+const trialOn=()=>acctOn()?S.acct.tier==='trial':Date.now()<trialEndAt();
+const trialLeft=()=>Math.max(0,Math.ceil((trialEndAt()-Date.now())/864e5));
+const trialEndText=()=>{const d=new Date(trialEndAt());return `${d.getMonth()+1}/${d.getDate()}`};
 async function startTrial(){
-  if(S.settings.trial){toast('免費試用已經用過了');return}
-  S.settings.trial={start:Date.now(),end:Date.now()+TRIAL_DAYS*864e5};await save();updateWalletChip();closeSheet();
+  if(trialUsed()){toast('免費試用已經用過了');return}
+  if(viaBackend()){
+    try{
+      const r=await acctReq('/trial',{});
+      if(!r.ok&&!r.nodb){toast(r.j.error||'開始試用失敗，稍後再試');return}
+      if(r.nodb)S.settings.trial={start:Date.now(),end:Date.now()+TRIAL_DAYS*864e5};
+    }catch(e){toast('連不上後台，檢查一下網路');return}
+  }else S.settings.trial={start:Date.now(),end:Date.now()+TRIAL_DAYS*864e5};
+  await save();updateWalletChip();closeSheet();
   toast(`開始免費試用 ${TRIAL_DAYS} 天！`);setTimeout(openMemberHub,300);
 }
 // 上架前的佔位：這些按鈕之後接 App 內購
-function subscribe(id){const p=PLANS.find(x=>x.id===id);toast(`上架成 App 後，這裡會打開${p?p.name:''}訂閱付款（測試期間可以在最下面直接開啟會員）`)}
+function subscribe(id){const p=PLANS.find(x=>x.id===id);toast(`上架成 App 後，這裡會打開${p?p.name:''}訂閱付款`)}
 function manageSub(){toast('上架成 App 後，這裡會打開 App Store／Google Play 的訂閱管理，取消或換方案都在那裡')}
 function restorePurchase(){toast('上架成 App 後，換手機或重裝時按這裡，就能把已經買的會員拿回來')}
 function openSubInfo(){openSheet(`<h3>訂閱說明</h3>
@@ -6308,8 +6345,8 @@ function openMember(){
     <div class="mbox">${FREE_ALL.map(([i,t,d])=>`<div class="mfeat"><i>${i}</i><div><b>${t}</b>${d?`<small>${d}</small>`:''}</div><div class="mq"><span>✓</span><span class="on">✓</span></div></div>`).join('')}</div>
     <div class="note" style="margin-top:14px">會員每月多出的 AI 額度，大約等於 ${memberValue()} 點。${PLANS.map(p=>`${p.name} ${priceText(p.price,p.usd)}`).join('、')}（價格暫定）。</div>
     <p class="hint" style="margin:10px 2px 0">即將推出：☁️ 雲端自動備份（還在規劃中，不包含在目前的會員方案裡）</p>
-    ${!isMember()&&!S.settings.trial?`<button class="btn wide" style="margin-top:14px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`:''}
-    <button class="btn ghost wide" style="margin-top:8px" onclick="openSettings('member')">${S.settings.member?'會員與 AI 設定':'看訂閱方案'}</button>`);
+    ${!isMember()&&!trialUsed()?`<button class="btn wide" style="margin-top:14px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`:''}
+    <button class="btn ghost wide" style="margin-top:8px" onclick="openSettings('member')">${isPaid()?'會員與 AI 設定':'看訂閱方案'}</button>`);
 }
 
 /* ---- 我的會員：會員自己看的頁面 ----
@@ -6332,7 +6369,7 @@ function openMemberHub(){
       <em><b>${left}</b><small>/ ${max}</small></em></button>`};
   const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
   openSheet(`<h3>♛ 我的會員</h3>
-    ${S.settings.member?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
+    ${isPaid()?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
       :`<div class="mcard"><b>免費試用中・還剩 ${trialLeft()} 天</b><span>到 ${trialEndText()} 為止，所有會員分析都打開；試用期間 AI 次數比正式會員少一些。喜歡的話到「設定 → 會員與 AI」訂閱。</span><div style="margin-top:10px"><button class="btn sm" onclick="openSettings('member')">看訂閱方案</button></div></div>`}
     <p class="mlabel">本月 AI 額度・點一下直接去用</p>
     <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
@@ -6357,7 +6394,6 @@ function openMemberHub(){
     </div>
     <div class="mfoot"><button class="btn ghost" onclick="closeSheet();go('wallet')">💰 錢包・${wallet().points} 點</button><button class="btn ghost" onclick="openMember()">📋 方案比較</button></div>`);
 }
-async function setMember(v){S.settings.member=v;await save();closeSheet();updateWalletChip();if(UI.tab==='wallet')renderWallet();renderMatch();if(UI.tab==='insight')renderInsight();if(UI.tab==='intake')renderQueue();toast(v?'已開啟會員功能':'已關閉會員功能')}
 function loadLook(id){
   const l=S.looks.find(x=>x.id===id);
   UI.canvas=JSON.parse(JSON.stringify(l.layout||l.itemIds.map((i,n)=>({itemId:i,x:30+n*8,y:30+n*8,scale:120,rot:0}))));
@@ -8097,16 +8133,18 @@ function buyScore(t,i){
   return s;
 }
 // 比對失敗後重試：成功才扣一次
+// 後台記帳時，分析那一步成功就算一次；同一次檢查再比對不會再扣
+const cmpFailMsg=()=>acctOn()?'圖片比對沒有成功，按「再比對一次」不會再扣次數':'圖片比對沒有成功，這次不扣次數';
 async function buyRetry(){
   if(BUY.busy||!BUY.t)return;
   if(!needQuota('buy'))return;
-  BUY.busy=true;
-  try{if(await buyCompare())spendQuota('buy');else toast('還是沒有成功，這次一樣不扣次數，可以晚一點再試')}catch(e){toast(e.message)}finally{BUY.busy=false}
+  BUY.busy=true;AI_OP=BUY.op||'';
+  try{if(await buyCompare())spendQuota('buy');else toast(acctOn()?'還是沒有成功，可以晚一點再按「再比對一次」，不會再扣次數':'還是沒有成功，這次一樣不扣次數，可以晚一點再試')}catch(e){toast(e.message)}finally{BUY.busy=false;AI_OP=''}
 }
 async function runBuy(file){
   if(BUY.busy)return;
   if(!needQuota('buy'))return;
-  BUY.busy=true;
+  BUY.busy=true;BUY.op=AI_OP=uid('op');
   try{
     BUY.photo=await compress(file);
     buyStep('分析這件娃衣…');
@@ -8115,12 +8153,12 @@ async function runBuy(file){
       colors:r.colors||[],styles:(r.styles||[]).filter(x=>x&&x.name),motifs:r.motifs||[],season:r.season||'',holiday:(typeof HOL_NAMES!=='undefined'&&HOL_NAMES.includes(r.holiday))?r.holiday:'',material:r.material||''};
     BUY.t=t;BUY.wishId=null;
     if(await buyCompare())spendQuota('buy');
-    else toast('圖片比對沒有成功，這次不扣次數');
+    else toast(cmpFailMsg());
   }catch(e){
     const el=document.getElementById('buyOut');
     if(el)el.innerHTML=`<div class="note" style="margin-top:14px">分析失敗：${esc(e.message)}</div>
       <button class="btn ghost wide" style="margin-top:12px" onclick="openBuyCheck()">重新選照片</button>`;
-  }finally{BUY.busy=false}
+  }finally{BUY.busy=false;AI_OP=''}
 }
 const GONE_REASONS=['賣掉了','送人了','交換了'];
 // 以前賣掉、送走的類似娃衣
@@ -8241,7 +8279,7 @@ function renderBuy(){
         </div></div>
     </div>
     <div class="note" style="margin-top:14px">${msg}</div>
-    ${BUY.cmpErr?`<div class="note warnnote" style="margin-top:10px">圖片比對沒有成功（${esc(BUY.cmpErr)}），<b>這次不扣次數</b>。下面先列出用名稱和標籤找到的，可能不準。
+    ${BUY.cmpErr?`<div class="note warnnote" style="margin-top:10px">圖片比對沒有成功（${esc(BUY.cmpErr)}），<b>${acctOn()?'再比對一次不會再扣次數':'這次不扣次數'}</b>。下面先列出用名稱和標籤找到的，可能不準。
       <button class="btn sm" style="margin-top:8px" onclick="buyRetry()">再比對一次</button></div>`:''}
     ${group('幾乎一樣','',same)}
     ${group('同款不同色','',recolor)}
@@ -8574,7 +8612,7 @@ function openSettings(page){
   const head=`<div class="sethead"><button onclick="readForm();openSettings()" aria-label="回設定">‹ 設定</button></div><h3>${page==='work'?(routines().length>1?'陪伴日常':'陪'+esc(workLbl())):SET_PAGES[page]}</h3>`;
   let body='';
   if(page==='member'){
-    const paid=!!st.member,tr=trialOn();
+    const paid=isPaid(),tr=trialOn();
     const plan=p=>{const tw=twPrice(),amt=tw?p.price:p.usd,sym=tw?'NT$':'US$',per=p.per==='年'?(tw?Math.round(amt/12):(amt/12).toFixed(2)):0;
       return `<button class="plancard" onclick="subscribe('${p.id}')">${p.tag?`<em>${p.tag}</em>`:''}<b>${p.name}</b><span><strong>${sym}${amt}</strong> / ${p.per}</span>${per?`<small>平均每月 ${sym}${per}</small>`:'<small>&nbsp;</small>'}</button>`};
     body=`
@@ -8586,7 +8624,7 @@ function openSettings(page){
         <div class="plans">${PLANS.map(plan).join('')}</div>
         <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMemberHub()">我的會員功能</button>`
       :`<div class="row"><span class="grow"><b style="font-size:15px">免費版</b><div class="hint">衣櫃、建檔、貼圖、穿搭紀錄都一直免費；會員多了 AI 額度和進階分析</div></span></div>
-        ${st.trial?'':`<button class="btn wide" style="margin-top:12px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`}
+        ${trialUsed()?'':`<button class="btn wide" style="margin-top:12px" onclick="startTrial()">先免費試用 ${TRIAL_DAYS} 天</button>`}
         <div class="plans">${PLANS.map(plan).join('')}</div>
         <button class="btn sm ghost wide" style="margin-top:10px" onclick="openMember()">📋 免費版和會員的差別</button>`}
     </div>
@@ -8600,11 +8638,7 @@ function openSettings(page){
       <button class="setrow" onclick="toast('上架前會放上服務條款')"><i>📜</i><span><b>服務條款</b></span><em>›</em></button>
       <button class="setrow" onclick="toast('上架前會放上隱私權政策')"><i>🔒</i><span><b>隱私權政策</b></span><em>›</em></button>
     </div>
-    <div class="card" style="margin-top:12px;border-style:dashed">
-      <p class="hint" style="margin:0 0 8px">測試用（上架後拿掉）</p>
-      <div class="row" style="gap:8px"><button class="btn sm ${paid?'ghost':'quiet'} grow" onclick="setMember(${!paid})">${paid?'關閉會員':'直接開啟會員'}</button>
-        ${st.trial?`<button class="btn sm ghost grow" onclick="S.settings.trial=null;save().then(()=>{updateWalletChip();openSettings('member')})">重置試用</button>`:''}</div>
-    </div>`;
+`;
   }
   if(page==='feedback')body=`<p class="hint" style="margin:-6px 0 12px">想要的功能、用起來卡卡的地方，或只是想說說話，都歡迎寫給我。按「寄出」會打開手機的寄信 App。</p>
     <div class="swap fbtype" id="fb_type">${FB_TYPES.map(t=>`<button type="button" class="${FB.type===t?'on':''}" onclick="FB.type=txt(this);document.querySelectorAll('#fb_type button').forEach(b=>b.classList.toggle('on',b===this))">${t}</button>`).join('')}</div>
@@ -8752,7 +8786,9 @@ function openSettings(page){
       <p class="hint" style="margin-top:10px">儲存方式：${DB.mode==='host'?'App 儲存空間':DB.mode==='idb'?'瀏覽器 IndexedDB':'僅此工作階段（無法保存，請務必匯出）'}</p>
     </div>
     <button class="btn ghost wide" style="margin-top:10px;color:var(--muted)" onclick="wipe()">清空所有資料</button>`;}
-  if(page==='dev')body=`    <div class="card"><div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span><button class="btn sm quiet" onclick="testAPI(this)">測試</button></div></div>
+  if(page==='dev')body=`    <div class="card"><div class="row" style="align-items:center"><span class="grow" style="font-size:13.5px">這台手機的裝置代碼<br><b translate="no" style="font-family:monospace;font-size:13px">${esc(deviceId())}</b></span><button class="btn sm ghost" onclick="copyText(deviceId())">複製</button></div>
+      <p class="hint" style="margin:8px 0 0">想用會員測試：把這串加到 Cloudflare 的 <b translate="no">TEST_DEVICES</b>。${acctOn()?`現在後台記帳：${esc({free:'免費',trial:'試用',member:'會員'}[S.acct.tier]||S.acct.tier)}・${S.acct.points||0} 點`:'後台還沒開始記帳（還沒綁資料庫，或沒連後台）'}</p></div>
+    <div class="card"><div class="row"><span class="grow" style="font-size:13.5px">AI 服務 ${aiReady()?'<b style="color:var(--berry-deep)">可以使用</b>':'暫時無法使用'}</span><button class="btn sm quiet" onclick="testAPI(this)">測試</button></div></div>
     <div class="row" style="margin-top:18px"><h2 class="sec grow" style="margin:0">開發者模式</h2><button class="btn sm ghost" onclick="readForm();setDev(false)">關閉</button></div>
     <div class="card" style="margin-top:6px">
       <label class="f"><span>後台網址</span>
@@ -8943,7 +8979,7 @@ async function diagnose(btn){
     try{
       const r=await fetch(backendURL()+'/health');const j=await r.json();
       const miss=[['API 地址',j.api],['API 密鑰',j.key],['文字模型',j.text]].filter(x=>!x[1]).map(x=>x[0]);
-      h=(miss.length?'還沒填：'+miss.join('、'):'必填的都填好了')+'　出圖模型'+(j.image?'有':'沒')+'填'+(j.imageApi?'（另一個中轉站'+(j.imageKey?'':'，但密鑰沒填')+'）':'')+'・次數限制'+(j.limit?'有':'沒')+'開・網址白名單'+(j.origins?'有':'沒')+'設';
+      h=(miss.length?'還沒填：'+miss.join('、'):'必填的都填好了')+'　記帳資料庫'+(j.db?'有':'沒')+'綁・兌換碼 '+(j.codes||0)+' 個・網址白名單'+(j.origins?'有':'沒')+'設';
     }catch(e){h='連不上後台　檢查網址有沒有打對、Worker 有沒有按 Deploy'}
     out.push(['後台設定',h]);
     let p;
@@ -9162,6 +9198,7 @@ document.addEventListener('wheel',e=>{
   await load();
   applyTheme();
   go('home');
+  acctLoad().then(()=>{if(UI.tab==='home')renderHome()});
   // 請瀏覽器不要自動清掉這個網站的資料（有支援的瀏覽器才會生效）
   try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))navigator.storage.persist()}catch(e){}
   if(!isApp()&&'serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
