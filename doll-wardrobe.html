@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=49"></script>
+<script src="i18n/i18n.js?v=51"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2194,7 +2194,9 @@ async function redeem(){
     const r=await acctReq('/redeem',{code:c});
     if(r.nodb){toast('兌換碼要等後台更新後才能用');return}
     if(!r.ok){toast(r.j.error||'兌換失敗，稍後再試');return}
-    el.value='';renderWallet();toast(`兌換成功，加 ${r.j.added} 點`);
+    el.value='';renderWallet();
+    if(r.j.days){toast(`兌換成功，會員 ${r.j.days} 天（到 ${memberUntilText()}）`);if(UI.tab==='insight')renderInsight()}
+    else toast(`兌換成功，加 ${r.j.added} 點`);
   }catch(e){toast('連不上後台，檢查一下網路')}
 }
 
@@ -2858,7 +2860,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-74';
+const APP_VER='2026.10.01-76';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -6247,6 +6249,8 @@ const isMember=()=>acctOn()?S.acct.tier!=='free':!!S.settings.member||trialOn();
 // 正式會員（不含試用）
 const isPaid=()=>acctOn()?S.acct.tier==='member':!!S.settings.member;
 const trialUsed=()=>acctOn()?!!S.acct.trialUsed:!!S.settings.trial;
+// 用兌換碼拿到的會員：有到期日（之後接商店訂閱，訂閱的到期日也放這裡）
+const memberUntilText=()=>{const t=acctOn()&&S.acct.memberUntil;if(!t)return '';const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 /* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
 const PLANS=[{id:'month',name:'月訂',price:90,usd:3,per:'月'},{id:'year',name:'年訂',price:900,usd:30,per:'年',tag:'最划算'}];
 const TRIAL_DAYS=3;
@@ -6396,7 +6400,7 @@ function openMemberHub(){
       <em><b>${left}</b><small>/ ${max}</small></em></button>`};
   const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
   openSheet(`<h3>♛ 我的會員</h3>
-    ${isPaid()?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
+    ${isPaid()?`<div class="mcard"><b>會員功能已開啟${memberUntilText()?`・到 ${memberUntilText()}`:''}</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
       :`<div class="mcard"><b>免費試用中・還剩 ${trialLeft()} 天</b><span>到 ${trialEndText()} 為止，所有會員分析都打開；試用期間 AI 次數比正式會員少一些。喜歡的話到「設定 → 會員與 AI」訂閱。</span><div style="margin-top:10px"><button class="btn sm" onclick="openSettings('member')">看訂閱方案</button></div></div>`}
     <p class="mlabel">本月 AI 額度・點一下直接去用</p>
     <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
@@ -8537,7 +8541,7 @@ const HELP=[
     ['會員功能。會告訴你衣櫃裡有沒有幾乎一樣、同款不同色或風格很像的；以前賣掉、送走的娃衣裡有很像的也會提醒你。','開始前先選「要買給哪個尺寸」（會記住上次選的），只跟同尺寸的娃衣比；別的尺寸有很像的會另外列出來，適合的娃娃也只推薦這個尺寸的。','「考慮中」像購物車：按「＋ 加進考慮中」一筆一筆加（可以選幣別，外幣會換算），會員也可以用「📸 截圖匯入」丟購物車或商品頁的截圖一次加好幾件。想跟衣櫃比對再按「再檢查」。','決定買了按「買了」：預購、現貨還在寄的會放進「購買中」，已經拿到的放進「待建檔」；名稱、價格、店家、商品圖都會帶過去。','到貨的娃衣（購買中改成「已到貨」、截圖匯入時就是已到貨的）會移到「待建檔」：有空就「📷 拍照建檔」；沒空先按「先建檔」，會用商品圖直接放進衣櫃，可以穿搭、算花費，衣櫃「可以補充」會列出還沒拍實物照的，之後在單品頁按「📷 拍實物照」補拍。右上「☑ 多選」可以一次改購買日期、到貨日期、購買管道、產地、品牌、尺寸、類型，或一起先建檔。','預購、運送中的娃衣記在「購買中」，可以標尺寸、系列和品牌；同一團買很多件，用「一次記多筆」一行寫一件。','購買中會把快到家的排在最上面：已到貨、運送中、製作中、已付款、開團中，同一個進度再照預計到貨日排。東西多的時候，用上面的搜尋框找名稱、系列、品牌或購買管道。','會員可以用「📸 截圖匯入」：丟購物 App 的訂單截圖，AI 讀出品名、價格、進度並剪下商品小圖；人民幣等外幣照當天匯率加海外手續費換算（也可以自己填刷卡帳單上的匯率），原價會寫在備註；也會順便讀顏色和風格，到貨建檔時不用再按 AI 分析。','商品圖剪歪了，在單筆裡按「✂️ 調整商品圖」拖曳、放大重新框一次；截圖匯入的會多留一圈，可以往外移。','「多選」可以一次改進度、預計到貨、尺寸、系列、品牌，到貨的一起拿去建檔。','快到貨和到貨還沒建檔的，首頁和建檔頁會提醒你；建檔後壓箱底從到貨日開始算。','首頁只列目前娃娃尺寸的購買中；全部尺寸的在「洞察」最上面。']],
   // ── 會員
   ['👑','會員與免費試用',[['⚙️','設定 → 會員與 AI'],['🎁','免費試用 3 天'],['👑','右上「會員」'],['🔄','恢復購買']],
-    ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「👑 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。','AI 功能每個月 1 號會給一次額度，免費版也有；用完可以用點數。右上角的 ✦ 點數（會員在「我的會員」最下面）可以看這個月還剩幾次、儲值點數、輸入兌換碼。']],
+    ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「👑 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。','用兌換碼拿到的會員和點數跟著這支手機：換手機或重裝前先做一次備份，到新手機還原時選「搬過來」就會一起帶過去。','AI 功能每個月 1 號會給一次額度，免費版也有；用完可以用點數。右上角的 ✦ 點數（會員在「我的會員」最下面）可以看這個月還剩幾次、儲值點數、輸入兌換碼。']],
   ['📸','截圖匯入購買中',[['📦','購買中 → 截圖匯入'],['🖼️','選訂單截圖'],['✨','AI 讀取'],['☑️','確認後存']],
     ['會員功能。把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格、進度，順便剪下商品小圖、看顏色和風格。','人民幣等外幣會照當天匯率加上海外手續費換算，也可以改成自己填刷卡帳單上的匯率；原價會寫在備註。','確認畫面可以改名稱、類型、金額；退款的、已經記過的預設不勾。每張截圖用 1 次 AI 建檔分析，讀不出來的不扣。','商品圖剪歪了，打開那一筆按「✂️ 調整商品圖」重新框。']],
   ['📅','娃娃的一年（年度回顧）',[['📊','洞察 → 👑 會員分析'],['🗓️','選年份'],['🧸','今年來到身邊的娃娃'],['🎉','做成年度小卡']],
@@ -8645,7 +8649,7 @@ function openSettings(page){
     body=`
     <p class="mlabel" style="margin-top:0">我的方案</p>
     <div class="card">
-      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">下次續訂：上架後會顯示日期和金額</div></span></div>
+      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">${memberUntilText()?`會員到 ${memberUntilText()}`:'下次續訂：上架後會顯示日期和金額'}</div></span></div>
         <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm ghost grow" onclick="openMemberHub()">我的會員功能</button><button class="btn sm ghost grow" onclick="manageSub()">管理訂閱</button></div>`
       :tr?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 免費試用中</b><div class="hint">還剩 ${trialLeft()} 天（到 ${trialEndText()}），試用結束前訂閱就不會中斷</div></span></div>
         <div class="plans">${PLANS.map(plan).join('')}</div>
@@ -9051,7 +9055,8 @@ async function diagnose(btn){
 const BK_IMG={items:['photo','cutout','cutSrc','cutMask'],memory:['photo','cutout','cutSrc','cutMask'],dolls:['photo','raw'],wears:['photo'],wish:['photo'],orders:['photo','photoSrc']};
 function backupParts(withImages){
   const parts=[],data={items:S.items,sets:S.sets,looks:S.looks,wears:S.wears,dolls:S.dolls,wish:S.wish,memory:S.memory,orders:S.orders};
-  parts.push(`{"format":"doll-wardrobe","version":1,"exportedAt":${JSON.stringify(new Date().toISOString())},"withImages":${withImages},"data":{`);
+  // 裝置代碼也放進去：換手機還原時，可以把會員和點數一起搬過去
+  parts.push(`{"format":"doll-wardrobe","version":1,"exportedAt":${JSON.stringify(new Date().toISOString())},"withImages":${withImages},"device":${JSON.stringify(deviceId())},"data":{`);
   let first=true;
   for(const [k,list] of Object.entries(data)){
     parts.push(`${first?'':','}${JSON.stringify(k)}:[`);first=false;
@@ -9117,8 +9122,14 @@ async function importBackup(ev){
     (d.sizes||[]).forEach(z=>{if(!S.settings.sizes.includes(z))S.settings.sizes.push(z)});
     S.settings.customCats=[...new Set([...customCats(),...(d.customCats||[])])];
     if(mode&&d.hiddenCats)S.settings.hiddenCats=d.hiddenCats;
+    // 別台手機做的備份：問要不要把那台的會員、點數、兌換紀錄一起搬過來
+    let moved=false;
+    if(/^[a-zA-Z0-9_-]{8,64}$/.test(j.device||'')&&j.device!==deviceId()&&confirm('這份備份是另一台手機（或重裝前）做的。要把那邊的會員、點數和兌換紀錄也一起搬過來嗎？\n\n按「確定」搬過來（這台原本的點數會換成那邊的）；按「取消」只還原衣櫃資料。')){
+      S.settings.deviceId=j.device;S.acct=null;moved=true;
+    }
     await save();closeSheet();go('home');
-    toast(`已還原 ${S.items.length} 件`);
+    if(moved)await acctLoad();
+    toast(`已還原 ${S.items.length} 件${moved?'，會員和點數也搬過來了':''}`);
   }catch(e){toast('還原失敗：'+e.message)}
 }
 async function wipe(){

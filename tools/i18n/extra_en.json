@@ -918,5 +918,14 @@
 "套裝和 {0} 件單品一起刪掉": "Delete the set and its {0} pieces",
 "只刪套裝這一筆": "Delete only the set",
 "{0} 件單品留在衣櫃，變成單件": "Keep the {0} pieces in your wardrobe as single items",
-"已刪除 {0} 件": "Deleted {0} items"
+"已刪除 {0} 件": "Deleted {0} items",
+"兌換成功，會員 {0} 天（到 {1}）": "Redeemed: {0} days of membership (until {1})",
+"會員到 {0}": "Member until {0}",
+"・到 {0}": " · until {0}",
+"今天輸錯太多次了，明天再試": "Too many wrong tries today. Please try again tomorrow",
+"這份備份是另一台手機（或重裝前）做的。要把那邊的會員、點數和兌換紀錄也一起搬過來嗎？\n\n按「確定」搬過來（這台原本的點數會換成那邊的）；按「取消」只還原衣櫃資料。": "This backup was made on another phone (or before reinstalling). Bring over its membership, points and redeem history too?\n\nTap OK to bring them over (this phone's current points will be replaced). Tap Cancel to restore only your wardrobe.",
+"已還原 {0} 件{1}": "Restored {0} items{1}",
+"，會員和點數也搬過來了": ", plus membership and points",
+"這個兌換碼已經被換完了": "This code has run out",
+"用兌換碼拿到的會員和點數跟著這支手機：換手機或重裝前先做一次備份，到新手機還原時選「搬過來」就會一起帶過去。": "Membership and points from redeem codes belong to this phone: make a backup before switching phones or reinstalling, then choose to bring them over when you restore on the new phone."
 }
