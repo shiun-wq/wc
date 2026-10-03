@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=49"></script>
+<script src="i18n/i18n.js?v=50"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2194,7 +2194,9 @@ async function redeem(){
     const r=await acctReq('/redeem',{code:c});
     if(r.nodb){toast('兌換碼要等後台更新後才能用');return}
     if(!r.ok){toast(r.j.error||'兌換失敗，稍後再試');return}
-    el.value='';renderWallet();toast(`兌換成功，加 ${r.j.added} 點`);
+    el.value='';renderWallet();
+    if(r.j.days){toast(`兌換成功，會員 ${r.j.days} 天（到 ${memberUntilText()}）`);if(UI.tab==='insight')renderInsight()}
+    else toast(`兌換成功，加 ${r.j.added} 點`);
   }catch(e){toast('連不上後台，檢查一下網路')}
 }
 
@@ -2858,7 +2860,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-74';
+const APP_VER='2026.10.01-75';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -6247,6 +6249,8 @@ const isMember=()=>acctOn()?S.acct.tier!=='free':!!S.settings.member||trialOn();
 // 正式會員（不含試用）
 const isPaid=()=>acctOn()?S.acct.tier==='member':!!S.settings.member;
 const trialUsed=()=>acctOn()?!!S.acct.trialUsed:!!S.settings.trial;
+// 用兌換碼拿到的會員：有到期日（之後接商店訂閱，訂閱的到期日也放這裡）
+const memberUntilText=()=>{const t=acctOn()&&S.acct.memberUntil;if(!t)return '';const d=new Date(t);return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`};
 /* ---- 訂閱方案（上架後接 App Store／Google Play；價格暫定，改這裡就好）---- */
 const PLANS=[{id:'month',name:'月訂',price:90,usd:3,per:'月'},{id:'year',name:'年訂',price:900,usd:30,per:'年',tag:'最划算'}];
 const TRIAL_DAYS=3;
@@ -6396,7 +6400,7 @@ function openMemberHub(){
       <em><b>${left}</b><small>/ ${max}</small></em></button>`};
   const go=(ico,t,d,on)=>`<button class="mhub" onclick="${on}"><i>${ico}</i><div class="grow"><b>${t}</b><small>${d}</small></div><em class="arr">›</em></button>`;
   openSheet(`<h3>♛ 我的會員</h3>
-    ${isPaid()?`<div class="mcard"><b>會員功能已開啟</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
+    ${isPaid()?`<div class="mcard"><b>會員功能已開啟${memberUntilText()?`・到 ${memberUntilText()}`:''}</b><span>AI 額度每月 1 號重置，下次是 ${nextM}。額度用完還可以用點數（你有 ${wallet().points} 點）。</span></div>`
       :`<div class="mcard"><b>免費試用中・還剩 ${trialLeft()} 天</b><span>到 ${trialEndText()} 為止，所有會員分析都打開；試用期間 AI 次數比正式會員少一些。喜歡的話到「設定 → 會員與 AI」訂閱。</span><div style="margin-top:10px"><button class="btn sm" onclick="openSettings('member')">看訂閱方案</button></div></div>`}
     <p class="mlabel">本月 AI 額度・點一下直接去用</p>
     <div class="mbox">${Object.keys(QUOTA).map(q).join('')}</div>
@@ -8645,7 +8649,7 @@ function openSettings(page){
     body=`
     <p class="mlabel" style="margin-top:0">我的方案</p>
     <div class="card">
-      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">下次續訂：上架後會顯示日期和金額</div></span></div>
+      ${paid?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 會員</b><div class="hint">${memberUntilText()?`會員到 ${memberUntilText()}`:'下次續訂：上架後會顯示日期和金額'}</div></span></div>
         <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm ghost grow" onclick="openMemberHub()">我的會員功能</button><button class="btn sm ghost grow" onclick="manageSub()">管理訂閱</button></div>`
       :tr?`<div class="row"><span class="grow"><b style="font-size:15px">♛ 免費試用中</b><div class="hint">還剩 ${trialLeft()} 天（到 ${trialEndText()}），試用結束前訂閱就不會中斷</div></span></div>
         <div class="plans">${PLANS.map(plan).join('')}</div>

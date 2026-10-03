@@ -12,8 +12,10 @@
                          例：https://shiun-wq.github.io,capacitor://localhost,https://localhost
      REASONING           AI 回答前「想多少」：low（預設，省錢）/ medium / high，
                          填 off = 不送這個設定（中轉站不支援時會自動改回不送）      （Text，選填）
-     REDEEM_CODES        兌換碼，逗號分隔「代碼:點數」，例：DOLL2026:20,WELCOME:10   （Text，選填）
-                         每台手機每個代碼只能用一次
+     REDEEM_CODES        兌換碼，逗號分隔「代碼:內容」                          （Text，選填）
+                         內容是數字 = 送點數；member 加天數 = 送會員幾天
+                         例：WAWA-7K3MQ9TX:20,WAWA-P4HN82CW:member30
+                         每台手機每個代碼只能用一次；同一台手機或同一個網路一天最多輸錯 10 次
      TEST_DEVICES        測試用：這些裝置代碼直接當會員，逗號分隔                  （Text，選填）
                          裝置代碼在 App 的 設定 → 開發者模式 可以看到
      DAILY_LIMIT         每台裝置每天最多幾次，預設 30                           （Text，選填）
@@ -27,7 +29,7 @@
      GET  /health   看設定有沒有填好（不會顯示密鑰）
      GET  /account  這台手機的帳：方案、本月次數、點數、紀錄（標頭 x-device）
      POST /trial    開始免費試用（每台手機一次）
-     POST /redeem   { code } 兌換點數
+     POST /redeem   { code } 兌換點數或會員天數
      POST /ai       { task, messages }  task 是 tag / buy / wearid / idea / test
                     標頭 x-op：同一次操作（例如買前檢查會問兩次）只扣一次
                     標頭 x-points: 1：額度用完時同意改用點數
@@ -88,15 +90,33 @@ export default {
     if (url.pathname === '/redeem' && req.method === 'POST') {
       if (!env.DB) return json({ error: '後台還沒綁資料庫' }, 404, cors);
       if (!device) return json({ error: '缺少裝置代碼' }, 400, cors);
+      await dbInit(env);
+      // 防亂猜：同一台手機、同一個網路，一天輸錯 10 次就暫停到隔天
+      const day = today8(), ip = req.headers.get('cf-connecting-ip') || '';
+      const keys = ['d:' + device, ...(ip ? ['ip:' + ip] : [])];
+      for (const k of keys) {
+        const f = await env.DB.prepare('SELECT n FROM fails WHERE k=? AND day=?').bind(k, day).first();
+        if (f && f.n >= 10) return json({ error: '今天輸錯太多次了，明天再試' }, 429, cors);
+      }
       let code = '';
       try { code = String((await req.json()).code || '').trim().toUpperCase().slice(0, 40); } catch (e) {}
       const hit = codeList(env).find(c => c.code === code);
-      if (!hit) return json({ error: '兌換碼不正確' }, 404, cors);
+      if (!hit) {
+        await env.DB.batch(keys.map(k => env.DB.prepare('INSERT INTO fails(k,day,n) VALUES(?,?,1) ON CONFLICT(k) DO UPDATE SET n=CASE WHEN day=excluded.day THEN n+1 ELSE 1 END, day=excluded.day').bind(k, day)));
+        return json({ error: '兌換碼不正確' }, 404, cors);
+      }
       const a = await getAcct(env, device);
       if (a.codes.includes(code)) return json({ error: '這個兌換碼已經用過了' }, 409, cors);
       a.codes.push(code);
-      await addPoints(env, a, hit.pts, `兌換碼 ${code}`, true);
-      return json({ ...view(env, a), added: hit.pts, log: await ledger(env, device) }, 200, cors);
+      if (hit.days) {
+        // 會員天數：還是會員的話接在後面加
+        a.member_until = Math.max(Date.now(), a.member_until || 0) + hit.days * 864e5;
+        await env.DB.batch([
+          env.DB.prepare('UPDATE accounts SET member_until=?, codes=? WHERE device=?').bind(a.member_until, JSON.stringify(a.codes), device),
+          env.DB.prepare('INSERT INTO ledger(device,t,n,why) VALUES(?,?,?,?)').bind(device, Date.now(), 0, `兌換碼 ${code}：會員 ${hit.days} 天`)
+        ]);
+      } else await addPoints(env, a, hit.pts, `兌換碼 ${code}`, true);
+      return json({ ...view(env, a), added: hit.pts || 0, days: hit.days || 0, log: await ledger(env, device) }, 200, cors);
     }
 
     if (url.pathname !== '/ai' || req.method !== 'POST') return json({ error: '找不到這個功能' }, 404, cors);
@@ -221,7 +241,8 @@ async function dbInit(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, device TEXT, t INTEGER, n INTEGER, why TEXT)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS ledger_dev ON ledger(device, t)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS ops (device TEXT, op TEXT, t INTEGER, PRIMARY KEY(device, op))'),
-    env.DB.prepare('CREATE TABLE IF NOT EXISTS stats (day TEXT PRIMARY KEY, n INTEGER)')
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS stats (day TEXT PRIMARY KEY, n INTEGER)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS fails (k TEXT PRIMARY KEY, day TEXT, n INTEGER)')
   ]);
   dbReady = true;
 }
@@ -270,9 +291,10 @@ async function ledger(env, device) {
   return r.results || [];
 }
 function codeList(env) {
-  return String(env.REDEEM_CODES || '').split(',').map(s => s.trim()).filter(Boolean).map(s => {
-    const [c, p] = s.split(':'); return { code: String(c || '').trim().toUpperCase(), pts: Math.max(0, parseInt(p) || 0) };
-  }).filter(c => c.code && c.pts);
+  return String(env.REDEEM_CODES || '').split(/[,，]/).map(s => s.trim()).filter(Boolean).map(s => {
+    const [c, p] = s.split(/[:：]/), v = String(p || '').trim().toLowerCase(), m = v.match(/^member\s*(\d+)$/);
+    return { code: String(c || '').trim().toUpperCase(), pts: m ? 0 : Math.max(0, parseInt(v) || 0), days: m ? Math.min(3650, +m[1]) : 0 };
+  }).filter(c => c.code && (c.pts || c.days));
 }
 
 function originAllowed(origin, env) {

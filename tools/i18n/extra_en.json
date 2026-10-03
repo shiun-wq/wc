@@ -918,5 +918,9 @@
 "套裝和 {0} 件單品一起刪掉": "Delete the set and its {0} pieces",
 "只刪套裝這一筆": "Delete only the set",
 "{0} 件單品留在衣櫃，變成單件": "Keep the {0} pieces in your wardrobe as single items",
-"已刪除 {0} 件": "Deleted {0} items"
+"已刪除 {0} 件": "Deleted {0} items",
+"兌換成功，會員 {0} 天（到 {1}）": "Redeemed: {0} days of membership (until {1})",
+"會員到 {0}": "Member until {0}",
+"・到 {0}": " · until {0}",
+"今天輸錯太多次了，明天再試": "Too many wrong tries today. Please try again tomorrow"
 }
