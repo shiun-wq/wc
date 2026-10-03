@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=53"></script>
+<script src="i18n/i18n.js?v=54"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -605,7 +605,8 @@ details.help ul{margin:0;padding:0 16px 14px 34px;font-size:13px;color:var(--ink
 /* 截圖匯入 */
 .shgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .shgrid>div{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--swatch)}
-.shgrid img{width:100%;height:100%;object-fit:cover}
+.shgrid img{width:100%;height:100%;object-fit:cover;object-position:top}
+.shgrid em{position:absolute;left:6px;bottom:6px;font-style:normal;font-size:11px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.55);color:#fff}
 .shgrid button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:12px}
 .shadd{display:grid;place-items:center;aspect-ratio:3/4;border-radius:12px;border:1.5px dashed var(--line);color:var(--muted);font-size:13px;cursor:pointer}
 .shrows{display:flex;flex-direction:column;gap:10px}
@@ -2860,7 +2861,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-78';
+const APP_VER='2026.10.01-79';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -4220,17 +4221,30 @@ function drawShot(){
   if(st.rows)return drawShotRows();
   const wish=st.to==='wish';
   openSheet(`<h3>截圖匯入${wish?'考慮中':'購買中'}<span class="pro">PRO</span></h3>
-    <p class="hint" style="margin:-6px 0 12px">${wish?'把購物車、商品頁或收藏清單的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名和價格':'把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格和進度'}，你確認後再存。每張用 1 次「AI 建檔分析」，本月還有 ${quotaLeft('tag')} 次。</p>
-    <div class="shgrid">${st.shots.map((s,k)=>`<div><img src="${s.small}" alt=""><button type="button" onclick="SH.shots.splice(${k},1);drawShot()" aria-label="移除">✕</button></div>`).join('')}
+    <p class="hint" style="margin:-6px 0 12px">${wish?'把購物車、商品頁或收藏清單的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名和價格':'把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格和進度'}，你確認後再存。每張用 1 次「AI 建檔分析」（很長的截圖會切成幾段讀，每段 1 次），本月還有 ${quotaLeft('tag')} 次。</p>
+    <div class="shgrid">${st.shots.map((s,k)=>`<div><img src="${s.small}" alt="">${s.parts.length>1?`<em>分 ${s.parts.length} 段</em>`:''}<button type="button" onclick="SH.shots.splice(${k},1);drawShot()" aria-label="移除">✕</button></div>`).join('')}
       <label class="shadd">＋ 截圖<input type="file" accept="image/*" multiple hidden onchange="shotAdd(event)"></label></div>
     ${fxPanel(st.cur)}
-    <button class="btn wide" ${st.shots.length&&!st.busy?'':'disabled'} onclick="shotRead()">${st.busy?'AI 讀取中…':st.shots.length?`AI 讀取 ${st.shots.length} 張`:'AI 讀取'}</button>`);
+    <button class="btn wide" ${st.shots.length&&!st.busy?'':'disabled'} onclick="shotRead()">${st.busy?'AI 讀取中…':st.shots.length?(shotCalls()>st.shots.length?`AI 讀取 ${st.shots.length} 張（用 ${shotCalls()} 次）`:`AI 讀取 ${st.shots.length} 張`):'AI 讀取'}</button>`);
 }
 async function shotAdd(ev){
   const fs=[...ev.target.files];ev.target.value='';
-  for(const f of fs.slice(0,6)){const im=await fileToImg(f);SH.shots.push({im,ai:drawScaled(im,1800).toDataURL('image/jpeg',.8),small:drawScaled(im,300).toDataURL('image/jpeg',.7)})}
-  drawShot();
+  let tight=0;
+  for(const f of fs.slice(0,6)){const im=await fileToImg(f),ps=shotParts(im);if(ps.tight)tight++;SH.shots.push({parts:ps.map(c=>({im:c,ai:drawScaled(c,1800).toDataURL('image/jpeg',.8)})),small:drawScaled(im,300).toDataURL('image/jpeg',.7)})}
+  drawShot();if(tight)toast('這張截圖太長了，可能讀不清楚；分成幾張截比較準');
 }
+// 超長截圖整張縮到 1800 會變成細長一條、字看不清楚：高度超過寬度 2.5 倍就切成幾段（上下重疊一點，商品不會被切掉），最多 4 段，每段 1 次
+const SHOT_SEG=2.2,SHOT_MAX=4;
+function shotParts(im){
+  const W=im.width,H=im.height;
+  if(H<=W*2.5)return [im];
+  let seg=W*SHOT_SEG,ov=seg*.12,n=Math.ceil((H-ov)/(seg-ov));
+  let tight=false;if(n>SHOT_MAX){n=SHOT_MAX;ov=W*.25;seg=(H+ov*(n-1))/n;tight=seg>W*3.2}
+  const step=(H-seg)/(n-1),out=[];
+  for(let k=0;k<n;k++){const y=Math.round(k*step),h=Math.round(Math.min(seg,H-y)),c=document.createElement('canvas');c.width=W;c.height=h;c.getContext('2d').drawImage(im,0,y,W,h,0,0,W,h);out.push(c)}
+  out.tight=tight;return out;
+}
+const shotCalls=()=>SH.shots.reduce((n,s)=>n+s.parts.length,0);
 function shotPrompt(){
   return `這是購物 App（淘寶、閒魚、拼多多、蝦皮、Mercari…）${SH.to==='wish'?'購物車、商品頁或收藏清單':'訂單列表'}的截圖，商品是娃娃的衣服（娃衣）或配件。請列出截圖裡每一件商品，只回傳 JSON：
 {"items":[{"shop":"店家名稱","name":"簡短品名","price":24.9,"currency":"CNY","qty":1,"size":"20cm","category":"類型","brand":"","stage":"進度","cancelled":false,"box":[x,y,w,h],"colors":["白色"],"styles":[{"name":"學院風","score":80}],"motifs":["格紋"]}]}
@@ -4272,16 +4286,19 @@ async function shotRead(){
   SH.busy=true;drawShot();
   await fxLoad();
   const rows=[];let ok=0,fail=0;
-  for(const s of SH.shots){
+  for(const sh of SH.shots){let prev=[];for(const s of sh.parts){
     try{
       const j=parseJSON(await callAIImgs('tag',shotPrompt(),[s.ai]));
       const list=Array.isArray(j)?j:(j.items||[]);ok++;spendQuota('tag');
-      list.forEach(x=>{if(!x||!x.name)return;const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1)),cur=String(x.currency||'').toUpperCase()||SH.cur,photo=shotCrop(s.im,x.box),sr=photo?shotSrc(s.im,x.box):null;
+      // 切段時上下重疊的那一塊，同一件會在兩段都讀到：跟上一段一樣的（店、品名、價格）拿掉
+      const key=x=>[x.shop||'',x.name,+x.price||0].join('|'),cur0=list.filter(x=>x&&x.name).map(key),seen=[...prev];prev=cur0;
+      list.forEach(x=>{if(!x||!x.name)return;const i=seen.indexOf(key(x));if(i>=0){seen.splice(i,1);return}
+        const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1)),cur=String(x.currency||'').toUpperCase()||SH.cur,photo=shotCrop(s.im,x.box),sr=photo?shotSrc(s.im,x.box):null;
         for(let k=0;k<qty;k++)rows.push({on:!x.cancelled,cancelled:!!x.cancelled,name:String(x.name).trim(),orig:+x.price||0,cur,category:allCats().includes(x.category)?x.category:'',size:sizes().includes(x.size)?x.size:'',
           brand:String(x.brand||'').trim(),shop:String(x.shop||'').trim(),stage:ORDER_STAGES.includes(x.stage)?x.stage:'已付款',photo,photoSrc:sr&&sr.src,photoCrop:sr&&sr.rect,
           colors:Array.isArray(x.colors)?x.colors.slice(0,3).map(String):[],styles:Array.isArray(x.styles)?x.styles.filter(y=>y&&STYLE_WORDS.includes(y.name||y)).map(y=>({name:y.name||y,score:+y.score||70})).slice(0,3):[],motifs:Array.isArray(x.motifs)?x.motifs.slice(0,4).map(String):[]})});
-    }catch(e){fail++}
-  }
+    }catch(e){fail++;prev=[]}
+  }}
   SH.busy=false;
   if(!rows.length){toast(fail?'AI 這次沒讀出來，換一張清楚一點的截圖再試試（失敗的不扣次數）':'截圖裡沒有找到商品');drawShot();return}
   // 已經記過的（同名、同店、同價）預設不勾
@@ -8640,7 +8657,7 @@ const HELP=[
   ['👑','會員與免費試用',[['⚙️','設定 → 會員與 AI'],['🎁','免費試用 3 天'],['👑','右上「會員」'],['🔄','恢復購買']],
     ['衣櫃、建檔、貼圖、穿搭紀錄、足跡、星星罐都一直免費；會員多了每個月的 AI 額度、會員分析和專屬小卡樣式。','第一次可以免費試用 3 天：會員分析全部打開，AI 次數比正式會員少一些；每個人只有一次，資料到期後一件都不會刪。','成為會員後，點右上角的「👑 會員」會打開「我的會員」：本月 AI 還剩幾次、每個會員功能在哪裡，點一下直接去用。','換手機或重裝 App 後，到 設定 → 會員與 AI 按「恢復購買」拿回會員。','用兌換碼拿到的會員和點數跟著這支手機：換手機或重裝前先做一次備份，到新手機還原時選「搬過來」就會一起帶過去。','AI 功能每個月 1 號會給一次額度，免費版也有；用完可以用點數。右上角的 ✦ 點數（會員在「我的會員」最下面）可以看這個月還剩幾次、儲值點數、輸入兌換碼。']],
   ['📸','截圖匯入購買中',[['📦','購買中 → 截圖匯入'],['🖼️','選訂單截圖'],['✨','AI 讀取'],['☑️','確認後存']],
-    ['會員功能。把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格、進度，順便剪下商品小圖、看顏色和風格。','人民幣等外幣會照當天匯率加上海外手續費換算，也可以改成自己填刷卡帳單上的匯率；原價會寫在備註。','確認畫面可以改名稱、類型、金額；退款的、已經記過的預設不勾。每張截圖用 1 次 AI 建檔分析，讀不出來的不扣。','商品圖剪歪了，打開那一筆按「✂️ 調整商品圖」重新框。']],
+    ['會員功能。把購物 App 訂單頁的截圖丟進來（可以一次選好幾張），AI 會讀出店家、品名、價格、進度，順便剪下商品小圖、看顏色和風格。','人民幣等外幣會照當天匯率加上海外手續費換算，也可以改成自己填刷卡帳單上的匯率；原價會寫在備註。','確認畫面可以改名稱、類型、金額；退款的、已經記過的預設不勾。每張截圖用 1 次 AI 建檔分析，讀不出來的不扣。','很長的截圖（一次截整頁）會自動切成幾段讀，比較看得清楚，每段用 1 次；太長的話分成幾張截比較準。','商品圖剪歪了，打開那一筆按「✂️ 調整商品圖」重新框。']],
   ['📅','娃娃的一年（年度回顧）',[['📊','洞察 → 👑 會員分析'],['🗓️','選年份'],['🧸','今年來到身邊的娃娃'],['🎉','做成年度小卡']],
     ['會員功能。整理那一年穿了幾次、出門幾次、去過哪裡、新來的娃衣，還有年度最愛和出場最多的娃娃。','那一年來到身邊的娃娃會排排站，謝謝他們來到你身邊。','平常可以看「到目前為止」的紀錄；每年 12 月 20 日首頁會提醒年度回顧出爐，可以做成貼文或限動小卡分享。']],
   // ── 資料

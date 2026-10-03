@@ -39,6 +39,8 @@
 const TASKS = ['tag', 'buy', 'wearid', 'idea', 'test'];
 const MAX_BODY = 12 * 1024 * 1024; // 12MB，照片都已經先壓過，正常遠低於這個
 const MAX_IMAGES = 10;
+// 單張圖片上限：App 送的圖都先縮到最長邊 1800 以下，大約幾百 KB；擋掉不經過 App、直接送超大圖的
+const MAX_IMAGE = 2.5 * 1024 * 1024;
 const MAX_TOKENS = 8192;
 
 // 每月 AI 次數和點數價格（App 畫面上的數字從 /account 拿，改這裡就好）
@@ -140,6 +142,7 @@ export default {
     const task = String(body.task || '');
     if (!TASKS.includes(task)) return json({ error: '不支援的功能' }, 400, cors);
     const messages = cleanMessages(body.messages);
+    if (messages === 'big') return json({ error: '照片太大了' }, 413, cors);
     if (!messages) return json({ error: '格式錯誤' }, 400, cors);
     // 測試連線不算次數，所以只准一小段文字
     if (task === 'test' && (messages[0].content.length !== 1 || messages[0].content[0].type !== 'text' || messages[0].content[0].text.length > 100))
@@ -342,6 +345,7 @@ function cleanMessages(msgs) {
       out.push({ type: 'text', text: p.text });
     } else if (p && p.type === 'image_url' && p.image_url && typeof p.image_url.url === 'string'
       && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(p.image_url.url)) {
+      if (p.image_url.url.length > MAX_IMAGE) return 'big';
       imgs++;
       out.push({ type: 'image_url', image_url: { url: p.image_url.url } });
     } else return null;
