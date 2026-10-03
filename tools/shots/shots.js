@@ -10,6 +10,8 @@ const TRIP={};for(const n of ['wt_flower','lz10_camellia','small_cafe','lz_rock'
   const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
   await p.addInitScript(()=>{const T=new Date('2026-12-24T10:00:00+08:00').getTime(),R=Date;
     class F extends R{constructor(...a){a.length?super(...a):super(T)}static now(){return T}};window.Date=F});
+  // 不連後台：會員、點數都用手機裡的示範資料
+  await p.route(/workers\.dev/,r=>r.abort());
   await p.goto('http://localhost:8772/');await p.waitForTimeout(800);
   // 說明截圖不能出現「有新版本」的提示
   await p.addStyleTag({content:'.updbar{display:none!important}'});await p.evaluate(()=>{window.checkUpdate=()=>{};document.querySelectorAll('.updbar').forEach(e=>e.remove())});
@@ -123,9 +125,15 @@ const TRIP={};for(const n of ['wt_flower','lz10_camellia','small_cafe','lz_rock'
       {id:'o1',kind:'item',name:'條紋針織背心',category:'上衣',price:'350',series:'秋日學院',brand:'棉花星球',shop:'娃衣團購',stage:'已到貨',arrived:'2026-12-22',orderDate:'2026-10-02',photo:u('c_sweater'),note:''},
       {id:'o2',kind:'item',name:'牛仔吊帶短褲',category:'褲子',price:'480',series:'秋日學院',brand:'棉花星球',shop:'娃衣團購',stage:'運送中',eta:'2026-12-28',orderDate:'2026-10-02',photo:u('c_overall'),note:''},
       {id:'o3',kind:'item',name:'焦糖色貝雷帽',category:'帽子',price:'220',shop:'二手',stage:'製作中',eta:'2027-02-10',orderDate:'2026-11-15',photo:u('c_beret'),note:''},
-      {id:'o4',kind:'item',name:'毛絨小熊耳罩',category:'配件',price:'180',shop:'二手',stage:'已付款',eta:'2027-03-01',orderDate:'2026-12-01',photo:null,note:''}];
+      {id:'o4',kind:'item',name:'毛絨小熊耳罩',category:'配件',price:'180',shop:'二手',stage:'已付款',eta:'2027-03-01',orderDate:'2026-12-01',photo:null,note:''},
+      {id:'o5',kind:'item',name:'粉灰條紋襪',category:'襪子',price:'90',series:'秋日學院',brand:'棉花星球',shop:'娃衣團購',stage:'運送中',eta:'2026-12-28',orderDate:'2026-10-02',photo:u('c_socks'),note:''},
+      {id:'o6',kind:'item',name:'紅格紋百褶裙',category:'裙子',price:'320',brand:'小熊手作',shop:'小熊手作',stage:'已到貨',arrived:'2026-12-20',orderDate:'2026-11-02',photo:u('c_skirt'),note:''}];
     await save();UI.wishTab='order';go('wish');window.scrollTo(0,0)});
   await p.waitForTimeout(600);await shot('orders');
+  // 待建檔：到貨的娃衣
+  await p.evaluate(()=>{UI.wishTab='file';go('wish');window.scrollTo(0,0)});
+  await p.waitForTimeout(600);await shot('order-file');
+  await p.evaluate(()=>{UI.wishTab='order'});
   // 建檔頁的到貨提醒
   await p.evaluate(()=>{go('intake');window.scrollTo(0,0)});await shot('arrive-tip',{x:0,y:60,width:390,height:420});
   // 穿過的娃衣（首頁點穿過的比例）
@@ -157,8 +165,11 @@ const TRIP={};for(const n of ['wt_flower','lz10_camellia','small_cafe','lz_rock'
   await p.waitForTimeout(700);await p.evaluate(()=>{document.getElementById('jar_t').value=JAR.text});await shot('star-jar',{x:0,y:80});
   await p.evaluate(()=>{closeSheet();UI.dollTab='jar';go('dolls');window.scrollTo(0,0)});await p.waitForTimeout(600);await shot('jar-list');
   await p.evaluate(()=>{UI.dollTab='doll'});
+  // 設定首頁：語言、外觀、幣別、類別
+  await p.evaluate(()=>{closeSheet();openSettings()});await p.waitForTimeout(700);
+  await p.evaluate(()=>{const pn=document.querySelector('#sheet .panel');pn.scrollTop=pn.scrollHeight});await shot('settings',{x:0,y:144});
   // 會員：方案（免費版的樣子）、我的會員
-  await p.evaluate(async()=>{S.settings.member=false;S.settings.trial=null;await save();updateWalletChip();openSettings('member')});await p.waitForTimeout(700);await shot('member-plan',{x:0,y:80});
+  await p.evaluate(async()=>{S.settings.member=false;S.settings.trial=null;await save();updateWalletChip();openSettings('member');document.querySelector('#sheet .panel').scrollTop=0});await p.waitForTimeout(700);await shot('member-plan',{x:0,y:80});
   await p.evaluate(async()=>{S.settings.member=true;await save();updateWalletChip();closeSheet();S.usage=null;usage().tag=37;usage().buy=4;usage().idea=6;openMemberHub()});await p.waitForTimeout(700);await shot('member-hub',{x:0,y:80});
   // 截圖匯入：確認畫面（示範資料）
   await p.evaluate(async()=>{closeSheet();UI.wishTab='order';go('wish');SH={shots:[],busy:false,cur:'CNY'};const its=S.items.filter(i=>i.cutout).slice(0,4);

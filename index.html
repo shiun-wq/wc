@@ -9,7 +9,7 @@
 // 在畫面出現前先套用上次的外觀，避免深色模式開啟時閃一下白
 try{var t=localStorage.getItem('theme')||'light';if(t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}
 </script>
-<script src="i18n/i18n.js?v=52"></script>
+<script src="i18n/i18n.js?v=53"></script>
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="哇娃衣櫃">
 <meta name="mobile-web-app-capable" content="yes">
@@ -2860,7 +2860,7 @@ function homeMoreHTML(){
 }
 /* ---- 新版本檢查：iPhone 主畫面 App 常常只是從背景切回來、不會重新載入，
    所以打開或切回來時問一下 version.json，有新版就請使用者點一下更新 ---- */
-const APP_VER='2026.10.01-77';
+const APP_VER='2026.10.01-78';
 let UPD_SHOWN=false;
 async function checkUpdate(){
   if(UPD_SHOWN||isApp()||!location.protocol.startsWith('http'))return;
@@ -8675,13 +8675,14 @@ const HELP_SHOTS={
   '暫時離家・封存・道別':[['doll-away','暫時離家：首頁變成小車，倒數回家']],
   '足跡：娃娃陪你去過哪裡':[['foot-doll','娃娃的足跡頁'],['foot-map','娃娃櫃 → 足跡：去越多次顏色越深']],
   '相簿：娃娃的照片':[['album','在足跡地圖點「日本」，看在那裡拍的照片']],
-  '買前檢查・考慮中・購買中':[['buy-check','買前檢查：衣櫃裡幾乎一樣的排最前面'],['orders','購買中：每件的尺寸、進度和預計到貨']],
+  '買前檢查・考慮中・購買中':[['buy-check','買前檢查：衣櫃裡幾乎一樣的排最前面'],['orders','購買中：每件的尺寸、進度和預計到貨'],['order-file','待建檔：到貨的娃衣拍照建檔，或先建檔之後補拍']],
   '洞察：衣櫃分析':[['insight','洞察：購買中、所有穿搭紀錄和分析']],
   '提醒與通知':[['notify','設定 → 提醒與通知']],
   '星星罐：寫給娃娃的話':[['star-jar','星星罐：寫一句話，選哪一天打開'],['jar-list','娃娃櫃 → 星星罐：每隻娃娃的罐子']],
   '會員與免費試用':[['member-plan','設定 → 會員與 AI：方案和免費試用'],['member-hub','我的會員：AI 還剩幾次、功能在哪']],
   '截圖匯入購買中':[['order-shot','截圖匯入：確認 AI 讀出來的品名和金額']],
   '娃娃的一年（年度回顧）':[['year-card','年度回顧小卡'],['year-insight','洞察 → 會員分析：娃娃的一年']],
+  '設定：語言、外觀、幣別、類別':[['settings','設定：類別、尺寸、我住在、語言、外觀']],
   '備份很重要':[['backup','設定 → 備份與資料']]
 };
 function helpHTML(){
