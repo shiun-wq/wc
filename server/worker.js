@@ -14,7 +14,8 @@
                          填 off = 不送這個設定（中轉站不支援時會自動改回不送）      （Text，選填）
      REDEEM_CODES        兌換碼，逗號分隔「代碼:內容」                          （Text，選填）
                          內容是數字 = 送點數；member 加天數 = 送會員幾天
-                         例：WAWA-7K3MQ9TX:20,WAWA-P4HN82CW:member30
+                         後面再加 :數字 = 全部人加起來最多能換幾次（不寫 = 不限）
+                         例：WAWA-7K3MQ9TX:20,WAWA-P4HN82CW:member30:100
                          每台手機每個代碼只能用一次；同一台手機或同一個網路一天最多輸錯 10 次
      TEST_DEVICES        測試用：這些裝置代碼直接當會員，逗號分隔                  （Text，選填）
                          裝置代碼在 App 的 設定 → 開發者模式 可以看到
@@ -107,6 +108,12 @@ export default {
       }
       const a = await getAcct(env, device);
       if (a.codes.includes(code)) return json({ error: '這個兌換碼已經用過了' }, 409, cors);
+      // 總次數上限：全部人加起來換滿就失效（有人一直重裝 App 也只能吃掉這些次數）
+      if (hit.max) {
+        const u = await env.DB.prepare('SELECT n FROM code_uses WHERE code=?').bind(code).first();
+        if (u && u.n >= hit.max) return json({ error: '這個兌換碼已經被換完了' }, 410, cors);
+      }
+      await env.DB.prepare('INSERT INTO code_uses(code,n) VALUES(?,1) ON CONFLICT(code) DO UPDATE SET n=n+1').bind(code).run();
       a.codes.push(code);
       if (hit.days) {
         // 會員天數：還是會員的話接在後面加
@@ -242,7 +249,8 @@ async function dbInit(env) {
     env.DB.prepare('CREATE INDEX IF NOT EXISTS ledger_dev ON ledger(device, t)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS ops (device TEXT, op TEXT, t INTEGER, PRIMARY KEY(device, op))'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS stats (day TEXT PRIMARY KEY, n INTEGER)'),
-    env.DB.prepare('CREATE TABLE IF NOT EXISTS fails (k TEXT PRIMARY KEY, day TEXT, n INTEGER)')
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS fails (k TEXT PRIMARY KEY, day TEXT, n INTEGER)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS code_uses (code TEXT PRIMARY KEY, n INTEGER)')
   ]);
   dbReady = true;
 }
@@ -292,8 +300,9 @@ async function ledger(env, device) {
 }
 function codeList(env) {
   return String(env.REDEEM_CODES || '').split(/[,，]/).map(s => s.trim()).filter(Boolean).map(s => {
-    const [c, p] = s.split(/[:：]/), v = String(p || '').trim().toLowerCase(), m = v.match(/^member\s*(\d+)$/);
-    return { code: String(c || '').trim().toUpperCase(), pts: m ? 0 : Math.max(0, parseInt(v) || 0), days: m ? Math.min(3650, +m[1]) : 0 };
+    const [c, p, mx] = s.split(/[:：]/), v = String(p || '').trim().toLowerCase(), m = v.match(/^member\s*(\d+)$/);
+    return { code: String(c || '').trim().toUpperCase(), pts: m ? 0 : Math.max(0, parseInt(v) || 0), days: m ? Math.min(3650, +m[1]) : 0,
+      max: Math.max(0, parseInt(mx) || 0) };
   }).filter(c => c.code && (c.pts || c.days));
 }
 
